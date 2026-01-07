@@ -1,0 +1,13 @@
+{
+  "name": "libp2p_module",
+  "version": "1.0.0",
+  "description": "Waku module",
+  "author": "Logos Core Team",
+  "type": "core",
+  "category": "protocol",
+  "main": "libp2p_module_plugin",
+  "dependencies": [],
+  "include": ["liblibp2p.so", "liblibp2p.dylib", "liblibp2p.dll"],
+  "capabilities": [
+  ]
+} 
