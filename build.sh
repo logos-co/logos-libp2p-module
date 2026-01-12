@@ -68,11 +68,12 @@ mkdir -p "${LIB_DIR}"
 echo "Ensuring libp2p nested submodules are available..."
 git -C "${VENDOR_DIR}" submodule update --init --recursive
 
+# TODO: really use this amount of jobs
 echo "Building libp2p with ${JOBS} jobs..."
 (
-    cd "${VENDOR_DIR}"
+    cd "${VENDOR_DIR}/cbind"
     export USE_SYSTEM_NIM=${USE_SYSTEM_NIM:-1}
-    make -j"${JOBS}" libp2p
+    nimble libDynamic
 )
 
 echo "Copying libp2p artifacts into ${LIB_DIR}"

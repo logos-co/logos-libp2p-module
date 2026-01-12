@@ -12,11 +12,12 @@ usage() {
     cat <<'EOF'
 Usage: scripts/compile.sh [--debug|--release] [--clean] [--qt-dir PATH]
 
-Initialises vendored submodules, builds libp2p and compiles the Waku module plugin.
+Builds nim-libp2p via nimble and compiles the Qt libp2p module plugin.
+
   --debug        Build with Debug configuration
   --release      Build with Release configuration (default)
-  --clean        Remove the existing build directory and libp2p artifacts before configuring
-  --qt-dir PATH  Explicit Qt installation to use (passed to CMake as CMAKE_PREFIX_PATH)
+  --clean        Remove build directory and nimble artifacts
+  --qt-dir PATH  Explicit Qt installation to use
   -h, --help     Show this help message
 EOF
 }
@@ -36,10 +37,6 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --qt-dir)
-            if [[ $# -lt 2 ]]; then
-                echo "--qt-dir requires a path argument" >&2
-                exit 1
-            fi
             QT_DIR_OVERRIDE="$2"
             shift 2
             ;;
@@ -59,30 +56,8 @@ if [[ -n "${QT_DIR_OVERRIDE}" ]]; then
     QT_DIR="${QT_DIR_OVERRIDE}"
 fi
 
-if [[ -z "${QT_DIR:-}" ]]; then
-    if [[ -d "${HOME}/Qt" ]]; then
-        qt_candidates=$(find "${HOME}/Qt" -mindepth 1 -maxdepth 1 -type d -name '6.*' 2>/dev/null | sort -Vr)
-        if [[ -n "${qt_candidates}" ]]; then
-            while IFS= read -r candidate; do
-                [[ -z "${candidate}" ]] && continue
-                for suffix in macos clang_64 gcc_64 win64_msvc2019_64 win64_msvc2017_64; do
-                    if [[ -d "${candidate}/${suffix}" ]]; then
-                        QT_DIR="${candidate}/${suffix}"
-                        break 2
-                    fi
-                done
-            done <<< "${qt_candidates}"
-        fi
-    fi
-fi
-
 if [[ -n "${QT_DIR:-}" ]]; then
     export QT_DIR
-    if [[ -d "${QT_DIR}/lib/cmake/Qt6" ]]; then
-        export Qt6_DIR="${QT_DIR}/lib/cmake/Qt6"
-    elif [[ -d "${QT_DIR}/lib/cmake/Qt5" ]]; then
-        export Qt5_DIR="${QT_DIR}/lib/cmake/Qt5"
-    fi
     export CMAKE_PREFIX_PATH="${QT_DIR}"
     echo "Using Qt from: ${QT_DIR}"
     CMAKE_EXTRA_ARGS=("-DCMAKE_PREFIX_PATH=${QT_DIR}")
@@ -94,26 +69,28 @@ fi
 if [[ ${CLEAN_FIRST} -eq 1 ]]; then
     echo "Cleaning build directory: ${BUILD_DIR}"
     rm -rf "${BUILD_DIR}"
-    echo "Cleaning vendored generator build directory: ${ROOT_DIR}/vendor/build"
-    rm -rf "${ROOT_DIR}/vendor/build"
-    echo "Cleaning libp2p artifacts"
+
+    echo "Cleaning nimble artifacts..."
+    nimble clean || true
+
+    echo "Removing generated libp2p artifacts..."
     rm -rf "${ROOT_DIR}/lib"
 fi
 
-echo "Ensuring vendored dependencies are available..."
-git -C "${ROOT_DIR}" submodule update --init --recursive
+echo "Building libp2p via nimble..."
 
-echo "Building libp2p from vendored sources..."
-if [[ ${CLEAN_FIRST} -eq 1 ]]; then
-    "${ROOT_DIR}/build.sh" --clean
+if [[ "${BUILD_TYPE}" == "Debug" ]]; then
+    nimble build -d:debug
 else
-    "${ROOT_DIR}/build.sh"
+    nimble build
 fi
 
-echo "Configuring (type=${BUILD_TYPE})..."
+echo "Configuring Qt plugin (type=${BUILD_TYPE})..."
+
 cmake -S "${ROOT_DIR}" -B "${BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
-    -DLOGOS_WAKU_MODULE_USE_VENDOR=ON \
+    -DLIBP2P_USE_SYSTEM=OFF \
+    -DLIBP2P_ROOT="${ROOT_DIR}" \
     "${CMAKE_EXTRA_ARGS[@]}"
 
 echo "Building libp2p_module_plugin..."
@@ -134,3 +111,4 @@ if [[ -f "${BIN_PATH}" ]]; then
 else
     echo "Build finished. Check ${BUILD_DIR}/modules for artifacts."
 fi
+
