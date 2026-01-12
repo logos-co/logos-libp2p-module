@@ -1,0 +1,3 @@
+[submodule "vendor/libp2p"]
+	path = vendor/libp2p
+	url = git@github.com:vacp2p/nim-libp2p.git
