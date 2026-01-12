@@ -12,10 +12,10 @@ usage() {
     cat <<'EOF'
 Usage: scripts/compile.sh [--debug|--release] [--clean] [--qt-dir PATH]
 
-Initialises vendored submodules, builds liblibp2p and compiles the Waku module plugin.
+Initialises vendored submodules, builds libp2p and compiles the Waku module plugin.
   --debug        Build with Debug configuration
   --release      Build with Release configuration (default)
-  --clean        Remove the existing build directory and liblibp2p artifacts before configuring
+  --clean        Remove the existing build directory and libp2p artifacts before configuring
   --qt-dir PATH  Explicit Qt installation to use (passed to CMake as CMAKE_PREFIX_PATH)
   -h, --help     Show this help message
 EOF
@@ -96,18 +96,18 @@ if [[ ${CLEAN_FIRST} -eq 1 ]]; then
     rm -rf "${BUILD_DIR}"
     echo "Cleaning vendored generator build directory: ${ROOT_DIR}/vendor/build"
     rm -rf "${ROOT_DIR}/vendor/build"
-    echo "Cleaning liblibp2p artifacts"
+    echo "Cleaning libp2p artifacts"
     rm -rf "${ROOT_DIR}/lib"
 fi
 
 echo "Ensuring vendored dependencies are available..."
 git -C "${ROOT_DIR}" submodule update --init --recursive
 
-echo "Building liblibp2p from vendored sources..."
+echo "Building libp2p from vendored sources..."
 if [[ ${CLEAN_FIRST} -eq 1 ]]; then
-    "${ROOT_DIR}/build_liblibp2p.sh" --clean
+    "${ROOT_DIR}/build.sh" --clean
 else
-    "${ROOT_DIR}/build_liblibp2p.sh"
+    "${ROOT_DIR}/build.sh"
 fi
 
 echo "Configuring (type=${BUILD_TYPE})..."

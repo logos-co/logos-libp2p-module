@@ -24,7 +24,7 @@
           common = import ./nix/default.nix { inherit pkgs logosSdk logosLiblogos; };
           src = ./.;
           
-          # Library package (plugin + liblibp2p)
+          # Library package (plugin + libp2p)
           lib = import ./nix/lib.nix { inherit pkgs common src; };
           
           # Include package (generated headers from plugin)
