@@ -24,7 +24,7 @@
     "-GNinja"
     "-DLOGOS_CPP_SDK_ROOT=${logosSdk}"
     "-DLOGOS_LIBLOGOS_ROOT=${logosLiblogos}"
-    "-DLOGOS_WAKU_MODULE_USE_VENDOR=OFF"
+    "-DLOGOS_LIBP2P_MODULE_USE_VENDOR=OFF"
   ];
   
   # Environment variables
@@ -35,7 +35,7 @@
   
   # Metadata
   meta = with pkgs.lib; {
-    description = "Logos Waku Module - Provides Waku network communication capabilities";
+    description = "Logos Libp2p Module - Provides P2P interoperability";
     platforms = platforms.unix;
   };
 }

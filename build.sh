@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENDOR_DIR="${SCRIPT_DIR}/vendor/nlibp2p"
+VENDOR_DIR="${SCRIPT_DIR}/vendor/libp2p"
 LIB_DIR="${SCRIPT_DIR}/lib"
 
 DEFAULT_JOBS=$(command -v getconf >/dev/null 2>&1 && getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
@@ -12,9 +12,9 @@ CLEAN_FIRST=0
 
 usage() {
     cat <<'EOF'
-Usage: build_liblibp2p.sh [--jobs N] [--clean]
+Usage: build_libp2p.sh [--jobs N] [--clean]
 
-Initialises the vendored nlibp2p submodule (if required) and builds liblibp2p.
+Initialises the vendored libp2p submodule (if required) and builds libp2p.
   --jobs, -j N  Parallel build jobs (default: detected CPU count)
   --clean       Remove previous build artifacts before building
   -h, --help    Show this help message
@@ -48,43 +48,43 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ! -d "${VENDOR_DIR}" ]]; then
-    echo "Fetching nlibp2p submodule..."
-    git -C "${SCRIPT_DIR}" submodule update --init --recursive vendor/nlibp2p
+    echo "Fetching libp2p submodule..."
+    git -C "${SCRIPT_DIR}" submodule update --init --recursive vendor/libp2p
 fi
 
 if [[ ! -d "${VENDOR_DIR}" ]]; then
-    echo "Error: vendor/nlibp2p directory not available" >&2
+    echo "Error: vendor/libp2p directory not available" >&2
     exit 1
 fi
 
 if [[ ${CLEAN_FIRST} -eq 1 ]]; then
-    echo "Cleaning previous liblibp2p artifacts"
+    echo "Cleaning previous libp2p artifacts"
     rm -rf "${VENDOR_DIR}/build"
     rm -rf "${LIB_DIR}"
 fi
 
 mkdir -p "${LIB_DIR}"
 
-echo "Ensuring nlibp2p nested submodules are available..."
+echo "Ensuring libp2p nested submodules are available..."
 git -C "${VENDOR_DIR}" submodule update --init --recursive
 
-echo "Building liblibp2p with ${JOBS} jobs..."
+echo "Building libp2p with ${JOBS} jobs..."
 (
     cd "${VENDOR_DIR}"
     export USE_SYSTEM_NIM=${USE_SYSTEM_NIM:-1}
-    make -j"${JOBS}" liblibp2p
+    make -j"${JOBS}" libp2p
 )
 
-echo "Copying liblibp2p artifacts into ${LIB_DIR}"
+echo "Copying libp2p artifacts into ${LIB_DIR}"
 shopt -s nullglob
-for artifact in "${VENDOR_DIR}/build"/liblibp2p.*; do
+for artifact in "${VENDOR_DIR}/build"/libp2p.*; do
     basename_artifact=$(basename "${artifact}")
     # Detect platform and rename library file accordingly
     case "$(uname -s)" in
         Darwin*)
             # macOS - rename .so to .dylib
-            if [[ "${basename_artifact}" == "liblibp2p.so" ]]; then
-                cp "${artifact}" "${LIB_DIR}/liblibp2p.dylib"
+            if [[ "${basename_artifact}" == "libp2p.so" ]]; then
+                cp "${artifact}" "${LIB_DIR}/libp2p.dylib"
             else
                 cp "${artifact}" "${LIB_DIR}/${basename_artifact}"
             fi
@@ -101,8 +101,8 @@ for artifact in "${VENDOR_DIR}/build"/liblibp2p.*; do
 done
 shopt -u nullglob
 
-if [[ -f "${VENDOR_DIR}/library/liblibp2p.h" ]]; then
-    cp "${VENDOR_DIR}/library/liblibp2p.h" "${LIB_DIR}/liblibp2p.h"
+if [[ -f "${VENDOR_DIR}/library/libp2p.h" ]]; then
+    cp "${VENDOR_DIR}/library/libp2p.h" "${LIB_DIR}/libp2p.h"
 fi
 
-echo "liblibp2p build complete"
+echo "libp2p build complete"

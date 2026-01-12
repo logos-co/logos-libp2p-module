@@ -5,12 +5,12 @@ include(GNUInstallDirs)
 
 set(CMAKE_AUTOMOC ON)
 
-option(LOGOS_WAKU_MODULE_USE_VENDOR "Force use of vendored Logos dependencies" OFF)
+option(LOGOS_LIBP2P_MODULE_USE_VENDOR "Force use of vendored Logos dependencies" OFF)
 
 # Allow override from environment or command line
 if(NOT DEFINED LOGOS_LIBLOGOS_ROOT)
     set(_parent_liblogos "${CMAKE_CURRENT_SOURCE_DIR}/../logos-liblogos")
-    set(_use_vendor ${LOGOS_WAKU_MODULE_USE_VENDOR})
+    set(_use_vendor ${LOGOS_LIBP2P_MODULE_USE_VENDOR})
     if(NOT _use_vendor)
         if(NOT EXISTS "${_parent_liblogos}/interface.h")
             set(_use_vendor ON)
@@ -25,7 +25,7 @@ endif()
 
 if(NOT DEFINED LOGOS_CPP_SDK_ROOT)
     set(_parent_cpp_sdk "${CMAKE_CURRENT_SOURCE_DIR}/../logos-cpp-sdk")
-    set(_use_vendor ${LOGOS_WAKU_MODULE_USE_VENDOR})
+    set(_use_vendor ${LOGOS_LIBP2P_MODULE_USE_VENDOR})
     if(NOT _use_vendor)
         if(NOT EXISTS "${_parent_cpp_sdk}/cpp/logos_api.h")
             set(_use_vendor ON)
@@ -67,9 +67,9 @@ if(NOT _cpp_sdk_found)
                         "Set LOGOS_CPP_SDK_ROOT or run git submodule update --init --recursive.")
 endif()
 
-set(NWAKU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/vendor/nlibp2p")
-if(NOT EXISTS "${NWAKU_ROOT}/Makefile")
-    message(WARNING "nlibp2p vendor not found. You may need to run git submodule update --init --recursive if building liblibp2p from source.")
+set(LIBP2P_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libp2p")
+if(NOT EXISTS "${LIBP2P_ROOT}/Makefile")
+    message(WARNING "libp2p vendor not found. You may need to run git submodule update --init --recursive if building libp2p from source.")
 endif()
 
 # Root that contains the vendored dependencies (logos-core checkout or script vendor directory)
@@ -124,17 +124,17 @@ else()
     )
 endif()
 
-set(LIBWAKU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
+set(LIBP2P_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 # Prioritize platform-specific library names
 if(APPLE)
-    set(LIBWAKU_NAMES liblibp2p.dylib liblibp2p.so liblibp2p.dll libp2p.dll)
+    set(LIBP2P_NAMES libp2p.dylib libp2p.so libp2p.dll libp2p.dll)
 elseif(WIN32)
-    set(LIBWAKU_NAMES liblibp2p.dll libp2p.dll liblibp2p.dylib liblibp2p.so)
+    set(LIBP2P_NAMES libp2p.dll libp2p.dll libp2p.dylib libp2p.so)
 else()
-    set(LIBWAKU_NAMES liblibp2p.so liblibp2p.dylib liblibp2p.dll libp2p.dll)
+    set(LIBP2P_NAMES libp2p.so libp2p.dylib libp2p.dll libp2p.dll)
 endif()
 # Always add lib directory and try to link -llibp2p; also keep optional direct path if present
-find_library(LIBWAKU_PATH NAMES ${LIBWAKU_NAMES} PATHS ${LIBWAKU_DIR} NO_DEFAULT_PATH)
+find_library(LIBP2P_PATH NAMES ${LIBP2P_NAMES} PATHS ${LIBP2P_DIR} NO_DEFAULT_PATH)
 
 # Plugin sources
 set(PLUGIN_SOURCES
@@ -190,17 +190,17 @@ if(NOT _cpp_sdk_is_source)
     target_link_libraries(libp2p_module_plugin PRIVATE ${LOGOS_SDK_LIB})
 endif()
 
-# Link to liblibp2p on all platforms
-if(LIBWAKU_PATH)
-    target_link_libraries(libp2p_module_plugin PRIVATE ${LIBWAKU_PATH})
+# Link to libp2p on all platforms
+if(LIBP2P_PATH)
+    target_link_libraries(libp2p_module_plugin PRIVATE ${LIBP2P_PATH})
 else()
-    message(WARNING "liblibp2p not found in lib/. Build or provide it before linking.")
+    message(WARNING "libp2p not found in lib/. Build or provide it before linking.")
 endif()
 
 # Include directories
 target_include_directories(libp2p_module_plugin PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${LIBWAKU_DIR}
+    ${LIBP2P_DIR}
 )
 
 # Add include directories based on layout type
@@ -230,32 +230,32 @@ set_target_properties(libp2p_module_plugin PROPERTIES
     SKIP_BUILD_RPATH FALSE)
 
 if(APPLE)
-    # Allow unresolved symbols at link time; liblibp2p will be provided at runtime
+    # Allow unresolved symbols at link time; libp2p will be provided at runtime
     target_link_options(libp2p_module_plugin PRIVATE -undefined dynamic_lookup)
     set_target_properties(libp2p_module_plugin PROPERTIES
         INSTALL_RPATH "@loader_path"
         INSTALL_NAME_DIR "@rpath"
         BUILD_WITH_INSTALL_NAME_DIR TRUE)
 
-    if(LIBWAKU_PATH)
-        get_filename_component(LIBWAKU_FILENAME "${LIBWAKU_PATH}" NAME)
+    if(LIBP2P_PATH)
+        get_filename_component(LIBP2P_FILENAME "${LIBP2P_PATH}" NAME)
         add_custom_command(TARGET libp2p_module_plugin PRE_LINK
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${LIBWAKU_PATH}
-                ${CMAKE_BINARY_DIR}/modules/${LIBWAKU_FILENAME}
-            COMMENT "Copying ${LIBWAKU_FILENAME} to modules directory"
+                ${LIBP2P_PATH}
+                ${CMAKE_BINARY_DIR}/modules/${LIBP2P_FILENAME}
+            COMMENT "Copying ${LIBP2P_FILENAME} to modules directory"
         )
 
         add_custom_command(TARGET libp2p_module_plugin POST_BUILD
             COMMAND install_name_tool -id "@rpath/libp2p_module_plugin.dylib" $<TARGET_FILE:libp2p_module_plugin>
-            COMMAND install_name_tool -id "@rpath/${LIBWAKU_FILENAME}" "${CMAKE_BINARY_DIR}/modules/${LIBWAKU_FILENAME}"
-            COMMAND install_name_tool -change "${LIBWAKU_PATH}" "@rpath/${LIBWAKU_FILENAME}" $<TARGET_FILE:libp2p_module_plugin>
+            COMMAND install_name_tool -id "@rpath/${LIBP2P_FILENAME}" "${CMAKE_BINARY_DIR}/modules/${LIBP2P_FILENAME}"
+            COMMAND install_name_tool -change "${LIBP2P_PATH}" "@rpath/${LIBP2P_FILENAME}" $<TARGET_FILE:libp2p_module_plugin>
             COMMENT "Updating library paths for macOS"
         )
     else()
         add_custom_command(TARGET libp2p_module_plugin POST_BUILD
             COMMAND install_name_tool -id "@rpath/libp2p_module_plugin.dylib" $<TARGET_FILE:libp2p_module_plugin>
-            COMMENT "Updating library paths for macOS (liblibp2p not found)"
+            COMMENT "Updating library paths for macOS (libp2p not found)"
         )
     endif()
 else()
@@ -263,13 +263,13 @@ else()
         INSTALL_RPATH "$ORIGIN"
         INSTALL_RPATH_USE_LINK_PATH FALSE)
 
-    if(LIBWAKU_PATH)
-        get_filename_component(LIBWAKU_FILENAME "${LIBWAKU_PATH}" NAME)
+    if(LIBP2P_PATH)
+        get_filename_component(LIBP2P_FILENAME "${LIBP2P_PATH}" NAME)
         add_custom_command(TARGET libp2p_module_plugin PRE_LINK
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${LIBWAKU_PATH}
-                ${CMAKE_BINARY_DIR}/modules/${LIBWAKU_FILENAME}
-            COMMENT "Copying ${LIBWAKU_FILENAME} to modules directory"
+                ${LIBP2P_PATH}
+                ${CMAKE_BINARY_DIR}/modules/${LIBP2P_FILENAME}
+            COMMENT "Copying ${LIBP2P_FILENAME} to modules directory"
         )
     endif()
 endif()
