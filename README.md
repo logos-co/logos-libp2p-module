@@ -1,2 +1,2 @@
 # logos-libp2p-module
-logos-waku-module
+logos-libp2p-module
