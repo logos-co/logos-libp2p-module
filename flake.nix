@@ -1,5 +1,5 @@
 {
-  description = "Logos Waku Module";
+  description = "Logos Libp2p Module";
 
   inputs = {
     # Follow the same nixpkgs as logos-liblogos to ensure compatibility
@@ -62,7 +62,7 @@
           shellHook = ''
             export LOGOS_CPP_SDK_ROOT="${logosSdk}"
             export LOGOS_LIBLOGOS_ROOT="${logosLiblogos}"
-            echo "Logos Waku Module development environment"
+            echo "Logos Libp2p Module development environment"
             echo "LOGOS_CPP_SDK_ROOT: $LOGOS_CPP_SDK_ROOT"
             echo "LOGOS_LIBLOGOS_ROOT: $LOGOS_LIBLOGOS_ROOT"
           '';

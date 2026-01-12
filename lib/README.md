@@ -1,1 +1,1 @@
-yes this should not be here; temporarily until nlibp2p nix flake is working
+yes this should not be here; temporarily until libp2p nix flake is working
