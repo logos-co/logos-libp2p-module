@@ -12,7 +12,7 @@ CLEAN_FIRST=0
 
 usage() {
     cat <<'EOF'
-Usage: build_libp2p.sh [--jobs N] [--clean]
+Usage: build.sh [--jobs N] [--clean]
 
 Initialises the vendored libp2p submodule (if required) and builds libp2p.
   --jobs, -j N  Parallel build jobs (default: detected CPU count)
