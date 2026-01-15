@@ -120,4 +120,11 @@ signals:
 private:
     libp2p_ctx_t *ctx = nullptr;
     void eventResponse(const QString& eventName, const QVariantList& data);
+    static void genericCallback(
+        int callerRet,
+        const char *msg,
+        size_t len,
+        void *userData
+    );
+
 };

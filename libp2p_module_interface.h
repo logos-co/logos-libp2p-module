@@ -10,8 +10,6 @@
 
 class Libp2pModuleInterface : public PluginInterface
 {
-    Q_OBJECT
-
 public:
     virtual ~Libp2pModuleInterface() {}
 
