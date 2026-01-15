@@ -71,8 +71,11 @@ git -C "${VENDOR_DIR}" submodule update --init --recursive
 # TODO: really use this amount of jobs
 echo "Building libp2p with ${JOBS} jobs..."
 (
-    cd "${VENDOR_DIR}/cbind"
     export USE_SYSTEM_NIM=${USE_SYSTEM_NIM:-1}
+    cd "${VENDOR_DIR}"
+    nimble setup
+    cd cbind
+    nimble setup
     nimble libDynamic
 )
 
