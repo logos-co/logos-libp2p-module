@@ -33,65 +33,6 @@ public:
 
     Q_INVOKABLE bool setEventCallback() override;
 
-    Q_INVOKABLE bool connectPeer(
-        const QString &peerId,
-        const QStringList &multiaddrs,
-        qint64 timeoutMs) override;
-
-    Q_INVOKABLE bool disconnectPeer(const QString &peerId) override;
-
-    Q_INVOKABLE bool peerInfo() override;
-    Q_INVOKABLE bool connectedPeers(quint32 direction) override;
-
-    Q_INVOKABLE bool dial(
-        const QString &peerId,
-        const QString &protocol) override;
-
-    Q_INVOKABLE bool streamClose(quintptr streamHandle) override;
-    Q_INVOKABLE bool streamCloseWithEOF(quintptr streamHandle) override;
-    Q_INVOKABLE bool streamRelease(quintptr streamHandle) override;
-
-    Q_INVOKABLE bool streamReadExactly(
-        quintptr streamHandle,
-        quint64 size) override;
-
-    Q_INVOKABLE bool streamReadLp(
-        quintptr streamHandle,
-        qint64 maxSize) override;
-
-    Q_INVOKABLE bool streamWrite(
-        quintptr streamHandle,
-        const QByteArray &data) override;
-
-    Q_INVOKABLE bool streamWriteLp(
-        quintptr streamHandle,
-        const QByteArray &data) override;
-
-    Q_INVOKABLE bool gossipsubPublish(
-        const QString &topic,
-        const QByteArray &data) override;
-
-    Q_INVOKABLE bool gossipsubSubscribe(
-        const QString &topic) override;
-
-    Q_INVOKABLE bool gossipsubUnsubscribe(
-        const QString &topic) override;
-
-    Q_INVOKABLE bool findNode(const QString &peerId) override;
-
-    Q_INVOKABLE bool putValue(
-        const QByteArray &key,
-        const QByteArray &value) override;
-
-    Q_INVOKABLE bool getValue(
-        const QByteArray &key,
-        int quorumOverride) override;
-
-    Q_INVOKABLE bool addProvider(const QString &cid) override;
-    Q_INVOKABLE bool startProviding(const QString &cid) override;
-    Q_INVOKABLE bool stopProviding(const QString &cid) override;
-    Q_INVOKABLE bool getProviders(const QString &cid) override;
-
 signals:
     // Generic async response
     void response(
@@ -100,60 +41,14 @@ signals:
         const QString &message,
         const QVariant &data);
 
-    // Pubsub
-    void pubsubMessage(
-        const QString &topic,
-        const QByteArray &data);
-
-    // Streams
-    void streamOpened(quintptr streamHandle);
-    void streamData(
-        quintptr streamHandle,
-        const QByteArray &data);
-    void streamClosed(quintptr streamHandle);
-
-    // Peer / DHT
-    void peerInfoReceived(const QVariantMap &info);
-    void peersReceived(const QStringList &peerIds);
-    void providersReceived(const QVariantList &providers);
-
 private:
     libp2p_ctx_t *ctx = nullptr;
     void eventResponse(const QString& eventName, const QVariantList& data);
+
     static void genericCallback(
         int callerRet,
         const char *msg,
         size_t len,
         void *userData
     );
-    static void bufferCallback(
-        int callerRet,
-        const uint8_t *data,
-        size_t dataLen,
-        const char *msg,
-        size_t len,
-        void *userData);
-
-    static void peersCallback(
-        int callerRet,
-        const char **peerIds,
-        size_t peerIdsLen,
-        const char *msg,
-        size_t len,
-        void *userData);
-
-    static void connectionCallback(
-        int callerRet,
-        libp2p_stream_t *conn,
-        const char *msg,
-        size_t len,
-        void *userData);
-
-    static void getProvidersCallback(
-        int callerRet,
-        const Libp2pPeerInfo *providers,
-        size_t providersLen,
-        const char *msg,
-        size_t len,
-        void *userData);
 };
