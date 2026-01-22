@@ -1,38 +1,39 @@
 # Common build configuration shared across all packages
-{ pkgs, logosSdk, logosLiblogos }:
+{ pkgs, logosSdk, liblogos, libp2pCbind }:
 
 {
   pname = "logos-libp2p-module";
   version = "1.0.0";
-  
+
   # Common native build inputs
-  nativeBuildInputs = [ 
-    pkgs.cmake 
-    pkgs.ninja 
+  nativeBuildInputs = [
+    pkgs.cmake
+    pkgs.ninja
     pkgs.pkg-config
     pkgs.qt6.wrapQtAppsNoGuiHook
   ];
-  
+
   # Common runtime dependencies
-  buildInputs = [ 
-    pkgs.qt6.qtbase 
-    pkgs.qt6.qtremoteobjects 
+  buildInputs = [
+    pkgs.qt6.qtbase
+    pkgs.qt6.qtremoteobjects
   ];
-  
+
   # Common CMake flags
-  cmakeFlags = [ 
+  cmakeFlags = [
     "-GNinja"
     "-DLOGOS_CPP_SDK_ROOT=${logosSdk}"
-    "-DLOGOS_LIBLOGOS_ROOT=${logosLiblogos}"
-    "-DLOGOS_LIBP2P_MODULE_USE_VENDOR=OFF"
+    "-DLOGOS_LIBLOGOS_ROOT=${liblogos}"
+    "-DLIBP2P_ROOT=${libp2pCbind}"
   ];
-  
+
   # Environment variables
   env = {
     LOGOS_CPP_SDK_ROOT = "${logosSdk}";
-    LOGOS_LIBLOGOS_ROOT = "${logosLiblogos}";
+    LOGOS_LIBLOGOS_ROOT = "${liblogos}";
+    LIBP2P_ROOT = "${libp2pCbind}";
   };
-  
+
   # Metadata
   meta = with pkgs.lib; {
     description = "Logos Libp2p Module - Provides P2P interoperability";

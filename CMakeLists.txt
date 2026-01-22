@@ -9,7 +9,7 @@ option(LOGOS_LIBP2P_MODULE_USE_VENDOR "Force use of vendored Logos dependencies"
 
 # Allow override from environment or command line
 if(NOT DEFINED LOGOS_LIBLOGOS_ROOT)
-    set(_parent_liblogos "${CMAKE_CURRENT_SOURCE_DIR}/../logos-liblogos")
+    set(_parent_liblogos "${CMAKE_CURRENT_SOURCE_DIR}/../liblogos")
     set(_use_vendor ${LOGOS_LIBP2P_MODULE_USE_VENDOR})
     if(NOT _use_vendor)
         if(NOT EXISTS "${_parent_liblogos}/interface.h")
@@ -17,7 +17,7 @@ if(NOT DEFINED LOGOS_LIBLOGOS_ROOT)
         endif()
     endif()
     if(_use_vendor)
-        set(LOGOS_LIBLOGOS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/vendor/logos-liblogos")
+        set(LOGOS_LIBLOGOS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/vendor/liblogos")
     else()
         set(LOGOS_LIBLOGOS_ROOT "${_parent_liblogos}")
     endif()
@@ -39,6 +39,8 @@ if(NOT DEFINED LOGOS_CPP_SDK_ROOT)
 endif()
 
 # Check if dependencies are available (support both source and installed layouts)
+
+# LIBLOGOS
 set(_liblogos_found FALSE)
 if(EXISTS "${LOGOS_LIBLOGOS_ROOT}/interface.h")
     set(_liblogos_found TRUE)
@@ -47,7 +49,12 @@ elseif(EXISTS "${LOGOS_LIBLOGOS_ROOT}/include/interface.h")
     set(_liblogos_found TRUE)
     set(_liblogos_is_source FALSE)
 endif()
+if(NOT _liblogos_found)
+    message(FATAL_ERROR "liblogos not found at ${LOGOS_LIBLOGOS_ROOT}. "
+                        "Set LOGOS_LIBLOGOS_ROOT or run git submodule update --init --recursive.")
+endif()
 
+# CPP SDK
 set(_cpp_sdk_found FALSE)
 if(EXISTS "${LOGOS_CPP_SDK_ROOT}/cpp/logos_api.h")
     set(_cpp_sdk_found TRUE)
@@ -56,21 +63,24 @@ elseif(EXISTS "${LOGOS_CPP_SDK_ROOT}/include/cpp/logos_api.h")
     set(_cpp_sdk_found TRUE)
     set(_cpp_sdk_is_source FALSE)
 endif()
-
-if(NOT _liblogos_found)
-    message(FATAL_ERROR "logos-liblogos not found at ${LOGOS_LIBLOGOS_ROOT}. "
-                        "Set LOGOS_LIBLOGOS_ROOT or run git submodule update --init --recursive.")
-endif()
-
 if(NOT _cpp_sdk_found)
     message(FATAL_ERROR "logos-cpp-sdk not found at ${LOGOS_CPP_SDK_ROOT}. "
                         "Set LOGOS_CPP_SDK_ROOT or run git submodule update --init --recursive.")
 endif()
 
-set(LIBP2P_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libp2p")
-if(NOT EXISTS "${LIBP2P_ROOT}/libp2p.nimble")
-    message(WARNING "libp2p vendor not found. You may need to run git submodule
-    update --init --recursive if building libp2p from source.")
+
+# LIBP2P
+set(_libp2p_found FALSE)
+if(EXISTS "${LIBP2P_ROOT}/libp2p.nimble")
+    set(_libp2p_found TRUE)
+    set(_libp2p_is_source TRUE)
+elseif(EXISTS "${LOGOS_CPP_SDK_ROOT}/include/cpp/logos_api.h")
+    set(_libp2p_found TRUE)
+    set(_libp2p_is_source FALSE)
+endif()
+if(NOT _libp2p_found)
+    message(FATAL_ERROR "nim-libp2p not found at ${LIBP2P_ROOT}. "
+        "Set LIBP2P_ROOT or run git submodule update --init --recursive.")
 endif()
 
 # Root that contains the vendored dependencies (logos-core checkout or script vendor directory)
@@ -96,7 +106,7 @@ if(_cpp_sdk_is_source)
     # Source layout: build the generator
     set(CPP_GENERATOR_BUILD_DIR "${LOGOS_DEPS_ROOT}/build/cpp-generator")
     set(CPP_GENERATOR "${CPP_GENERATOR_BUILD_DIR}/bin/logos-cpp-generator")
-    
+
     if(NOT TARGET cpp_generator_build)
         add_custom_target(cpp_generator_build
             COMMAND bash "${LOGOS_CPP_SDK_ROOT}/cpp-generator/compile.sh"
@@ -105,7 +115,7 @@ if(_cpp_sdk_is_source)
             VERBATIM
         )
     endif()
-    
+
     add_custom_target(run_cpp_generator_libp2p
         COMMAND "${CPP_GENERATOR}" --metadata "${METADATA_JSON}" --module-dir "${PLUGINS_OUTPUT_DIR}"
         WORKING_DIRECTORY "${LOGOS_DEPS_ROOT}"
@@ -116,7 +126,7 @@ if(_cpp_sdk_is_source)
 else()
     # Installed layout: use the generator from the install path
     find_program(CPP_GENERATOR logos-cpp-generator PATHS ${LOGOS_CPP_SDK_ROOT}/bin NO_DEFAULT_PATH REQUIRED)
-    
+
     add_custom_target(run_cpp_generator_libp2p
         COMMAND "${CPP_GENERATOR}" --metadata "${METADATA_JSON}" --module-dir "${PLUGINS_OUTPUT_DIR}"
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
@@ -180,8 +190,8 @@ set_target_properties(libp2p_module_plugin PROPERTIES
 add_dependencies(libp2p_module_plugin run_cpp_generator_libp2p)
 
 # Link Qt libraries
-target_link_libraries(libp2p_module_plugin PRIVATE 
-    Qt${QT_VERSION_MAJOR}::Core 
+target_link_libraries(libp2p_module_plugin PRIVATE
+    Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::RemoteObjects
 )
 
