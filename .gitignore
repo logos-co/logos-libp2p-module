@@ -57,3 +57,4 @@ dkms.conf
 # build dirs
 build/
 vendor/build/
+result

@@ -14,38 +14,39 @@ pkgs.stdenv.mkDerivation {
   # No configure phase needed
   dontConfigure = true;
 
-  buildPhase = ''
+   buildPhase = ''
+    set -euo pipefail
     runHook preBuild
 
-    # Create output directory for generated headers
-    mkdir -p ./generated_headers
+    mkdir -p generated_headers
 
-    # Determine platform-specific library extension
-    if [ -f "${lib}/lib/libp2p_module_plugin.dylib" ]; then
-      PLUGIN_FILE="${lib}/lib/libp2p_module_plugin.dylib"
-    elif [ -f "${lib}/lib/libp2p_module_plugin.so" ]; then
-      PLUGIN_FILE="${lib}/lib/libp2p_module_plugin.so"
+    PLUGIN_DIR="${lib}/lib/logos/modules"
+
+    echo "Looking for plugin in $PLUGIN_DIR"
+    ls -la "$PLUGIN_DIR" || true
+
+    if [ -f "$PLUGIN_DIR/libp2p_module_plugin.dylib" ]; then
+      PLUGIN_FILE="$PLUGIN_DIR/libp2p_module_plugin.dylib"
+    elif [ -f "$PLUGIN_DIR/libp2p_module_plugin.so" ]; then
+      PLUGIN_FILE="$PLUGIN_DIR/libp2p_module_plugin.so"
+    elif [ -f "$PLUGIN_DIR/libp2p_module_plugin.dll" ]; then
+      PLUGIN_FILE="$PLUGIN_DIR/libp2p_module_plugin.dll"
     else
-      echo "Error: No libp2p_module_plugin library file found"
+      echo "Error: libp2p_module_plugin not found in $PLUGIN_DIR"
       exit 1
     fi
 
-    # Set library path so the plugin can find libp2p when loaded
-    if [ "$(uname -s)" = "Darwin" ]; then
-      export DYLD_LIBRARY_PATH="${lib}/lib:''${DYLD_LIBRARY_PATH:-}"
-    else
-      export LD_LIBRARY_PATH="${lib}/lib:''${LD_LIBRARY_PATH:-}"
-    fi
+    # Ensure dependent libraries can be found
+    export LD_LIBRARY_PATH="${lib}/lib:''${LD_LIBRARY_PATH:-}"
+    export DYLD_LIBRARY_PATH="${lib}/lib:''${DYLD_LIBRARY_PATH:-}"
 
-    # Run logos-cpp-generator on the built plugin with --module-only flag
     echo "Running logos-cpp-generator on $PLUGIN_FILE"
-    echo "Library path: ${lib}/lib"
-    ls -la "${lib}/lib"
-    logos-cpp-generator "$PLUGIN_FILE" --output-dir ./generated_headers --module-only || {
-      echo "Warning: logos-cpp-generator failed, this may be expected if the module has no public API"
-      # Create a marker file to indicate attempt was made
-      touch ./generated_headers/.no-api
-    }
+    logos-cpp-generator "$PLUGIN_FILE" \
+      --output-dir generated_headers \
+      --module-only || {
+        echo "Warning: logos-cpp-generator failed; creating marker"
+        touch generated_headers/.no-api
+      }
 
     runHook postBuild
   '';
@@ -59,8 +60,7 @@ pkgs.stdenv.mkDerivation {
     # Copy all generated files to include/ if they exist
     if [ -d ./generated_headers ] && [ "$(ls -A ./generated_headers 2>/dev/null)" ]; then
       echo "Copying generated headers..."
-      ls -la ./generated_headers
-      cp -r ./generated_headers/* $out/include/
+	  cp -r ./generated_headers/. $out/include/
     else
       echo "Warning: No generated headers found, creating empty include directory"
       # Create a placeholder file to indicate headers should be generated from metadata
