@@ -126,5 +126,34 @@ private:
         size_t len,
         void *userData
     );
+    static void bufferCallback(
+        int callerRet,
+        const uint8_t *data,
+        size_t dataLen,
+        const char *msg,
+        size_t len,
+        void *userData);
 
+    static void peersCallback(
+        int callerRet,
+        const char **peerIds,
+        size_t peerIdsLen,
+        const char *msg,
+        size_t len,
+        void *userData);
+
+    static void connectionCallback(
+        int callerRet,
+        libp2p_stream_t *conn,
+        const char *msg,
+        size_t len,
+        void *userData);
+
+    static void getProvidersCallback(
+        int callerRet,
+        const Libp2pPeerInfo *providers,
+        size_t providersLen,
+        const char *msg,
+        size_t len,
+        void *userData);
 };

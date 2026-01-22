@@ -30,6 +30,144 @@ void Libp2pModulePlugin::genericCallback(
     );
 }
 
+void Libp2pModulePlugin::bufferCallback(
+    int callerRet,
+    const uint8_t *data,
+    size_t dataLen,
+    const char *msg,
+    size_t len,
+    void *userData)
+{
+    auto *self = static_cast<Libp2pModulePlugin *>(userData);
+    if (!self) return;
+
+    QByteArray payload;
+    if (data && dataLen > 0) {
+        payload = QByteArray(
+            reinterpret_cast<const char *>(data),
+            static_cast<int>(dataLen)
+        );
+    }
+
+    QString message;
+    if (msg && len > 0) {
+        message = QString::fromUtf8(msg, static_cast<int>(len));
+    }
+
+    emit self->response(
+        QStringLiteral("libp2p"),
+        callerRet,
+        message,
+        payload
+    );
+}
+
+void Libp2pModulePlugin::connectionCallback(
+    int callerRet,
+    libp2p_stream_t *conn,
+    const char *msg,
+    size_t len,
+    void *userData)
+{
+    auto *self = static_cast<Libp2pModulePlugin *>(userData);
+    if (!self) return;
+
+    quintptr handle = reinterpret_cast<quintptr>(conn);
+
+    QString message;
+    if (msg && len > 0) {
+        message = QString::fromUtf8(msg, static_cast<int>(len));
+    }
+
+    emit self->response(
+        QStringLiteral("libp2p"),
+        callerRet,
+        message,
+        QVariant::fromValue(handle)
+    );
+
+    if (callerRet == RET_OK && conn) {
+        emit self->streamOpened(handle);
+    }
+}
+
+void Libp2pModulePlugin::getProvidersCallback(
+    int callerRet,
+    const Libp2pPeerInfo *providers,
+    size_t providersLen,
+    const char *msg,
+    size_t len,
+    void *userData)
+{
+    auto *self = static_cast<Libp2pModulePlugin *>(userData);
+    if (!self) return;
+
+    QVariantList result;
+
+    for (size_t i = 0; i < providersLen; ++i) {
+        QVariantMap peer;
+        peer["peerId"] = QString::fromUtf8(providers[i].peerId);
+
+        QStringList addrs;
+        for (size_t j = 0; j < providers[i].addrsLen; ++j) {
+            addrs << QString::fromUtf8(providers[i].addrs[j]);
+        }
+        peer["addrs"] = addrs;
+
+        result << peer;
+    }
+
+    QString message;
+    if (msg && len > 0) {
+        message = QString::fromUtf8(msg, static_cast<int>(len));
+    }
+
+    emit self->response(
+        QStringLiteral("libp2p"),
+        callerRet,
+        message,
+        result
+    );
+
+    emit self->providersReceived(result);
+}
+
+
+void Libp2pModulePlugin::peersCallback(
+    int callerRet,
+    const char **peerIds,
+    size_t peerIdsLen,
+    const char *msg,
+    size_t len,
+    void *userData)
+{
+    auto *self = static_cast<Libp2pModulePlugin *>(userData);
+    if (!self) return;
+
+    QStringList peers;
+    for (size_t i = 0; i < peerIdsLen; ++i) {
+        if (peerIds[i]) {
+            peers << QString::fromUtf8(peerIds[i]);
+        }
+    }
+
+    QString message;
+    if (msg && len > 0) {
+        message = QString::fromUtf8(msg, static_cast<int>(len));
+    }
+
+    emit self->response(
+        QStringLiteral("libp2p"),
+        callerRet,
+        message,
+        peers
+    );
+
+    emit self->peersReceived(peers);
+}
+
+
+
 /* =========================
  * Lifecycle
  * ========================= */
@@ -271,4 +409,157 @@ bool Libp2pModulePlugin::gossipsubUnsubscribe(const QString &topic)
         this
     ) == RET_OK;
 }
+bool Libp2pModulePlugin::streamReadExactly(
+    quintptr streamHandle,
+    quint64 size)
+{
+    if (!ctx || !streamHandle) return false;
+
+    return libp2p_stream_readExactly(
+        ctx,
+        reinterpret_cast<libp2p_stream_t *>(streamHandle),
+        static_cast<size_t>(size),
+        &Libp2pModulePlugin::bufferCallback,
+        this
+    ) == RET_OK;
+}
+
+bool Libp2pModulePlugin::streamReadLp(
+    quintptr streamHandle,
+    qint64 maxSize)
+{
+    if (!ctx || !streamHandle) return false;
+
+    return libp2p_stream_readLp(
+        ctx,
+        reinterpret_cast<libp2p_stream_t *>(streamHandle),
+        maxSize,
+        &Libp2pModulePlugin::bufferCallback,
+        this
+    ) == RET_OK;
+}
+
+bool Libp2pModulePlugin::streamWrite(
+    quintptr streamHandle,
+    const QByteArray &data)
+{
+    if (!ctx || !streamHandle) return false;
+
+    return libp2p_stream_write(
+        ctx,
+        reinterpret_cast<libp2p_stream_t *>(streamHandle),
+        reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
+        static_cast<size_t>(data.size()),
+        &Libp2pModulePlugin::genericCallback,
+        this
+    ) == RET_OK;
+}
+
+bool Libp2pModulePlugin::streamWriteLp(
+    quintptr streamHandle,
+    const QByteArray &data)
+{
+    if (!ctx || !streamHandle) return false;
+
+    return libp2p_stream_writeLp(
+        ctx,
+        reinterpret_cast<libp2p_stream_t *>(streamHandle),
+        reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
+        static_cast<size_t>(data.size()),
+        &Libp2pModulePlugin::genericCallback,
+        this
+    ) == RET_OK;
+}
+bool Libp2pModulePlugin::findNode(const QString &peerId)
+{
+    if (!ctx) return false;
+
+    return libp2p_find_node(
+        ctx,
+        peerId.toUtf8().constData(),
+        &Libp2pModulePlugin::peersCallback,
+        this
+    ) == RET_OK;
+}
+
+bool Libp2pModulePlugin::putValue(
+    const QByteArray &key,
+    const QByteArray &value)
+{
+    if (!ctx) return false;
+
+    return libp2p_put_value(
+        ctx,
+        reinterpret_cast<const uint8_t *>(key.constData()),
+        static_cast<size_t>(key.size()),
+        reinterpret_cast<const uint8_t *>(value.constData()),
+        static_cast<size_t>(value.size()),
+        &Libp2pModulePlugin::genericCallback,
+        this
+    ) == RET_OK;
+}
+
+bool Libp2pModulePlugin::getValue(
+    const QByteArray &key,
+    int quorumOverride)
+{
+    if (!ctx) return false;
+
+    return libp2p_get_value(
+        ctx,
+        reinterpret_cast<const uint8_t *>(key.constData()),
+        static_cast<size_t>(key.size()),
+        quorumOverride,
+        &Libp2pModulePlugin::bufferCallback,
+        this
+    ) == RET_OK;
+}
+bool Libp2pModulePlugin::addProvider(const QString &cid)
+{
+    if (!ctx) return false;
+
+    return libp2p_add_provider(
+        ctx,
+        cid.toUtf8().constData(),
+        &Libp2pModulePlugin::genericCallback,
+        this
+    ) == RET_OK;
+}
+
+bool Libp2pModulePlugin::startProviding(const QString &cid)
+{
+    if (!ctx) return false;
+
+    return libp2p_start_providing(
+        ctx,
+        cid.toUtf8().constData(),
+        &Libp2pModulePlugin::genericCallback,
+        this
+    ) == RET_OK;
+}
+
+bool Libp2pModulePlugin::stopProviding(const QString &cid)
+{
+    if (!ctx) return false;
+
+    return libp2p_stop_providing(
+        ctx,
+        cid.toUtf8().constData(),
+        &Libp2pModulePlugin::genericCallback,
+        this
+    ) == RET_OK;
+}
+
+bool Libp2pModulePlugin::getProviders(const QString &cid)
+{
+    if (!ctx) return false;
+
+    return libp2p_get_providers(
+        ctx,
+        cid.toUtf8().constData(),
+        &Libp2pModulePlugin::getProvidersCallback,
+        this
+    ) == RET_OK;
+}
+
 

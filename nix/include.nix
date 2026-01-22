@@ -16,7 +16,6 @@ pkgs.stdenv.mkDerivation {
 
    buildPhase = ''
     set -euo pipefail
-    runHook preBuild
 
     mkdir -p generated_headers
 
@@ -47,12 +46,10 @@ pkgs.stdenv.mkDerivation {
         echo "Warning: logos-cpp-generator failed; creating marker"
         touch generated_headers/.no-api
       }
-
-    runHook postBuild
   '';
 
   installPhase = ''
-    runHook preInstall
+    set -euo pipefail
 
     # Install generated headers
     mkdir -p $out/include
@@ -66,8 +63,6 @@ pkgs.stdenv.mkDerivation {
       # Create a placeholder file to indicate headers should be generated from metadata
       echo "# Generated headers from metadata.json" > $out/include/.generated
     fi
-
-    runHook postInstall
   '';
 }
 

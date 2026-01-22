@@ -205,7 +205,7 @@ endif()
 if(LIBP2P_PATH)
     target_link_libraries(libp2p_module_plugin PRIVATE ${LIBP2P_PATH})
 else()
-    message(WARNING "libp2p not found in lib/. Build or provide it before linking.")
+    message(WARNING "libp2p not found in ${LIBP2P_PATH}. Build or provide it before linking.")
 endif()
 
 # Include directories

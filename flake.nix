@@ -3,10 +3,10 @@
 
   inputs = {
     # Follow the same nixpkgs as liblogos to ensure compatibility
-    nixpkgs.follows = "liblogos/nixpkgs";
-    logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
     liblogos.url = "github:logos-co/logos-liblogos";
+    logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
     libp2p.url = "github:vacp2p/nim-libp2p?ref=feat/nix-build"; # TODO: use master once is nim-libp2p#2026 is merged
+    nixpkgs.follows = "liblogos/nixpkgs";
   };
 
   outputs = { self, nixpkgs, logos-cpp-sdk, liblogos, libp2p }:
