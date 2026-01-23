@@ -70,15 +70,7 @@ endif()
 
 
 # LIBP2P
-set(_libp2p_found FALSE)
-if(EXISTS "${LIBP2P_ROOT}/libp2p.nimble")
-    set(_libp2p_found TRUE)
-    set(_libp2p_is_source TRUE)
-elseif(EXISTS "${LOGOS_CPP_SDK_ROOT}/include/cpp/logos_api.h")
-    set(_libp2p_found TRUE)
-    set(_libp2p_is_source FALSE)
-endif()
-if(NOT _libp2p_found)
+if(NOT EXISTS "${LIBP2P_ROOT}/libp2p.h")
     message(FATAL_ERROR "nim-libp2p not found at ${LIBP2P_ROOT}. "
         "Set LIBP2P_ROOT or run git submodule update --init --recursive.")
 endif()
@@ -145,7 +137,7 @@ else()
     set(LIBP2P_NAMES libp2p.so libp2p.dylib libp2p.dll)
 endif()
 # Always add lib directory and try to link -llibp2p; also keep optional direct path if present
-find_library(LIBP2P_PATH NAMES ${LIBP2P_NAMES} PATHS ${LIBP2P_DIR} NO_DEFAULT_PATH)
+find_library(LIBP2P_ROOT NAMES ${LIBP2P_NAMES} PATHS ${LIBP2P_DIR} NO_DEFAULT_PATH)
 
 # Plugin sources
 set(PLUGIN_SOURCES
@@ -202,10 +194,10 @@ if(NOT _cpp_sdk_is_source)
 endif()
 
 # Link to libp2p on all platforms
-if(LIBP2P_PATH)
-    target_link_libraries(libp2p_module_plugin PRIVATE ${LIBP2P_PATH})
+if(LIBP2P_ROOT)
+    target_link_libraries(libp2p_module_plugin PRIVATE ${LIBP2P_ROOT})
 else()
-    message(WARNING "libp2p not found in ${LIBP2P_PATH}. Build or provide it before linking.")
+    message(WARNING "libp2p not found in ${LIBP2P_ROOT}. Build or provide it before linking.")
 endif()
 
 # Include directories
@@ -248,20 +240,13 @@ if(APPLE)
         INSTALL_NAME_DIR "@rpath"
         BUILD_WITH_INSTALL_NAME_DIR TRUE)
 
-    if(LIBP2P_PATH)
-        get_filename_component(LIBP2P_FILENAME "${LIBP2P_PATH}" NAME)
-        add_custom_command(TARGET libp2p_module_plugin PRE_LINK
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${LIBP2P_PATH}
-                ${CMAKE_BINARY_DIR}/modules/${LIBP2P_FILENAME}
-            COMMENT "Copying ${LIBP2P_FILENAME} to modules directory"
-        )
-
+    if(LIBP2P_ROOT)
+        get_filename_component(LIBP2P_FILENAME "${LIBP2P_ROOT}" NAME)
         add_custom_command(TARGET libp2p_module_plugin POST_BUILD
             COMMAND install_name_tool -id "@rpath/libp2p_module_plugin.dylib"
             $<TARGET_FILE:libp2p_module_plugin>
             COMMAND install_name_tool -id "@rpath/${LIBP2P_FILENAME}" "${CMAKE_BINARY_DIR}/modules/${LIBP2P_FILENAME}"
-            COMMAND install_name_tool -change "${LIBP2P_PATH}" "@rpath/${LIBP2P_FILENAME}" $<TARGET_FILE:libp2p_module_plugin>
+            COMMAND install_name_tool -change "${LIBP2P_ROOT}" "@rpath/${LIBP2P_FILENAME}" $<TARGET_FILE:libp2p_module_plugin>
             COMMENT "Updating library paths for macOS"
         )
     else()
@@ -275,16 +260,6 @@ else()
     set_target_properties(libp2p_module_plugin PROPERTIES
         INSTALL_RPATH "$ORIGIN"
         INSTALL_RPATH_USE_LINK_PATH FALSE)
-
-    if(LIBP2P_PATH)
-        get_filename_component(LIBP2P_FILENAME "${LIBP2P_PATH}" NAME)
-        add_custom_command(TARGET libp2p_module_plugin PRE_LINK
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${LIBP2P_PATH}
-                ${CMAKE_BINARY_DIR}/modules/${LIBP2P_FILENAME}
-            COMMENT "Copying ${LIBP2P_FILENAME} to modules directory"
-        )
-    endif()
 endif()
 
 install(TARGETS libp2p_module_plugin
