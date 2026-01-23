@@ -10,11 +10,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1768343028,
-        "narHash": "sha256-4LvsuZTDTlLtfMF4C69ls+lmkYJWD7LZitS04Mc+8UI=",
+        "lastModified": 1769122817,
+        "narHash": "sha256-QlZAAcYFdiZpX480+frfF/uOkKlWeW+p/aYOujqS7PY=",
         "owner": "logos-co",
         "repo": "logos-liblogos",
-        "rev": "a76d33f5519af0ee12317c8f149eee2ac5d292a0",
+        "rev": "fb7a9d6888dc59dd29437e8d3a2d38fc9f0e8696",
         "type": "github"
       },
       "original": {
@@ -28,11 +28,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1769088896,
-        "narHash": "sha256-Zos66kZGdEyfzs2oUviowcP2WbnG6/8h9uFt/JWqeJ8=",
+        "lastModified": 1769193602,
+        "narHash": "sha256-eC+mFnFJu59mIBLelxzD821NDYdckmiC2DspCoECjjQ=",
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "7be144bd92c37a3695b2713308f70de2255d5ccb",
+        "rev": "eab22eb4e46dd05697500a05eb45d52b2407c572",
         "type": "github"
       },
       "original": {

@@ -6,10 +6,11 @@
 #include <QtCore/QString>
 #include <QtCore/QStringList>
 
+#include <logos_api.h>
+#include <logos_api_client.h>
+#include <libp2p.h>
+
 #include "libp2p_module_interface.h"
-#include "logos_api.h"
-#include "logos_api_client.h"
-#include "libp2p.h"
 
 class Libp2pModulePlugin : public QObject, public Libp2pModuleInterface
 {

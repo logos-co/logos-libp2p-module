@@ -70,9 +70,9 @@ endif()
 
 
 # LIBP2P
-if(NOT EXISTS "${LIBP2P_ROOT}/libp2p.h")
-    message(FATAL_ERROR "nim-libp2p not found at ${LIBP2P_ROOT}. "
-        "Set LIBP2P_ROOT or run git submodule update --init --recursive.")
+if(NOT DEFINED LIBP2P_ROOT)
+    message(FATAL_ERROR "LIBP2P_ROOT not defined."
+        "Set LIBP2P_ROOT")
 endif()
 
 # Root that contains the vendored dependencies (logos-core checkout or script vendor directory)
@@ -127,7 +127,6 @@ else()
     )
 endif()
 
-set(LIBP2P_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 # Prioritize platform-specific library names
 if(APPLE)
     set(LIBP2P_NAMES libp2p.dylib libp2p.so libp2p.dll)
@@ -136,8 +135,6 @@ elseif(WIN32)
 else()
     set(LIBP2P_NAMES libp2p.so libp2p.dylib libp2p.dll)
 endif()
-# Always add lib directory and try to link -llibp2p; also keep optional direct path if present
-find_library(LIBP2P_ROOT NAMES ${LIBP2P_NAMES} PATHS ${LIBP2P_DIR} NO_DEFAULT_PATH)
 
 # Plugin sources
 set(PLUGIN_SOURCES
@@ -193,19 +190,6 @@ if(NOT _cpp_sdk_is_source)
     target_link_libraries(libp2p_module_plugin PRIVATE ${LOGOS_SDK_LIB})
 endif()
 
-# Link to libp2p on all platforms
-if(LIBP2P_ROOT)
-    target_link_libraries(libp2p_module_plugin PRIVATE ${LIBP2P_ROOT})
-else()
-    message(WARNING "libp2p not found in ${LIBP2P_ROOT}. Build or provide it before linking.")
-endif()
-
-# Include directories
-target_include_directories(libp2p_module_plugin PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${LIBP2P_DIR}
-)
-
 # Add include directories based on layout type
 if(_liblogos_is_source)
     target_include_directories(libp2p_module_plugin PRIVATE ${LOGOS_LIBLOGOS_ROOT})
@@ -214,17 +198,33 @@ else()
 endif()
 
 if(_cpp_sdk_is_source)
-    target_include_directories(libp2p_module_plugin PRIVATE 
+    target_include_directories(libp2p_module_plugin PRIVATE
         ${LOGOS_CPP_SDK_ROOT}/cpp
         ${LOGOS_CPP_SDK_ROOT}/cpp/generated
     )
 else()
-    target_include_directories(libp2p_module_plugin PRIVATE 
+    target_include_directories(libp2p_module_plugin PRIVATE
         ${LOGOS_CPP_SDK_ROOT}/include
         ${LOGOS_CPP_SDK_ROOT}/include/cpp
         ${LOGOS_CPP_SDK_ROOT}/include/core
     )
 endif()
+
+# find_library(LIBP2P_LIB
+#     NAMES libp2p
+#     PATHS "${LIBP2P_ROOT}/lib/libp2p.so"
+#     NO_DEFAULT_PATH
+#     REQUIRED
+# )
+
+target_include_directories(libp2p_module_plugin PRIVATE
+    ${LIBP2P_ROOT}/include
+)
+
+target_link_libraries(libp2p_module_plugin PRIVATE
+    "${LIBP2P_ROOT}/lib/libp2p.so"
+    # ${LIBP2P_LIB}
+)
 
 set_target_properties(libp2p_module_plugin PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/modules"
