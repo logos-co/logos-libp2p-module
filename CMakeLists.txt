@@ -5,7 +5,7 @@ include(GNUInstallDirs)
 
 set(CMAKE_AUTOMOC ON)
 
-option(LOGOS_LIBP2P_MODULE_USE_VENDOR "Force use of vendored Logos dependencies" OFF)
+option(FORCE_VENDOR "Force use of vendored Logos dependencies" OFF)
 
 if(NOT DEFINED LIBP2P_ROOT)
     message(FATAL_ERROR "LIBP2P_ROOT not defined."
@@ -20,48 +20,6 @@ endif()
 if(NOT DEFINED LOGOS_CPP_SDK_ROOT)
     message(FATAL_ERROR "LOGOS_CPP_SDK_ROOT not defined."
         "Set LOGOS_CPP_SDK_ROOT")
-endif()
-
-# Check if dependencies are available (support both source and installed layouts)
-set(_liblogos_found FALSE)
-if(EXISTS "${LOGOS_LIBLOGOS_ROOT}/interface.h")
-    set(_liblogos_found TRUE)
-    set(_liblogos_is_source TRUE)
-elseif(EXISTS "${LOGOS_LIBLOGOS_ROOT}/include/interface.h")
-    set(_liblogos_found TRUE)
-    set(_liblogos_is_source FALSE)
-endif()
-if(NOT _liblogos_found)
-    message(FATAL_ERROR "liblogos not found at ${LOGOS_LIBLOGOS_ROOT}. "
-                        "Set LOGOS_LIBLOGOS_ROOT or run git submodule update --init --recursive.")
-endif()
-
-# CPP SDK
-set(_cpp_sdk_found FALSE)
-if(EXISTS "${LOGOS_CPP_SDK_ROOT}/cpp/logos_api.h")
-    set(_cpp_sdk_found TRUE)
-    set(_cpp_sdk_is_source TRUE)
-elseif(EXISTS "${LOGOS_CPP_SDK_ROOT}/include/cpp/logos_api.h")
-    set(_cpp_sdk_found TRUE)
-    set(_cpp_sdk_is_source FALSE)
-endif()
-if(NOT _cpp_sdk_found)
-    message(FATAL_ERROR "logos-cpp-sdk not found at ${LOGOS_CPP_SDK_ROOT}. "
-                        "Set LOGOS_CPP_SDK_ROOT or run git submodule update --init --recursive.")
-endif()
-
-# LIBP2P
-set(_libp2p_found FALSE)
-if(EXISTS "${LIBP2P_ROOT}/libp2p.nimble")
-    set(_libp2p_found TRUE)
-    set(_libp2p_is_source TRUE)
-elseif(EXISTS "${LIBP2P_ROOT}/include/libp2p.h")
-    set(_libp2p_found TRUE)
-    set(_libp2p_is_source FALSE)
-endif()
-if(NOT _libp2p_found)
-    message(FATAL_ERROR "libp2p not found at ${LIBP2P_ROOT}. "
-        "Set LIBP2P_ROOT or run git submodule update --init --recursive.")
 endif()
 
 
@@ -83,48 +41,15 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core RemoteObjects)
 set(METADATA_JSON "${CMAKE_CURRENT_SOURCE_DIR}/metadata.json")
 set(PLUGINS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/modules")
 
-# Try to find the generator binary
-if(_cpp_sdk_is_source)
-    # Source layout: build the generator
-    set(CPP_GENERATOR_BUILD_DIR "${LOGOS_DEPS_ROOT}/build/cpp-generator")
-    set(CPP_GENERATOR "${CPP_GENERATOR_BUILD_DIR}/bin/logos-cpp-generator")
+# Installed layout: use the generator from the install path
+find_program(CPP_GENERATOR logos-cpp-generator PATHS ${LOGOS_CPP_SDK_ROOT}/bin NO_DEFAULT_PATH REQUIRED)
 
-    if(NOT TARGET cpp_generator_build)
-        add_custom_target(cpp_generator_build
-            COMMAND bash "${LOGOS_CPP_SDK_ROOT}/cpp-generator/compile.sh"
-            WORKING_DIRECTORY "${LOGOS_DEPS_ROOT}"
-            COMMENT "Building logos-cpp-generator via ${LOGOS_CPP_SDK_ROOT}/cpp-generator/compile.sh"
-            VERBATIM
-        )
-    endif()
-
-    add_custom_target(run_cpp_generator_libp2p
-        COMMAND "${CPP_GENERATOR}" --metadata "${METADATA_JSON}" --module-dir "${PLUGINS_OUTPUT_DIR}"
-        WORKING_DIRECTORY "${LOGOS_DEPS_ROOT}"
-        COMMENT "Running logos-cpp-generator on ${METADATA_JSON} with module-dir ${PLUGINS_OUTPUT_DIR}"
-        VERBATIM
-    )
-    add_dependencies(run_cpp_generator_libp2p cpp_generator_build)
-else()
-    # Installed layout: use the generator from the install path
-    find_program(CPP_GENERATOR logos-cpp-generator PATHS ${LOGOS_CPP_SDK_ROOT}/bin NO_DEFAULT_PATH REQUIRED)
-
-    add_custom_target(run_cpp_generator_libp2p
-        COMMAND "${CPP_GENERATOR}" --metadata "${METADATA_JSON}" --module-dir "${PLUGINS_OUTPUT_DIR}"
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-        COMMENT "Running logos-cpp-generator on ${METADATA_JSON} with module-dir ${PLUGINS_OUTPUT_DIR}"
-        VERBATIM
-    )
-endif()
-
-# Prioritize platform-specific library names
-if(APPLE)
-    set(LIBP2P_NAMES libp2p.dylib libp2p.so libp2p.dll)
-elseif(WIN32)
-    set(LIBP2P_NAMES libp2p.dll libp2p.dylib libp2p.so)
-else()
-    set(LIBP2P_NAMES libp2p.so libp2p.dylib libp2p.dll)
-endif()
+add_custom_target(run_cpp_generator_libp2p
+    COMMAND "${CPP_GENERATOR}" --metadata "${METADATA_JSON}" --module-dir "${PLUGINS_OUTPUT_DIR}"
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+    COMMENT "Running logos-cpp-generator on ${METADATA_JSON} with module-dir ${PLUGINS_OUTPUT_DIR}"
+    VERBATIM
+)
 
 # Plugin sources
 set(PLUGIN_SOURCES
@@ -134,31 +59,7 @@ set(PLUGIN_SOURCES
 )
 
 # Add liblogos interface header
-if(_liblogos_is_source)
-    list(APPEND PLUGIN_SOURCES ${LOGOS_LIBLOGOS_ROOT}/interface.h)
-else()
-    list(APPEND PLUGIN_SOURCES ${LOGOS_LIBLOGOS_ROOT}/include/interface.h)
-endif()
-
-# Add SDK sources (only if source layout, installed layout uses the library)
-if(_cpp_sdk_is_source)
-    list(APPEND PLUGIN_SOURCES
-        ${LOGOS_CPP_SDK_ROOT}/cpp/logos_api.cpp
-        ${LOGOS_CPP_SDK_ROOT}/cpp/logos_api.h
-        ${LOGOS_CPP_SDK_ROOT}/cpp/logos_api_client.cpp
-        ${LOGOS_CPP_SDK_ROOT}/cpp/logos_api_client.h
-        ${LOGOS_CPP_SDK_ROOT}/cpp/logos_api_consumer.cpp
-        ${LOGOS_CPP_SDK_ROOT}/cpp/logos_api_consumer.h
-        ${LOGOS_CPP_SDK_ROOT}/cpp/logos_api_provider.cpp
-        ${LOGOS_CPP_SDK_ROOT}/cpp/logos_api_provider.h
-        ${LOGOS_CPP_SDK_ROOT}/cpp/token_manager.cpp
-        ${LOGOS_CPP_SDK_ROOT}/cpp/token_manager.h
-        ${LOGOS_CPP_SDK_ROOT}/cpp/module_proxy.cpp
-        ${LOGOS_CPP_SDK_ROOT}/cpp/module_proxy.h
-    )
-endif()
-
-# TODO: if _libp2p_is_source...
+list(APPEND PLUGIN_SOURCES ${LOGOS_LIBLOGOS_ROOT}/include/interface.h)
 
 # Create the plugin library
 add_library(libp2p_module_plugin SHARED ${PLUGIN_SOURCES})
@@ -176,48 +77,30 @@ target_link_libraries(libp2p_module_plugin PRIVATE
     Qt${QT_VERSION_MAJOR}::RemoteObjects
 )
 
-# Link SDK library if using installed layout
-if(NOT _cpp_sdk_is_source)
-    find_library(LOGOS_SDK_LIB logos_sdk PATHS ${LOGOS_CPP_SDK_ROOT}/lib NO_DEFAULT_PATH REQUIRED)
-    target_link_libraries(libp2p_module_plugin PRIVATE ${LOGOS_SDK_LIB})
-endif()
 
-# Add include directories based on layout type
-if(_liblogos_is_source)
-    target_include_directories(libp2p_module_plugin PRIVATE ${LOGOS_LIBLOGOS_ROOT})
-else()
-    target_include_directories(libp2p_module_plugin PRIVATE ${LOGOS_LIBLOGOS_ROOT}/include)
-endif()
-
-if(_cpp_sdk_is_source)
-    target_include_directories(libp2p_module_plugin PRIVATE
-        ${LOGOS_CPP_SDK_ROOT}/cpp
-        ${LOGOS_CPP_SDK_ROOT}/cpp/generated
-    )
-else()
-    target_include_directories(libp2p_module_plugin PRIVATE
-        ${LOGOS_CPP_SDK_ROOT}/include
-        ${LOGOS_CPP_SDK_ROOT}/include/cpp
-        ${LOGOS_CPP_SDK_ROOT}/include/core
-    )
-endif()
-
-# find_library(LIBP2P_LIB
-#     NAMES libp2p
-#     PATHS "${LIBP2P_ROOT}/lib/libp2p.so"
-#     NO_DEFAULT_PATH
-#     REQUIRED
-# )
+target_include_directories(libp2p_module_plugin PRIVATE
+    ${LOGOS_CPP_SDK_ROOT}/include
+    ${LOGOS_CPP_SDK_ROOT}/include/cpp
+    ${LOGOS_CPP_SDK_ROOT}/include/core
+)
 
 target_include_directories(libp2p_module_plugin PRIVATE
     ${LIBP2P_ROOT}/include
 )
 
-# TODO: link file type depending on OS (dylib, dll too)
-target_link_libraries(libp2p_module_plugin PRIVATE
-    "${LIBP2P_ROOT}/lib/libp2p.so"
-    # ${LIBP2P_LIB}
-)
+if(APPLE)
+    target_link_libraries(libp2p_module_plugin PRIVATE
+        "${LIBP2P_ROOT}/lib/libp2p.dylib"
+    )
+elseif(WIN32)
+    target_link_libraries(libp2p_module_plugin PRIVATE
+        "${LIBP2P_ROOT}/lib/libp2p.dll"
+    )
+else()
+    target_link_libraries(libp2p_module_plugin PRIVATE
+        "${LIBP2P_ROOT}/lib/libp2p.so"
+    )
+endif()
 
 set_target_properties(libp2p_module_plugin PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/modules"
