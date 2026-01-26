@@ -7,40 +7,22 @@ set(CMAKE_AUTOMOC ON)
 
 option(LOGOS_LIBP2P_MODULE_USE_VENDOR "Force use of vendored Logos dependencies" OFF)
 
-# Allow override from environment or command line
+if(NOT DEFINED LIBP2P_ROOT)
+    message(FATAL_ERROR "LIBP2P_ROOT not defined."
+        "Set LIBP2P_ROOT")
+endif()
+
 if(NOT DEFINED LOGOS_LIBLOGOS_ROOT)
-    set(_parent_liblogos "${CMAKE_CURRENT_SOURCE_DIR}/../liblogos")
-    set(_use_vendor ${LOGOS_LIBP2P_MODULE_USE_VENDOR})
-    if(NOT _use_vendor)
-        if(NOT EXISTS "${_parent_liblogos}/interface.h")
-            set(_use_vendor ON)
-        endif()
-    endif()
-    if(_use_vendor)
-        set(LOGOS_LIBLOGOS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/vendor/liblogos")
-    else()
-        set(LOGOS_LIBLOGOS_ROOT "${_parent_liblogos}")
-    endif()
+    message(FATAL_ERROR "LOGOS_LIBLOGOS_ROOT not defined."
+        "Set LOGOS_LIBLOGOS_ROOT")
 endif()
 
 if(NOT DEFINED LOGOS_CPP_SDK_ROOT)
-    set(_parent_cpp_sdk "${CMAKE_CURRENT_SOURCE_DIR}/../logos-cpp-sdk")
-    set(_use_vendor ${LOGOS_LIBP2P_MODULE_USE_VENDOR})
-    if(NOT _use_vendor)
-        if(NOT EXISTS "${_parent_cpp_sdk}/cpp/logos_api.h")
-            set(_use_vendor ON)
-        endif()
-    endif()
-    if(_use_vendor)
-        set(LOGOS_CPP_SDK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/vendor/logos-cpp-sdk")
-    else()
-        set(LOGOS_CPP_SDK_ROOT "${_parent_cpp_sdk}")
-    endif()
+    message(FATAL_ERROR "LOGOS_CPP_SDK_ROOT not defined."
+        "Set LOGOS_CPP_SDK_ROOT")
 endif()
 
 # Check if dependencies are available (support both source and installed layouts)
-
-# LIBLOGOS
 set(_liblogos_found FALSE)
 if(EXISTS "${LOGOS_LIBLOGOS_ROOT}/interface.h")
     set(_liblogos_found TRUE)
@@ -68,12 +50,20 @@ if(NOT _cpp_sdk_found)
                         "Set LOGOS_CPP_SDK_ROOT or run git submodule update --init --recursive.")
 endif()
 
-
 # LIBP2P
-if(NOT DEFINED LIBP2P_ROOT)
-    message(FATAL_ERROR "LIBP2P_ROOT not defined."
-        "Set LIBP2P_ROOT")
+set(_libp2p_found FALSE)
+if(EXISTS "${LIBP2P_ROOT}/libp2p.nimble")
+    set(_libp2p_found TRUE)
+    set(_libp2p_is_source TRUE)
+elseif(EXISTS "${LIBP2P_ROOT}/include/libp2p.h")
+    set(_libp2p_found TRUE)
+    set(_libp2p_is_source FALSE)
 endif()
+if(NOT _libp2p_found)
+    message(FATAL_ERROR "libp2p not found at ${LIBP2P_ROOT}. "
+        "Set LIBP2P_ROOT or run git submodule update --init --recursive.")
+endif()
+
 
 # Root that contains the vendored dependencies (logos-core checkout or script vendor directory)
 get_filename_component(LOGOS_DEPS_ROOT "${LOGOS_CPP_SDK_ROOT}" DIRECTORY)
@@ -168,6 +158,8 @@ if(_cpp_sdk_is_source)
     )
 endif()
 
+# TODO: if _libp2p_is_source...
+
 # Create the plugin library
 add_library(libp2p_module_plugin SHARED ${PLUGIN_SOURCES})
 
@@ -221,6 +213,7 @@ target_include_directories(libp2p_module_plugin PRIVATE
     ${LIBP2P_ROOT}/include
 )
 
+# TODO: link file type depending on OS (dylib, dll too)
 target_link_libraries(libp2p_module_plugin PRIVATE
     "${LIBP2P_ROOT}/lib/libp2p.so"
     # ${LIBP2P_LIB}
