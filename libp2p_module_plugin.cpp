@@ -3,7 +3,7 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <cstring>
-#include <iostream>
+#include <QDebug>
 
 void Libp2pModulePlugin::libp2pCallback(
     int callerRet,
@@ -11,8 +11,12 @@ void Libp2pModulePlugin::libp2pCallback(
     size_t len,
     void *userData
 ) {
-    std::cout << msg;
-    std::cout << "return value: " << callerRet;
+    if (callerRet != RET_OK) {
+        if (strlen(msg) > 0) {
+            qDebug() << "Message: " << msg;
+        }
+        qDebug() << "Return value:" << callerRet;
+    }
 }
 
 Libp2pModulePlugin::Libp2pModulePlugin()
@@ -44,6 +48,7 @@ Libp2pModulePlugin::~Libp2pModulePlugin()
 bool Libp2pModulePlugin::start()
 {
     if (!ctx) {
+        qDebug() << "start called with no context";
         return false;
     }
 
@@ -53,6 +58,7 @@ bool Libp2pModulePlugin::start()
 bool Libp2pModulePlugin::stop()
 {
     if (!ctx) {
+        qDebug() << "stop called with no context";
         return false;
     }
 
