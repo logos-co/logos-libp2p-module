@@ -13,9 +13,6 @@ class Libp2pModuleInterface : public PluginInterface
 public:
     virtual ~Libp2pModuleInterface() {}
 
-    Q_INVOKABLE virtual bool newContext(const QVariantMap &config) = 0;
-    Q_INVOKABLE virtual bool destroyContext() = 0;
-
     Q_INVOKABLE virtual bool start() = 0;
     Q_INVOKABLE virtual bool stop() = 0;
 

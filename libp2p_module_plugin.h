@@ -24,10 +24,6 @@ public:
 
     QString name() const override { return "libp2p_module"; }
     QString version() const override { return "1.0.0"; }
-    // Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);
-
-    Q_INVOKABLE bool newContext(const QVariantMap &config) override;
-    Q_INVOKABLE bool destroyContext() override;
 
     Q_INVOKABLE bool start() override;
     Q_INVOKABLE bool stop() override;
@@ -46,7 +42,7 @@ private:
     libp2p_ctx_t *ctx = nullptr;
     void eventResponse(const QString& eventName, const QVariantList& data);
 
-    static void genericCallback(
+    static void libp2pCallback(
         int callerRet,
         const char *msg,
         size_t len,
