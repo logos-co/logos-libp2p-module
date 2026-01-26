@@ -2,71 +2,59 @@
   description = "Logos Libp2p Module";
 
   inputs = {
-    # Follow the same nixpkgs as logos-liblogos to ensure compatibility
-    nixpkgs.follows = "logos-liblogos/nixpkgs";
+    liblogos.url = "github:logos-co/logos-liblogos";
     logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
-    logos-liblogos.url = "github:logos-co/logos-liblogos";
+    libp2p.url = "github:vacp2p/nim-libp2p?ref=feat/nix-build";
+    nixpkgs.follows = "liblogos/nixpkgs";
   };
 
-  outputs = { self, nixpkgs, logos-cpp-sdk, logos-liblogos }:
-    let
-      systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
-      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f {
+  outputs = { self, nixpkgs, logos-cpp-sdk, liblogos, libp2p }:
+  let
+    systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
+  in {
+    packages = nixpkgs.lib.genAttrs systems (system:
+      let
         pkgs = import nixpkgs { inherit system; };
-        logosSdk = logos-cpp-sdk.packages.${system}.default;
-        logosLiblogos = logos-liblogos.packages.${system}.default;
-      });
-    in
-    {
-      packages = forAllSystems ({ pkgs, logosSdk, logosLiblogos }: 
-        let
-          # Common configuration
-          common = import ./nix/default.nix { inherit pkgs logosSdk logosLiblogos; };
-          src = ./.;
-          
-          # Library package (plugin + libp2p)
-          lib = import ./nix/lib.nix { inherit pkgs common src; };
-          
-          # Include package (generated headers from plugin)
-          include = import ./nix/include.nix { inherit pkgs common src lib logosSdk; };
-          
-          # Combined package
-          combined = pkgs.symlinkJoin {
-            name = "logos-libp2p-module";
-            paths = [ lib include ];
-          };
-        in
-        {
-          # Individual outputs
-          logos-libp2p-module-lib = lib;
-          logos-libp2p-module-include = include;
-          lib = lib;
-          
-          # Default package (combined)
-          default = combined;
-        }
-      );
 
-      devShells = forAllSystems ({ pkgs, logosSdk, logosLiblogos }: {
-        default = pkgs.mkShell {
+        logosSdk     = logos-cpp-sdk.packages.${system}.default;
+        liblogosPkg  = liblogos.packages.${system}.default;
+        libp2pCbind  = libp2p.packages.${system}.cbind;
+      in {
+        default = pkgs.stdenv.mkDerivation {
+          pname = "logos-libp2p-module";
+          version = "1.0.0";
+
+          src = self;
+
           nativeBuildInputs = [
             pkgs.cmake
             pkgs.ninja
             pkgs.pkg-config
+            pkgs.qt6.wrapQtAppsNoGuiHook
           ];
+
           buildInputs = [
             pkgs.qt6.qtbase
             pkgs.qt6.qtremoteobjects
           ];
-          
-          shellHook = ''
-            export LOGOS_CPP_SDK_ROOT="${logosSdk}"
-            export LOGOS_LIBLOGOS_ROOT="${logosLiblogos}"
-            echo "Logos Libp2p Module development environment"
-            echo "LOGOS_CPP_SDK_ROOT: $LOGOS_CPP_SDK_ROOT"
-            echo "LOGOS_LIBLOGOS_ROOT: $LOGOS_LIBLOGOS_ROOT"
-          '';
+
+          cmakeFlags = [
+            "-GNinja"
+            "-DLOGOS_CPP_SDK_ROOT=${logosSdk}"
+            "-DLOGOS_LIBLOGOS_ROOT=${liblogosPkg}"
+            "-DLIBP2P_ROOT=${libp2pCbind}"
+          ];
+
+          env = {
+            LOGOS_CPP_SDK_ROOT = logosSdk;
+            LOGOS_LIBLOGOS_ROOT = liblogosPkg;
+            LIBP2P_ROOT = libp2pCbind;
+          };
+
+          meta.platforms = pkgs.lib.platforms.unix;
         };
-      });
-    };
+      }
+    );
+  };
 }
+
