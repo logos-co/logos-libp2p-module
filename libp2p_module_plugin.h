@@ -29,6 +29,15 @@ public:
     Q_INVOKABLE bool libp2pStart() override;
     Q_INVOKABLE bool libp2pStop() override;
 
+    /* Kademlia-related functions */
+    Q_INVOKABLE bool findNode(const QString &peerId);
+    Q_INVOKABLE bool putValue(const QByteArray &key, const QByteArray &value);
+    Q_INVOKABLE bool getValue(const QByteArray &key, int quorum = -1);
+    Q_INVOKABLE bool addProvider(const QString &cid);
+    Q_INVOKABLE bool startProviding(const QString &cid);
+    Q_INVOKABLE bool stopProviding(const QString &cid);
+    Q_INVOKABLE bool getProviders(const QString &cid);
+
     Q_INVOKABLE bool setEventCallback() override;
 
     Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);
@@ -58,6 +67,33 @@ private:
 
     static void libp2pCallback(
         int callerRet,
+        const char *msg,
+        size_t len,
+        void *userData
+    );
+
+    static void peersCallback(
+        int callerRet,
+        const char **peerIds,
+        size_t peerIdsLen,
+        const char *msg,
+        size_t len,
+        void *userData
+    );
+
+    static void libp2pBufferCallback(
+        int callerRet,
+        const uint8_t *data,
+        size_t dataLen,
+        const char *msg,
+        size_t len,
+        void *userData
+    );
+
+    static void getProvidersCallback(
+        int callerRet,
+        const Libp2pPeerInfo *providers,
+        size_t providersLen,
         const char *msg,
         size_t len,
         void *userData
