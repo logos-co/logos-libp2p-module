@@ -13,8 +13,8 @@ class Libp2pModuleInterface : public PluginInterface
 public:
     virtual ~Libp2pModuleInterface() {}
     Q_INVOKABLE virtual bool foo(const QString &bar) = 0;
-    Q_INVOKABLE virtual bool start() = 0;
-    Q_INVOKABLE virtual bool stop() = 0;
+    Q_INVOKABLE virtual bool libp2pStart() = 0;
+    Q_INVOKABLE virtual bool libp2pStop() = 0;
     Q_INVOKABLE virtual bool setEventCallback() = 0;
 
 signals:

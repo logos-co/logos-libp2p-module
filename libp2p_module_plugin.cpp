@@ -10,13 +10,30 @@ void Libp2pModulePlugin::libp2pCallback(
     const char *msg,
     size_t len,
     void *userData
-) {
-    if (callerRet != RET_OK) {
-        if (strlen(msg) > 0) {
-            qDebug() << "Message: " << msg;
-        }
-        qDebug() << "Return value:" << callerRet;
+)
+{
+    auto *self = static_cast<Libp2pModulePlugin *>(userData);
+    if (!self) return;
+
+    QString message = QString::fromUtf8(msg, int(len));
+
+    qDebug() << "Libp2pModulePlugin::libp2pCallback called with ret:" << callerRet;
+    if (msg && len > 0) {
+        qDebug() << "Libp2pModulePlugin::libp2pCallback message:" << message;
     }
+
+
+    QMetaObject::invokeMethod(
+        self,
+        [self, callerRet, message]() {
+            emit self->libp2pEvent(
+                callerRet,
+                message,
+                QVariant()
+            );
+        },
+        Qt::QueuedConnection
+    );
 }
 
 Libp2pModulePlugin::Libp2pModulePlugin()
@@ -80,22 +97,22 @@ bool Libp2pModulePlugin::foo(const QString &bar)
     return true;
 }
 
-bool Libp2pModulePlugin::start()
+bool Libp2pModulePlugin::libp2pStart()
 {
-    qDebug() << "Libp2pModulePlugin::start called";
+    qDebug() << "Libp2pModulePlugin::libp2pStart called";
     if (!ctx) {
-        qDebug() << "start called with no context";
+        qDebug() << "libp2pStart called without a context";
         return false;
     }
 
     return libp2p_start(ctx, &Libp2pModulePlugin::libp2pCallback, this) == RET_OK;
 }
 
-bool Libp2pModulePlugin::stop()
+bool Libp2pModulePlugin::libp2pStop()
 {
-    qDebug() << "Libp2pModulePlugin::stop called";
+    qDebug() << "Libp2pModulePlugin::libp2pStop called";
     if (!ctx) {
-        qDebug() << "stop called with no context";
+        qDebug() << "libp2pStop called without a context";
         return false;
     }
 

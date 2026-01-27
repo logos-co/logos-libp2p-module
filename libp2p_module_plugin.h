@@ -26,8 +26,8 @@ public:
     QString version() const override { return "1.0.0"; }
 
     Q_INVOKABLE bool foo(const QString &bar) override;
-    Q_INVOKABLE bool start() override;
-    Q_INVOKABLE bool stop() override;
+    Q_INVOKABLE bool libp2pStart() override;
+    Q_INVOKABLE bool libp2pStop() override;
 
     Q_INVOKABLE bool setEventCallback() override;
 
@@ -35,16 +35,15 @@ public:
 
 
 signals:
-    // Generic async response
-    void response(
-        const QString &operation,
+    void libp2pEvent(
         int result,
-        const QString &message,
-        const QVariant &data);
+        QString message,
+        QVariant data
+    );
+    void eventResponse(const QString& eventName, const QVariantList& data);
 
 private:
     libp2p_ctx_t *ctx = nullptr;
-    void eventResponse(const QString& eventName, const QVariantList& data);
 
     static void libp2pCallback(
         int callerRet,
