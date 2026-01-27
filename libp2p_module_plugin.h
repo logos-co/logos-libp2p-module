@@ -25,10 +25,14 @@ public:
     QString name() const override { return "libp2p_module"; }
     QString version() const override { return "1.0.0"; }
 
+    Q_INVOKABLE bool foo(const QString &bar) override;
     Q_INVOKABLE bool start() override;
     Q_INVOKABLE bool stop() override;
 
     Q_INVOKABLE bool setEventCallback() override;
+
+    Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);
+
 
 signals:
     // Generic async response
