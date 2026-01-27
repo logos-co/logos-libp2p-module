@@ -36,14 +36,24 @@ public:
 
 signals:
     void libp2pEvent(
+        QString caller,
         int result,
         QString message,
         QVariant data
     );
     void eventResponse(const QString& eventName, const QVariantList& data);
 
+private slots:
+    void onLibp2pEventDefault(
+        const QString &caller,
+        int result,
+        const QString &message,
+        const QVariant &data
+    );
+
 private:
     libp2p_ctx_t *ctx = nullptr;
+    QString lastCaller; // for logging
 
     static void libp2pCallback(
         int callerRet,
@@ -52,3 +62,4 @@ private:
         void *userData
     );
 };
+

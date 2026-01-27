@@ -5,6 +5,19 @@
 #include <cstring>
 #include <QDebug>
 
+void Libp2pModulePlugin::onLibp2pEventDefault(
+    const QString &caller,
+    int result,
+    const QString &message,
+    const QVariant &data
+)
+{
+    qDebug() << "[" << caller << "]"
+             << "ret:" << result
+             << "msg:" << message;
+}
+
+
 void Libp2pModulePlugin::libp2pCallback(
     int callerRet,
     const char *msg,
@@ -17,16 +30,11 @@ void Libp2pModulePlugin::libp2pCallback(
 
     QString message = QString::fromUtf8(msg, int(len));
 
-    qDebug() << "Libp2pModulePlugin::libp2pCallback called with ret:" << callerRet;
-    if (msg && len > 0) {
-        qDebug() << "Libp2pModulePlugin::libp2pCallback message:" << message;
-    }
-
-
     QMetaObject::invokeMethod(
         self,
         [self, callerRet, message]() {
             emit self->libp2pEvent(
+                self->lastCaller,
                 callerRet,
                 message,
                 QVariant()
@@ -51,7 +59,15 @@ Libp2pModulePlugin::Libp2pModulePlugin()
     cfg.flags |= LIBP2P_CFG_KAD;
     cfg.mount_kad = 1;
 
+    lastCaller = "libp2pNew";
     ctx = libp2p_new(&cfg, &Libp2pModulePlugin::libp2pCallback, this);
+
+    // register default event handler
+    connect(this,
+        &Libp2pModulePlugin::libp2pEvent,
+        this,
+        &Libp2pModulePlugin::onLibp2pEventDefault);
+
 }
 
 Libp2pModulePlugin::~Libp2pModulePlugin()
@@ -105,6 +121,7 @@ bool Libp2pModulePlugin::libp2pStart()
         return false;
     }
 
+    lastCaller = "libp2pStart";
     return libp2p_start(ctx, &Libp2pModulePlugin::libp2pCallback, this) == RET_OK;
 }
 
@@ -116,6 +133,7 @@ bool Libp2pModulePlugin::libp2pStop()
         return false;
     }
 
+    lastCaller = "libp2pStop";
     return libp2p_stop(ctx, &Libp2pModulePlugin::libp2pCallback, this) == RET_OK;
 }
 
@@ -125,6 +143,7 @@ bool Libp2pModulePlugin::setEventCallback()
         return false;
     }
 
+    lastCaller = "libp2pSetEventCallback";
     libp2p_set_event_callback(ctx, &Libp2pModulePlugin::libp2pCallback, this);
     return true;
 }
