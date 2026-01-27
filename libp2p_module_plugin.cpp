@@ -47,20 +47,19 @@ void Libp2pModulePlugin::libp2pCallback(
 Libp2pModulePlugin::Libp2pModulePlugin()
     : ctx(nullptr)
 {
-    static libp2p_config_t cfg;
-    std::memset(&cfg, 0, sizeof(cfg));
+    std::memset(&config, 0, sizeof(config));
 
-    cfg.flags |= LIBP2P_CFG_GOSSIPSUB;
-    cfg.mount_gossipsub = 1;
+    config.flags |= LIBP2P_CFG_GOSSIPSUB;
+    config.mount_gossipsub = 1;
 
-    cfg.flags |= LIBP2P_CFG_GOSSIPSUB_TRIGGER_SELF;
-    cfg.gossipsub_trigger_self = 1;
+    config.flags |= LIBP2P_CFG_GOSSIPSUB_TRIGGER_SELF;
+    config.gossipsub_trigger_self = 1;
 
-    cfg.flags |= LIBP2P_CFG_KAD;
-    cfg.mount_kad = 1;
+    config.flags |= LIBP2P_CFG_KAD;
+    config.mount_kad = 1;
 
     lastCaller = "libp2pNew";
-    ctx = libp2p_new(&cfg, &Libp2pModulePlugin::libp2pCallback, this);
+    ctx = libp2p_new(&config, &Libp2pModulePlugin::libp2pCallback, this);
 
     // register default event handler
     connect(this,

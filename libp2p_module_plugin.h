@@ -53,6 +53,7 @@ private slots:
 
 private:
     libp2p_ctx_t *ctx = nullptr;
+    libp2p_config_t config = {};
     QString lastCaller; // for logging
 
     static void libp2pCallback(
