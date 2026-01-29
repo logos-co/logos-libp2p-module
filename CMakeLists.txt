@@ -121,12 +121,12 @@ if(APPLE)
         BUILD_WITH_INSTALL_NAME_DIR TRUE)
 
     if(LIBP2P_ROOT)
-        get_filename_component(LIBP2P_FILENAME "${LIBP2P_ROOT}" NAME)
+        set(LIBP2P_LIBRARY_PATH "${LIBP2P_ROOT}/lib/libp2p.dylib")
         add_custom_command(TARGET libp2p_module_plugin POST_BUILD
             COMMAND install_name_tool -id "@rpath/libp2p_module_plugin.dylib"
-            $<TARGET_FILE:libp2p_module_plugin>
-            COMMAND install_name_tool -id "@rpath/${LIBP2P_FILENAME}" "${CMAKE_BINARY_DIR}/modules/${LIBP2P_FILENAME}"
-            COMMAND install_name_tool -change "${LIBP2P_ROOT}" "@rpath/${LIBP2P_FILENAME}" $<TARGET_FILE:libp2p_module_plugin>
+                $<TARGET_FILE:libp2p_module_plugin>
+            COMMAND install_name_tool -change "${LIBP2P_LIBRARY_PATH}" "@rpath/libp2p.dylib"
+                $<TARGET_FILE:libp2p_module_plugin>
             COMMENT "Updating library paths for macOS"
         )
     else()

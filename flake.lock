@@ -28,16 +28,15 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1769193602,
-        "narHash": "sha256-eC+mFnFJu59mIBLelxzD821NDYdckmiC2DspCoECjjQ=",
+        "lastModified": 1769697652,
+        "narHash": "sha256-PKxdvGWSXViJAIV3FH1i/iZMrwK2V9Gh3kjRmY+4TdA=",
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "eab22eb4e46dd05697500a05eb45d52b2407c572",
+        "rev": "53c65cea62e501c2cf5922a11904e88191fe5a55",
         "type": "github"
       },
       "original": {
         "owner": "vacp2p",
-        "ref": "feat/nix-build",
         "repo": "nim-libp2p",
         "type": "github"
       }
