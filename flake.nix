@@ -4,7 +4,7 @@
   inputs = {
     liblogos.url = "github:logos-co/logos-liblogos";
     logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
-    libp2p.url = "github:vacp2p/nim-libp2p?ref=feat/nix-build";
+    libp2p.url = "github:vacp2p/nim-libp2p";
     nixpkgs.follows = "liblogos/nixpkgs";
   };
 
