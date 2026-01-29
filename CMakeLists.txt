@@ -78,27 +78,31 @@ target_link_libraries(libp2p_module_plugin PRIVATE
 )
 
 
+# Link SDK libraries
 target_include_directories(libp2p_module_plugin PRIVATE
     ${LOGOS_CPP_SDK_ROOT}/include
     ${LOGOS_CPP_SDK_ROOT}/include/cpp
     ${LOGOS_CPP_SDK_ROOT}/include/core
 )
+find_library(LOGOS_SDK_LIB logos_sdk PATHS ${LOGOS_CPP_SDK_ROOT}/lib NO_DEFAULT_PATH REQUIRED)
+target_link_libraries(libp2p_module_plugin PRIVATE ${LOGOS_SDK_LIB})
 
+# Link Libp2p libraries
 target_include_directories(libp2p_module_plugin PRIVATE
     ${LIBP2P_ROOT}/include
 )
 
 if(APPLE)
     target_link_libraries(libp2p_module_plugin PRIVATE
-        "${LIBP2P_ROOT}/lib/libp2p.dylib"
+        ${LIBP2P_ROOT}/lib/libp2p.dylib
     )
 elseif(WIN32)
     target_link_libraries(libp2p_module_plugin PRIVATE
-        "${LIBP2P_ROOT}/lib/libp2p.dll"
+        ${LIBP2P_ROOT}/lib/libp2p.dll
     )
 else()
     target_link_libraries(libp2p_module_plugin PRIVATE
-        "${LIBP2P_ROOT}/lib/libp2p.so"
+        ${LIBP2P_ROOT}/lib/libp2p.so
     )
 endif()
 
