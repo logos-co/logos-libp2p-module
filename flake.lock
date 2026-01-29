@@ -5,11 +5,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1769697652,
-        "narHash": "sha256-PKxdvGWSXViJAIV3FH1i/iZMrwK2V9Gh3kjRmY+4TdA=",
+        "lastModified": 1769717381,
+        "narHash": "sha256-YPQIkd9qPhK8c5xRAMfqgOxwsik3kk7y8daz0QBCBUc=",
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "53c65cea62e501c2cf5922a11904e88191fe5a55",
+        "rev": "640244d36c07e5acfc3e0604aa56bffcb3fbe89a",
         "type": "github"
       },
       "original": {
@@ -178,15 +178,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1769457082,
-        "narHash": "sha256-8LOPdJzmrtC9jfmzfyDNiTtFytlsduaBWAHogzBSPkw=",
-        "owner": "logos-co",
+        "lastModified": 1769717495,
+        "narHash": "sha256-uXZ5GC1cPoeZoIbkK4E9fhCk5maAW5ei47iymaPoO8M=",
+        "owner": "Logos-co",
         "repo": "logos-module-builder",
-        "rev": "b4aff6532622e128fc0de45e230126179b85eef4",
+        "rev": "3e1417f86f44e2995dd1c67e77a42f84bb9ad6f4",
         "type": "github"
       },
       "original": {
-        "owner": "logos-co",
+        "owner": "Logos-co",
         "repo": "logos-module-builder",
         "type": "github"
       }

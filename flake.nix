@@ -2,7 +2,7 @@
   description = "Logos Libp2p Module";
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder";
+    logos-module-builder.url = "github:/Logos-co/logos-module-builder";
     nixpkgs.follows = "logos-module-builder/nixpkgs";
     libp2p.url = "github:vacp2p/nim-libp2p";
   };
