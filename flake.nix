@@ -2,59 +2,42 @@
   description = "Logos Libp2p Module";
 
   inputs = {
-    liblogos.url = "github:logos-co/logos-liblogos";
-    logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
+    logos-module-builder.url = "github:logos-co/logos-module-builder";
+    nixpkgs.follows = "logos-module-builder/nixpkgs";
     libp2p.url = "github:vacp2p/nim-libp2p";
-    nixpkgs.follows = "liblogos/nixpkgs";
   };
 
-  outputs = { self, nixpkgs, logos-cpp-sdk, liblogos, libp2p }:
-  let
-    systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
-  in {
-    packages = nixpkgs.lib.genAttrs systems (system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-
-        logosSdk     = logos-cpp-sdk.packages.${system}.default;
-        liblogosPkg  = liblogos.packages.${system}.default;
-        libp2pCbind  = libp2p.packages.${system}.cbind;
-      in {
-        default = pkgs.stdenv.mkDerivation {
-          pname = "logos-libp2p-module";
-          version = "1.0.0";
-
-          src = self;
-
-          nativeBuildInputs = [
-            pkgs.cmake
-            pkgs.ninja
-            pkgs.pkg-config
-            pkgs.qt6.wrapQtAppsNoGuiHook
-          ];
-
-          buildInputs = [
-            pkgs.qt6.qtbase
-            pkgs.qt6.qtremoteobjects
-          ];
-
-          cmakeFlags = [
-            "-GNinja"
-            "-DLOGOS_CPP_SDK_ROOT=${logosSdk}"
-            "-DLOGOS_LIBLOGOS_ROOT=${liblogosPkg}"
-            "-DLIBP2P_ROOT=${libp2pCbind}"
-          ];
-
-          env = {
-            LOGOS_CPP_SDK_ROOT = logosSdk;
-            LOGOS_LIBLOGOS_ROOT = liblogosPkg;
-            LIBP2P_ROOT = libp2pCbind;
-          };
-
-          meta.platforms = pkgs.lib.platforms.unix;
+  outputs = { self, logos-module-builder, nixpkgs, libp2p }:
+    let
+      lib = nixpkgs.lib;
+      systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
+      forAllSystems = f: lib.genAttrs systems (system: f system);
+      
+      # Get pre-built libp2p cbind package for each system
+      libp2pCbind = system: libp2p.packages.${system}.cbind;
+      
+      # Build module using mkLogosModule with library setup
+      buildModule = system: 
+        logos-module-builder.lib.mkLogosModule {
+          src = ./.;
+          configFile = ./module.yaml;
+          
+          # Copy library to lib/ before cmake (for linking)
+          preConfigure = ''
+            mkdir -p lib
+            cp -r "${libp2pCbind system}/lib"/* lib/
+            cp -r "${libp2pCbind system}/include"/* lib/
+          '';
+          
+          # Copy library to output after install (for runtime)
+          postInstall = ''
+            echo "Copying libp2p library to output..."
+            cp "${libp2pCbind system}/lib"/*.dylib $out/lib/ 2>/dev/null || true
+            cp "${libp2pCbind system}/lib"/*.so $out/lib/ 2>/dev/null || true
+          '';
         };
-      }
-    );
-  };
+    in {
+      packages = forAllSystems (system: (buildModule system).packages.${system});
+      devShells = forAllSystems (system: (buildModule system).devShells.${system});
+    };
 }
-

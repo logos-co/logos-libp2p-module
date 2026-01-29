@@ -1,0 +1,36 @@
+# Logos Libp2p Module Configuration
+# Migrated to use logos-module-builder
+
+name: libp2p_module
+version: 1.0.0
+type: core
+category: protocol
+description: "Libp2p network protocol module for Logos"
+
+# No module dependencies (libp2p is a base module)
+dependencies: []
+
+# External library: libp2p (pre-built from nim-libp2p flake)
+# The library is copied to lib/ via preConfigure in flake.nix
+external_libraries:
+  - name: libp2p
+    vendor_path: "lib"
+
+# Library files to bundle with the module
+include:
+  - libp2p.so
+  - libp2p.dylib
+  - libp2p.dll
+
+# Nix packages needed
+nix_packages:
+  build: []
+  runtime: []
+
+# CMake configuration
+cmake:
+  find_packages: []
+  extra_sources: []
+  extra_include_dirs:
+    - lib
+  extra_link_libraries: []
