@@ -30,13 +30,13 @@ public:
     Q_INVOKABLE bool libp2pStop() override;
 
     /* Kademlia-related functions */
-    Q_INVOKABLE bool findNode(const QString &peerId);
-    Q_INVOKABLE bool putValue(const QByteArray &key, const QByteArray &value);
-    Q_INVOKABLE bool getValue(const QByteArray &key, int quorum = -1);
-    Q_INVOKABLE bool addProvider(const QString &cid);
-    Q_INVOKABLE bool startProviding(const QString &cid);
-    Q_INVOKABLE bool stopProviding(const QString &cid);
-    Q_INVOKABLE bool getProviders(const QString &cid);
+    Q_INVOKABLE bool findNode(const QString &peerId) override;
+    Q_INVOKABLE bool putValue(const QByteArray &key, const QByteArray &value) override;
+    Q_INVOKABLE bool getValue(const QByteArray &key, int quorum = -1) override;
+    Q_INVOKABLE bool addProvider(const QString &cid) override;
+    Q_INVOKABLE bool startProviding(const QString &cid) override;
+    Q_INVOKABLE bool stopProviding(const QString &cid) override;
+    Q_INVOKABLE bool getProviders(const QString &cid) override;
 
     Q_INVOKABLE bool setEventCallback() override;
 
