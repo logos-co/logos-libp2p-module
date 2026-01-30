@@ -1,13 +1,12 @@
 {
   "name": "libp2p_module",
   "version": "1.0.0",
-  "description": "Libp2p module",
+  "description": "Libp2p network protocol module for Logos",
   "author": "Logos Core Team",
   "type": "core",
   "category": "protocol",
   "main": "libp2p_module_plugin",
   "dependencies": [],
   "include": ["libp2p.so", "libp2p.dylib", "libp2p.dll"],
-  "capabilities": [
-  ]
-} 
+  "capabilities": []
+}
