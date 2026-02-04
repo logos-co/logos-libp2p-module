@@ -16,10 +16,48 @@ endif()
 # Define the module
 logos_module(
     NAME libp2p_module
-    SOURCES 
+    SOURCES
         src/libp2p_module_interface.h
         src/libp2p_module_plugin.h
         src/libp2p_module_plugin.cpp
     EXTERNAL_LIBS
         libp2p
 )
+
+enable_testing()
+
+find_package(Qt6 REQUIRED COMPONENTS Core Test)
+
+logos_find_dependencies()
+
+add_executable(test_libp2p_module
+    tests/test_libp2p_module.cpp
+)
+
+target_include_directories(test_libp2p_module PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib
+)
+
+# ---- Logos SDK includes ----
+if(LOGOS_CPP_SDK_IS_SOURCE)
+    target_include_directories(test_libp2p_module PRIVATE
+        ${LOGOS_CPP_SDK_ROOT}/cpp
+        ${LOGOS_CPP_SDK_ROOT}/cpp/generated
+    )
+else()
+    target_include_directories(test_libp2p_module PRIVATE
+        ${LOGOS_CPP_SDK_ROOT}/include
+        ${LOGOS_CPP_SDK_ROOT}/include/cpp
+        ${LOGOS_CPP_SDK_ROOT}/include/core
+    )
+endif()
+
+target_link_libraries(test_libp2p_module PRIVATE
+    libp2p_module_module_plugin
+    Qt6::Core
+    Qt6::Test
+)
+
+add_test(NAME test_libp2p_module COMMAND test_libp2p_module)
+

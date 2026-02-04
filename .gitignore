@@ -58,3 +58,8 @@ dkms.conf
 build/
 vendor/build/
 result
+
+# cmake
+CMakeCache.txt
+CMakeFiles/
+

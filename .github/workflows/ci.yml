@@ -1,0 +1,90 @@
+name: CI Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+jobs:
+
+  ############################
+  # Linux x86_64 + aarch64
+  ############################
+  linux:
+    name: Linux (${{ matrix.system }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        system:
+          - x86_64-linux
+          - aarch64-linux
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Install Nix
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      # Enable flakes
+      - name: Configure Nix
+        run: |
+          mkdir -p ~/.config/nix
+          echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+
+      # Enable QEMU for aarch64 builds
+      - name: Setup QEMU
+        if: matrix.system == 'aarch64-linux'
+        uses: docker/setup-qemu-action@v3
+
+      # Cache builds
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: nix-community
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        continue-on-error: true
+
+      - name: Run flake checks
+        run: |
+          nix flake check --system ${{ matrix.system }}
+
+
+  ############################
+  # macOS x86_64 + arm64
+  ############################
+  macos:
+    name: macOS (${{ matrix.system }})
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-darwin
+            runner: macos-13
+          - system: aarch64-darwin
+            runner: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      - name: Configure Nix
+        run: |
+          mkdir -p ~/.config/nix
+          echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+
+      - name: Run flake checks
+        run: |
+          nix flake check --system ${{ matrix.system }}
+
