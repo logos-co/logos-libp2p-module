@@ -26,6 +26,46 @@ private slots:
 
         QVERIFY(spy.count() >= 0);
     }
+
+    void testGetValue()
+    {
+        Libp2pModulePlugin plugin;
+
+        QVERIFY(plugin.libp2pStart());
+
+        QByteArray key = "test-key";
+        QByteArray expectedValue = "hello-world";
+
+        // ---- Spy result signal ----
+        QSignalSpy spy(
+            &plugin,
+            SIGNAL(getValueFinished(int,QString,QByteArray))
+        );
+
+        // ---- Store value first ----
+        QVERIFY(plugin.putValue(key, expectedValue));
+
+        // NOTE: in real DHT you may need delay
+        QTest::qWait(500);
+
+        // ---- Request value ----
+        QVERIFY(plugin.getValue(key, 1));
+
+        // ---- Wait async callback ----
+        QVERIFY(spy.wait(5000)); // wait up to 5s
+
+        QCOMPARE(spy.count(), 1);
+
+        QList<QVariant> args = spy.takeFirst();
+
+        int result = args.at(0).toInt();
+        QByteArray returnedValue = args.at(2).toByteArray();
+
+        QCOMPARE(result, RET_OK);
+        QCOMPARE(returnedValue, expectedValue);
+
+        plugin.libp2pStop();
+    }
 };
 
 QTEST_MAIN(TestLibp2pModule)

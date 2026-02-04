@@ -5,16 +5,27 @@
 #include <cstring>
 #include <QDebug>
 
+struct CallbackContext {
+    QString caller;
+    QString reqId;
+    Libp2pModulePlugin *instance;
+};
+
 void Libp2pModulePlugin::onLibp2pEventDefault(
-    const QString &caller,
     int result,
+    const QString &reqId,
+    const QString &caller,
     const QString &message,
     const QVariant &data
 )
 {
+    QByteArray buffer = data.toByteArray();
+
     qDebug() << "[" << caller << "]"
+             << "reqId:" << reqId
              << "ret:" << result
-             << "msg:" << message;
+             << "msg:" << message
+             << "data size:" << buffer.size();
 }
 
 
@@ -29,13 +40,16 @@ void Libp2pModulePlugin::libp2pCallback(
     if (!self) return;
 
     QString message = QString::fromUtf8(msg, int(len));
+    QString caller = self->lastCaller;
+    QString reqId = QUuid::createUuid().toString();
 
     QMetaObject::invokeMethod(
         self,
-        [self, callerRet, message]() {
+        [self, callerRet, message, caller, reqId]() {
             emit self->libp2pEvent(
-                self->lastCaller,
                 callerRet,
+                reqId,
+                caller,
                 message,
                 QVariant()
             );
@@ -57,15 +71,16 @@ void Libp2pModulePlugin::peersCallback(
     if (!self) return;
 
     QString message = QString::fromUtf8(msg, int(len));
-
-    // TODO: return peers
+    QString caller = self->lastCaller;
+    QString reqId = QUuid::createUuid().toString();
 
     QMetaObject::invokeMethod(
         self,
-        [self, callerRet, message]() {
+        [self, callerRet, message, caller, reqId]() {
             emit self->libp2pEvent(
-                self->lastCaller,
                 callerRet,
+                reqId,
+                caller,
                 message,
                 QVariant()
             );
@@ -83,26 +98,30 @@ void Libp2pModulePlugin::libp2pBufferCallback(
     void *userData
 )
 {
-    auto *self = static_cast<Libp2pModulePlugin *>(userData);
-    if (!self) return;
+    auto *callbackCtx = static_cast<CallbackContext *>(userData);
+    if (!callbackCtx) return;
 
-    QString message = QString::fromUtf8(msg, int(len));
+    Libp2pModulePlugin *self = callbackCtx->instance;
+    if (!self) { delete callbackCtx; return; }
 
-    // TODO: return buffer
+    QByteArray buffer(reinterpret_cast<const char *>(data), int(dataLen));
+    QString caller = callbackCtx->caller;
+    QString reqId = QUuid::createUuid().toString();
 
-    QMetaObject::invokeMethod(
-        self,
-        [self, callerRet, message]() {
-            emit self->libp2pEvent(
-                self->lastCaller,
-                callerRet,
-                message,
-                QVariant()
-            );
-        },
-        Qt::QueuedConnection
-    );
+    if (caller == "getValue") {
+        QMetaObject::invokeMethod(self, [self, callerRet, buffer, reqId]() {
+            emit self->getValueFinished(callerRet, reqId, buffer);
+        }, Qt::QueuedConnection);
+    } else {
+        QMetaObject::invokeMethod(self, [self, callerRet, buffer, caller, reqId]() {
+            emit self->libp2pEvent(callerRet, reqId, caller, QString(), QVariant(buffer));
+        }, Qt::QueuedConnection);
+    }
+
+    // Cleanup
+    delete callbackCtx;
 }
+
 
 void Libp2pModulePlugin::getProvidersCallback(
     int callerRet,
@@ -117,15 +136,16 @@ void Libp2pModulePlugin::getProvidersCallback(
     if (!self) return;
 
     QString message = QString::fromUtf8(msg, int(len));
-
-    // TODO: return providers
+    QString caller = self->lastCaller;
+    QString reqId = QUuid::createUuid().toString();
 
     QMetaObject::invokeMethod(
         self,
-        [self, callerRet, message]() {
+        [self, callerRet, message, caller, reqId]() {
             emit self->libp2pEvent(
-                self->lastCaller,
                 callerRet,
+                reqId,
+                caller,
                 message,
                 QVariant()
             );
@@ -271,14 +291,15 @@ bool Libp2pModulePlugin::getValue(const QByteArray &key, int quorum)
         return false;
     }
 
-    lastCaller = "getValue";
+    auto *callbackCtx = new CallbackContext{ "getValue", QUuid::createUuid().toString(), this };
+
     return libp2p_get_value(
         ctx,
         reinterpret_cast<const uint8_t *>(key.constData()),
         key.size(),
         quorum,
         &Libp2pModulePlugin::libp2pBufferCallback,
-        this
+        callbackCtx
     ) == RET_OK;
 }
 
