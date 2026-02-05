@@ -31,6 +31,23 @@
             mkdir -p $out/lib
             cp "${libp2pCbind system}/lib"/*.dylib $out/lib/ 2>/dev/null || true
             cp "${libp2pCbind system}/lib"/*.so $out/lib/ 2>/dev/null || true
+            
+            # Fix dylib install names on macOS
+            if [[ "$(uname)" == "Darwin" ]]; then
+              for dylib in $out/lib/*.dylib; do
+                [ -f "$dylib" ] || continue
+                install_name_tool -id "@rpath/$(basename $dylib)" "$dylib" || true
+              done
+              
+              # Fix the plugin's reference to libp2p.dylib
+              for plugin in $out/lib/*_module_plugin.dylib; do
+                [ -f "$plugin" ] || continue
+                install_name_tool -change \
+                  "$(otool -L "$plugin" | grep libp2p.dylib | awk '{print $1}' | head -1)" \
+                  "@rpath/libp2p.dylib" \
+                  "$plugin" 2>/dev/null || true
+              done
+            fi
           '';
         };
 
@@ -57,6 +74,9 @@
 
               export QT_QPA_PLATFORM=offscreen
               export QT_PLUGIN_PATH=${pkgs.qt6.qtbase}/${pkgs.qt6.qtbase.qtPluginPrefix}
+              
+              # Set library path for macOS dylibs
+              export DYLD_LIBRARY_PATH=$out/lib:${pkgs.lib.makeLibraryPath [ (libp2pCbind system) ]}
 
               ctest --output-on-failure
             '';
