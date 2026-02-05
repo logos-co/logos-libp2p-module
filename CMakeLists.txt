@@ -22,6 +22,8 @@ logos_module(
         src/libp2p_module_plugin.cpp
     EXTERNAL_LIBS
         libp2p
+    INCLUDE_DIRS
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 enable_testing()
@@ -36,7 +38,7 @@ add_executable(test_libp2p_module
 
 target_include_directories(test_libp2p_module PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/lib
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # ---- Logos SDK includes ----

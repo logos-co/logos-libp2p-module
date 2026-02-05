@@ -23,7 +23,8 @@
           preConfigure = ''
             mkdir -p lib
             cp -r "${libp2pCbind system}/lib"/* lib/
-            cp -r "${libp2pCbind system}/include"/* lib/
+            mkdir -p include
+            cp -r "${libp2pCbind system}/include"/* include/
           '';
 
           postInstall = ''
