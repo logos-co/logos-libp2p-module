@@ -448,6 +448,8 @@ bool Libp2pModulePlugin::getProviders(const QString &cid)
         return false;
     }
 
+    // TODO: return providers
+
     auto *callbackCtx = new CallbackContext{ "getProviders", QUuid::createUuid().toString(), this };
 
     int ret = libp2p_get_providers(
