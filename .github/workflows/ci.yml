@@ -64,9 +64,9 @@ jobs:
       matrix:
         include:
           - system: x86_64-darwin
-            runner: macos-13
+            runner: macos-latest
           - system: aarch64-darwin
-            runner: macos-14
+            runner: macos-latest
 
     steps:
       - name: Checkout
