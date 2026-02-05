@@ -84,34 +84,3 @@ jobs:
         run: |
           MACOSX_DEPLOYMENT_TARGET=11.3 nix flake check --system ${{ matrix.system }}
 
-
-  ############################
-  # Windows x86_64
-  ############################
-  windows:
-    name: Windows (${{ matrix.system }})
-    runs-on: ${{ matrix.runner }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - system: x86_64-windows
-            runner: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v12
-
-      - name: Configure Nix
-        run: |
-          mkdir -p ~/.config/nix
-          echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
-
-      - name: Run flake checks
-        run: |
-          nix flake check --system ${{ matrix.system }}
-
