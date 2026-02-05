@@ -63,9 +63,5 @@ jobs:
       - name: Run flake checks
         shell: bash
         run: |
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_target }} nix flake check --system ${{ matrix.system }}
-          else
-            nix flake check --system ${{ matrix.system }}
-          fi
+          nix flake check --system ${{ matrix.system }}
 
