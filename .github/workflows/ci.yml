@@ -53,20 +53,11 @@ jobs:
 
 
   ############################
-  # macOS x86_64 + arm64
+  # macOS arm64
   ############################
   macos:
-    name: macOS (${{ matrix.system }})
-    runs-on: ${{ matrix.runner }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - system: x86_64-darwin
-            runner: macos-latest
-          - system: aarch64-darwin
-            runner: macos-latest
+    name: macOS (latest, aarch64-darwin)
+    runs-on: macos-latest
 
     steps:
       - name: Checkout
