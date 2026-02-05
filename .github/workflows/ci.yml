@@ -1,0 +1,67 @@
+name: CI Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+jobs:
+  flake-check:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux
+          - name: Linux (x86_64-linux)
+            runner: ubuntu-latest
+            system: x86_64-linux
+            qemu: false
+
+          - name: Linux (aarch64-linux)
+            runner: ubuntu-latest
+            system: aarch64-linux
+            qemu: true
+
+          # macOS
+          - name: macOS (aarch64-darwin)
+            runner: macos-latest
+            system: aarch64-darwin
+            qemu: false
+            macos_target: 11.3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      - name: Configure Nix
+        shell: bash
+        run: |
+          mkdir -p ~/.config/nix
+          echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+
+      - name: Setup QEMU
+        if: matrix.qemu == true
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Cachix
+        if: runner.os != 'Windows'
+        uses: cachix/cachix-action@v15
+        with:
+          name: nix-community
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        continue-on-error: true
+
+      - name: Run flake checks
+        shell: bash
+        run: |
+          nix flake check --system ${{ matrix.system }}
+

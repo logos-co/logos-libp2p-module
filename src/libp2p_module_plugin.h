@@ -45,17 +45,24 @@ public:
 
 signals:
     void libp2pEvent(
-        QString caller,
         int result,
+        QString reqId,
+        QString caller,
         QString message,
         QVariant data
+    );
+    void getValueFinished(
+        int result,
+        QString reqId,
+        QByteArray value
     );
     void eventResponse(const QString& eventName, const QVariantList& data);
 
 private slots:
     void onLibp2pEventDefault(
-        const QString &caller,
         int result,
+        const QString &reqId,
+        const QString &caller,
         const QString &message,
         const QVariant &data
     );
