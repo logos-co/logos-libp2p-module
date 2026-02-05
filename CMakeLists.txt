@@ -13,6 +13,11 @@ else()
     message(FATAL_ERROR "LogosModule.cmake not found")
 endif()
 
+# Configure RPATH for macOS dylib loading
+set(CMAKE_MACOSX_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH "@loader_path")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+
 # Define the module
 logos_module(
     NAME libp2p_module
