@@ -13,25 +13,27 @@ private:
 
     using EventSpy = QSignalSpy;
 
-    static EventSpy createLibp2pEventSpy(QObject *obj)
+    static std::unique_ptr<EventSpy> createLibp2pEventSpy(QObject *obj)
     {
-        return EventSpy(
+        return std::make_unique<EventSpy>(
             obj,
             SIGNAL(libp2pEvent(int,QString,QString,QString,QVariant))
         );
     }
 
-    static EventSpy createGetValueSpy(QObject *obj)
+    static std::unique_ptr<EventSpy> createGetValueSpy(QObject *obj)
     {
-        return EventSpy(
+        return std::make_unique<EventSpy>(
             obj,
-            SIGNAL(getValueFinished(int,QString,QByteArray))
+            SIGNAL(getValueFinished(int,QString,QString,QByteArray))
         );
     }
-
-    static void waitForSpy(EventSpy &spy, int timeoutMs = 5000)
+    static std::unique_ptr<EventSpy> createGetProvidersSpy(QObject *obj)
     {
-        QVERIFY(spy.wait(timeoutMs));
+        return std::make_unique<EventSpy>(
+            obj,
+            SIGNAL(getProvidersFinished(int,QString,QString,QVector<Libp2pPeerInfo>))
+        );
     }
 
     static void fail(const char *msg)
@@ -40,13 +42,25 @@ private:
     }
 
 
+    static void waitForEvents(EventSpy &spy, int expected, int timeout = 5000)
+    {
+        QElapsedTimer timer;
+        timer.start();
+
+        while (spy.count() < expected) {
+            if (!spy.wait(timeout - timer.elapsed())) {
+                fail("Timeout waiting for expected signals");
+                return;
+            }
+        }
+    }
+
     static QList<QVariant> takeEvent(EventSpy &spy)
     {
         if (spy.count() <= 0) {
             fail("Expected event but spy is empty");
-            return {}; // required for compiler
+            throw std::runtime_error("empty spy");
         }
-
         return spy.takeFirst();
     }
 
@@ -80,8 +94,23 @@ private:
         auto args = takeEvent(spy);
 
         QCOMPARE(args.at(0).toInt(), expectedResult);
-        QCOMPARE(args.at(2).toByteArray(), expectedValue);
+        QCOMPARE(args.at(3).toByteArray(), expectedValue);
     }
+
+    static void assertGetProvidersResult(
+        EventSpy &spy,
+        int expectedResult,
+        int expectedProvidersLen
+    )
+    {
+        auto args = takeEvent(spy);
+        auto providers =
+            args.at(3).value<QVector<Libp2pPeerInfo>>();
+
+        QCOMPARE(args.at(0).toInt(), expectedResult);
+        QCOMPARE(providers.size(), expectedProvidersLen);
+    }
+
 
     /* ---------------------------
      * Plugin lifecycle helpers
@@ -90,9 +119,7 @@ private:
     static void startPlugin(Libp2pModulePlugin &plugin, EventSpy &spy)
     {
         QVERIFY(plugin.libp2pStart());
-        waitForSpy(spy);
-
-        assertEventCount(spy, 2);
+        waitForEvents(spy, 2);
         assertEvent(spy, RET_OK, "libp2pNew");
         assertEvent(spy, RET_OK, "libp2pStart");
     }
@@ -100,9 +127,7 @@ private:
     static void stopPlugin(Libp2pModulePlugin &plugin, EventSpy &spy)
     {
         QVERIFY(plugin.libp2pStop());
-        waitForSpy(spy);
-
-        assertEventCount(spy, 1);
+        waitForEvents(spy, 1);
         assertEvent(spy, RET_OK, "libp2pStop");
     }
 
@@ -124,7 +149,7 @@ private slots:
 
         QSignalSpy spy(
             &plugin,
-            SIGNAL(libp2pEvent(QString,int,QString,QVariant))
+            SIGNAL(libp2pEvent(int,QString,QString,QString,QVariant))
         );
 
         plugin.foo("hello");
@@ -137,8 +162,8 @@ private slots:
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
 
-        startPlugin(plugin, spy);
-        stopPlugin(plugin, spy);
+        startPlugin(plugin, *spy);
+        stopPlugin(plugin, *spy);
     }
 
     void testGetPutValue()
@@ -148,20 +173,59 @@ private slots:
         auto libp2pEventSpy = createLibp2pEventSpy(&plugin);
         auto getValueSpy = createGetValueSpy(&plugin);
 
-        startPlugin(plugin, libp2pEventSpy);
+        startPlugin(plugin, *libp2pEventSpy);
 
         QByteArray key = "test-key";
         QByteArray expectedValue = "hello-world";
 
         QVERIFY(plugin.putValue(key, expectedValue));
-        waitForSpy(libp2pEventSpy);
-        assertEvent(libp2pEventSpy, RET_OK, "putValue");
+        waitForEvents(*libp2pEventSpy, 1);
+        assertEvent(*libp2pEventSpy, RET_OK, "putValue");
 
         QVERIFY(plugin.getValue(key, 1));
-        waitForSpy(getValueSpy);
-        assertGetValueResult(getValueSpy, RET_OK, expectedValue);
+        waitForEvents(*getValueSpy, 1);
+        assertGetValueResult(*getValueSpy, RET_OK, expectedValue);
 
-        stopPlugin(plugin, libp2pEventSpy);
+        stopPlugin(plugin, *libp2pEventSpy);
+    }
+
+    void testKeyToCid()
+    {
+        QByteArray key = "some-key";
+        QString cid = key.toCid();
+        QByteArray recoveredKey = cid.toKey();
+        QVERIFY(cid.toKey() == key);
+    }
+
+    void testGetProviders()
+    {
+        Libp2pModulePlugin plugin;
+
+        auto libp2pEventSpy = createLibp2pEventSpy(&plugin);
+        auto getProvidersSpy = createGetProvidersSpy(&plugin);
+
+        startPlugin(plugin, *libp2pEventSpy);
+
+        QByteArray key = "key-i-provide";
+        QByteArray value = "hello-world";
+        QString cid = key.toCid();
+
+        QVERIFY(plugin.putValue(key, value));
+        waitForEvents(*libp2pEventSpy, 1);
+        assertEvent(*libp2pEventSpy, RET_OK, "putValue");
+
+        // add myself as provider
+        QVERIFY(plugin.addProvider(cid));
+        waitForEvents(*libp2pEventSpy, 1);
+        assertEvent(*libp2pEventSpy, RET_OK, "addProvider");
+
+        // get providers returns me as provider
+        QVERIFY(plugin.getProviders(cid));
+        waitForEvents(*getProvidersSpy, 1);
+        int expectedProvidersLen = 1;
+        assertGetProvidersResult(*getProvidersSpy, RET_OK, expectedProvidersLen);
+
+        stopPlugin(plugin, *libp2pEventSpy);
     }
 };
 

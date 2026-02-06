@@ -54,7 +54,14 @@ signals:
     void getValueFinished(
         int result,
         QString reqId,
+        QString message,
         QByteArray value
+    );
+    void getProvidersFinished(
+        int result,
+        QString reqId,
+        QString message,
+        QVector<Libp2pPeerInfo>
     );
     void eventResponse(const QString& eventName, const QVariantList& data);
 
