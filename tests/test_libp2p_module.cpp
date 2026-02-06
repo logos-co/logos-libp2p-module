@@ -192,9 +192,11 @@ private slots:
     void testKeyToCid()
     {
         QByteArray key = "some-key";
-        QString cid = key.toCid();
-        QByteArray recoveredKey = cid.toKey();
-        QVERIFY(cid.toKey() == key);
+
+        QString cid = Libp2pModulePlugin::toCid(key);
+        QByteArray recoveredKey = Libp2pModulePlugin::toKey(cid);
+
+        QVERIFY(recoveredKey == key);
     }
 
     void testGetProviders()
@@ -208,20 +210,20 @@ private slots:
 
         QByteArray key = "key-i-provide";
         QByteArray value = "hello-world";
-        QString cid = key.toCid();
+
+        QString cid = Libp2pModulePlugin::toCid(key);
 
         QVERIFY(plugin.putValue(key, value));
         waitForEvents(*libp2pEventSpy, 1);
         assertEvent(*libp2pEventSpy, RET_OK, "putValue");
 
-        // add myself as provider
         QVERIFY(plugin.addProvider(cid));
         waitForEvents(*libp2pEventSpy, 1);
         assertEvent(*libp2pEventSpy, RET_OK, "addProvider");
 
-        // get providers returns me as provider
         QVERIFY(plugin.getProviders(cid));
         waitForEvents(*getProvidersSpy, 1);
+
         int expectedProvidersLen = 1;
         assertGetProvidersResult(*getProvidersSpy, RET_OK, expectedProvidersLen);
 

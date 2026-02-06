@@ -25,6 +25,9 @@ public:
     QString name() const override { return "libp2p_module"; }
     QString version() const override { return "1.0.0"; }
 
+    Q_INVOKABLE static QString toCid(const QByteArray &key);
+    Q_INVOKABLE static QByteArray toKey(const QString &cid);
+
     Q_INVOKABLE bool foo(const QString &bar) override;
     Q_INVOKABLE bool libp2pStart() override;
     Q_INVOKABLE bool libp2pStop() override;

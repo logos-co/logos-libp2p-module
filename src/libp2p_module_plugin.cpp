@@ -11,6 +11,45 @@ struct CallbackContext {
     Libp2pModulePlugin *instance;
 };
 
+/* ---------------- Helper Functions ----------------- */
+
+QString Libp2pModulePlugin::toCid(const QByteArray &key)
+{
+    char *libp2pCid = libp2p_to_cid(
+        reinterpret_cast<const uint8_t *>(key.constData()),
+        key.size()
+    );
+
+    if (!libp2pCid)
+        return {};
+
+    QString cid = QString::fromUtf8(libp2pCid);
+
+    libp2p_free(libp2pCid); // adjust if different free function
+
+    return cid;
+}
+
+QByteArray Libp2pModulePlugin::toKey(const QString &cid)
+{
+    QByteArray utf8 = cid.toUtf8();
+
+    size_t outLen = 0;
+    uint8_t *rawKey = libp2p_from_cid(utf8.constData(), &outLen);
+
+    if (!rawKey || outLen == 0)
+        return {};
+
+    QByteArray key(reinterpret_cast<const char *>(rawKey),
+                   static_cast<int>(outLen));
+
+    libp2p_free(rawKey);
+
+    return key;
+}
+
+/* -------------------- Callbacks -------------------- */
+
 void Libp2pModulePlugin::onLibp2pEventDefault(
     int result,
     const QString &reqId,
@@ -188,6 +227,8 @@ void Libp2pModulePlugin::getProvidersCallback(
 
     delete callbackCtx;
 }
+
+/* -------------------- End Callbacks -------------------- */
 
 Libp2pModulePlugin::Libp2pModulePlugin()
     : ctx(nullptr)
