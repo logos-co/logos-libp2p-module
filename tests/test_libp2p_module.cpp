@@ -27,7 +27,50 @@ private slots:
         QVERIFY(spy.count() >= 0);
     }
 
-    void testGetValue()
+    static void verifyEvent(QSignalSpy &spy, int expectedResult, const QString &expectedCaller)
+    {
+        QVERIFY(spy.count() > 0);
+
+        QList<QVariant> args = spy.takeFirst();
+
+        int result = args.at(0).toInt();
+        QString caller = args.at(2).toString();
+
+        QCOMPARE(result, expectedResult);
+        QCOMPARE(caller, expectedCaller);
+    }
+
+    static void waitForEvents(QSignalSpy &spy, int timeoutMs = 5000)
+    {
+        QVERIFY(spy.wait(timeoutMs));
+    }
+
+    void testStartStop()
+    {
+        Libp2pModulePlugin plugin;
+
+        QSignalSpy spy(
+            &plugin,
+            SIGNAL(libp2pEvent(int,QString,QString,QString,QVariant))
+        );
+
+        // start
+        QVERIFY(plugin.libp2pStart());
+        waitForEvents(spy);
+
+        QCOMPARE(spy.count(), 2);
+        verifyEvent(spy, RET_OK, "libp2pNew");
+        verifyEvent(spy, RET_OK, "libp2pStart");
+
+        // stop
+        QVERIFY(plugin.libp2pStop());
+        waitForEvents(spy);
+
+        QCOMPARE(spy.count(), 1);
+        verifyEvent(spy, RET_OK, "libp2pStop");
+    }
+
+    void testGetPutValue()
     {
         Libp2pModulePlugin plugin;
 
@@ -45,7 +88,6 @@ private slots:
         // ---- Store value first ----
         QVERIFY(plugin.putValue(key, expectedValue));
 
-        // NOTE: in real DHT you may need delay
         QTest::qWait(500);
 
         // ---- Request value ----
