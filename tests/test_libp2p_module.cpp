@@ -5,12 +5,117 @@ class TestLibp2pModule : public QObject
 {
     Q_OBJECT
 
+private:
+
+    /* ---------------------------
+     * Shared helpers
+     * --------------------------- */
+
+    using EventSpy = QSignalSpy;
+
+    static EventSpy createLibp2pEventSpy(QObject *obj)
+    {
+        return EventSpy(
+            obj,
+            SIGNAL(libp2pEvent(int,QString,QString,QString,QVariant))
+        );
+    }
+
+    static EventSpy createGetValueSpy(QObject *obj)
+    {
+        return EventSpy(
+            obj,
+            SIGNAL(getValueFinished(int,QString,QByteArray))
+        );
+    }
+
+    static void waitForSpy(EventSpy &spy, int timeoutMs = 5000)
+    {
+        QVERIFY(spy.wait(timeoutMs));
+    }
+
+    static void fail(const char *msg)
+    {
+        QTest::qFail(msg, __FILE__, __LINE__);
+    }
+
+
+    static QList<QVariant> takeEvent(EventSpy &spy)
+    {
+        if (spy.count() <= 0) {
+            fail("Expected event but spy is empty");
+            return {}; // required for compiler
+        }
+
+        return spy.takeFirst();
+    }
+
+    /* ---------------------------
+     * Event validators
+     * --------------------------- */
+
+    static void assertEvent(
+        EventSpy &spy,
+        int expectedResult,
+        const QString &expectedCaller
+    )
+    {
+        auto args = takeEvent(spy);
+
+        QCOMPARE(args.at(0).toInt(), expectedResult);
+        QCOMPARE(args.at(2).toString(), expectedCaller);
+    }
+
+    static void assertEventCount(EventSpy &spy, int expected)
+    {
+        QCOMPARE(spy.count(), expected);
+    }
+
+    static void assertGetValueResult(
+        EventSpy &spy,
+        int expectedResult,
+        const QByteArray &expectedValue
+    )
+    {
+        auto args = takeEvent(spy);
+
+        QCOMPARE(args.at(0).toInt(), expectedResult);
+        QCOMPARE(args.at(2).toByteArray(), expectedValue);
+    }
+
+    /* ---------------------------
+     * Plugin lifecycle helpers
+     * --------------------------- */
+
+    static void startPlugin(Libp2pModulePlugin &plugin, EventSpy &spy)
+    {
+        QVERIFY(plugin.libp2pStart());
+        waitForSpy(spy);
+
+        assertEventCount(spy, 2);
+        assertEvent(spy, RET_OK, "libp2pNew");
+        assertEvent(spy, RET_OK, "libp2pStart");
+    }
+
+    static void stopPlugin(Libp2pModulePlugin &plugin, EventSpy &spy)
+    {
+        QVERIFY(plugin.libp2pStop());
+        waitForSpy(spy);
+
+        assertEventCount(spy, 1);
+        assertEvent(spy, RET_OK, "libp2pStop");
+    }
+
 private slots:
+
+    /* ---------------------------
+     * Tests
+     * --------------------------- */
 
     void testConstruction()
     {
         Libp2pModulePlugin plugin;
-        QVERIFY(true); // construction should not crash
+        QVERIFY(true);
     }
 
     void testFooSignal()
@@ -27,88 +132,39 @@ private slots:
         QVERIFY(spy.count() >= 0);
     }
 
-    static void verifyEvent(QSignalSpy &spy, int expectedResult, const QString &expectedCaller)
-    {
-        QVERIFY(spy.count() > 0);
-
-        QList<QVariant> args = spy.takeFirst();
-
-        int result = args.at(0).toInt();
-        QString caller = args.at(2).toString();
-
-        QCOMPARE(result, expectedResult);
-        QCOMPARE(caller, expectedCaller);
-    }
-
-    static void waitForEvents(QSignalSpy &spy, int timeoutMs = 5000)
-    {
-        QVERIFY(spy.wait(timeoutMs));
-    }
-
     void testStartStop()
     {
         Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
 
-        QSignalSpy spy(
-            &plugin,
-            SIGNAL(libp2pEvent(int,QString,QString,QString,QVariant))
-        );
-
-        // start
-        QVERIFY(plugin.libp2pStart());
-        waitForEvents(spy);
-
-        QCOMPARE(spy.count(), 2);
-        verifyEvent(spy, RET_OK, "libp2pNew");
-        verifyEvent(spy, RET_OK, "libp2pStart");
-
-        // stop
-        QVERIFY(plugin.libp2pStop());
-        waitForEvents(spy);
-
-        QCOMPARE(spy.count(), 1);
-        verifyEvent(spy, RET_OK, "libp2pStop");
+        startPlugin(plugin, spy);
+        stopPlugin(plugin, spy);
     }
 
     void testGetPutValue()
     {
         Libp2pModulePlugin plugin;
 
-        QVERIFY(plugin.libp2pStart());
+        auto libp2pEventSpy = createLibp2pEventSpy(&plugin);
+        auto getValueSpy = createGetValueSpy(&plugin);
+
+        startPlugin(plugin, libp2pEventSpy);
 
         QByteArray key = "test-key";
         QByteArray expectedValue = "hello-world";
 
-        // ---- Spy result signal ----
-        QSignalSpy spy(
-            &plugin,
-            SIGNAL(getValueFinished(int,QString,QByteArray))
-        );
-
-        // ---- Store value first ----
         QVERIFY(plugin.putValue(key, expectedValue));
+        waitForSpy(libp2pEventSpy);
+        assertEvent(libp2pEventSpy, RET_OK, "putValue");
 
-        QTest::qWait(500);
-
-        // ---- Request value ----
         QVERIFY(plugin.getValue(key, 1));
+        waitForSpy(getValueSpy);
+        assertGetValueResult(getValueSpy, RET_OK, expectedValue);
 
-        // ---- Wait async callback ----
-        QVERIFY(spy.wait(5000)); // wait up to 5s
-
-        QCOMPARE(spy.count(), 1);
-
-        QList<QVariant> args = spy.takeFirst();
-
-        int result = args.at(0).toInt();
-        QByteArray returnedValue = args.at(2).toByteArray();
-
-        QCOMPARE(result, RET_OK);
-        QCOMPARE(returnedValue, expectedValue);
-
-        plugin.libp2pStop();
+        stopPlugin(plugin, libp2pEventSpy);
     }
 };
 
 QTEST_MAIN(TestLibp2pModule)
 #include "test_libp2p_module.moc"
+
