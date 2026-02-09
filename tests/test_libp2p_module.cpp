@@ -112,7 +112,7 @@ private:
 private slots:
 
     /* ---------------------------
-     * Tests
+     * Construction + destruction + foo
      * --------------------------- */
 
     void testConstruction()
@@ -143,6 +143,116 @@ private slots:
         startPlugin(plugin, *spy);
         stopPlugin(plugin, *spy);
     }
+
+    /* ---------------------------
+     * Connectivity tests
+     * --------------------------- */
+
+    void testConnectPeer()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QString fakePeer =
+            "12D3KooWInvalidPeerForTest";
+
+        QStringList fakeAddrs = {
+            "/ip4/127.0.0.1/tcp/9999"
+        };
+
+        QVERIFY(plugin.connectPeer(fakePeer, fakeAddrs));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+
+        QCOMPARE(event.at(2).toString(), "connectPeer");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testDisconnectPeer()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QString fakePeer =
+            "12D3KooWInvalidPeerForTest";
+
+        QVERIFY(plugin.disconnectPeer(fakePeer));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+
+        QCOMPARE(event.at(2).toString(), "disconnectPeer");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testPeerInfo()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QVERIFY(plugin.peerInfo());
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+
+        QCOMPARE(event.at(2).toString(), "peerInfo");
+        QCOMPARE(event.at(0).toInt(), RET_OK);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testConnectedPeers()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QVERIFY(plugin.connectedPeers());
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+
+        QCOMPARE(event.at(2).toString(), "connectedPeers");
+        QCOMPARE(event.at(0).toInt(), RET_OK);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testDial()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QString fakePeer =
+            "12D3KooWInvalidPeerForTest";
+
+        QString proto = "/test/1.0.0";
+
+        QVERIFY(plugin.dial(fakePeer, proto));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+
+        QCOMPARE(event.at(2).toString(), "dial");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    /* ---------------------------
+     * Kademlia tests
+     * --------------------------- */
 
     void testKadGetPutValue()
     {
