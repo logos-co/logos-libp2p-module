@@ -25,22 +25,21 @@ public:
     QString name() const override { return "libp2p_module"; }
     QString version() const override { return "1.0.0"; }
 
-    Q_INVOKABLE bool toCid(const QByteArray &key) override;
     Q_INVOKABLE bool foo(const QString &bar) override;
 
     Q_INVOKABLE bool libp2pStart() override;
     Q_INVOKABLE bool libp2pStop() override;
 
     /* Kademlia-related functions */
-    Q_INVOKABLE bool findNode(const QString &peerId) override;
-    Q_INVOKABLE bool putValue(const QByteArray &key, const QByteArray &value) override;
-    Q_INVOKABLE bool getValue(const QByteArray &key, int quorum = -1) override;
-    Q_INVOKABLE bool addProvider(const QString &cid) override;
-    Q_INVOKABLE bool startProviding(const QString &cid) override;
-    Q_INVOKABLE bool stopProviding(const QString &cid) override;
-    Q_INVOKABLE bool getProviders(const QString &cid) override;
-
-    Q_INVOKABLE bool getRandomRecords() override;
+    Q_INVOKABLE bool toCid(const QByteArray &key) override;
+    Q_INVOKABLE bool kadFindNode(const QString &peerId) override;
+    Q_INVOKABLE bool kadPutValue(const QByteArray &key, const QByteArray &value) override;
+    Q_INVOKABLE bool kadGetValue(const QByteArray &key, int quorum = -1) override;
+    Q_INVOKABLE bool kadAddProvider(const QString &cid) override;
+    Q_INVOKABLE bool kadStartProviding(const QString &cid) override;
+    Q_INVOKABLE bool kadStopProviding(const QString &cid) override;
+    Q_INVOKABLE bool kadGetProviders(const QString &cid) override;
+    Q_INVOKABLE bool kadGetRandomRecords() override;
 
     Q_INVOKABLE bool setEventCallback() override;
 

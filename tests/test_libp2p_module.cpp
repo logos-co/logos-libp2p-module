@@ -145,7 +145,7 @@ private slots:
         stopPlugin(plugin, *spy);
     }
 
-    void testGetPutValue()
+    void testKadGetPutValue()
     {
         Libp2pModulePlugin plugin;
 
@@ -156,13 +156,13 @@ private slots:
         QByteArray key = "test-key";
         QByteArray expectedValue = "hello-world";
 
-        QVERIFY(plugin.putValue(key, expectedValue));
+        QVERIFY(plugin.kadPutValue(key, expectedValue));
         waitForEvents(*libp2pEventSpy, 1);
-        assertEvent(*libp2pEventSpy, RET_OK, "putValue");
+        assertEvent(*libp2pEventSpy, RET_OK, "kadPutValue");
 
-        QVERIFY(plugin.getValue(key, 1));
+        QVERIFY(plugin.kadGetValue(key, 1));
         waitForEvents(*libp2pEventSpy, 1);
-        assertEvent(*libp2pEventSpy, RET_OK, "getValue", expectedValue);
+        assertEvent(*libp2pEventSpy, RET_OK, "kadGetValue", expectedValue);
 
         stopPlugin(plugin, *libp2pEventSpy);
     }
@@ -186,7 +186,7 @@ private slots:
     }
 
 
-    void testGetProviders()
+    void testKadGetProviders()
     {
         Libp2pModulePlugin plugin;
 
@@ -210,24 +210,24 @@ private slots:
         QVERIFY(!cid.isEmpty());
 
         // ---- 2: Put value so key exists in DHT ----
-        QVERIFY(plugin.putValue(key, value));
+        QVERIFY(plugin.kadPutValue(key, value));
         waitForEvents(*spy, 1);
 
-        assertEvent(*spy, RET_OK, "putValue");
+        assertEvent(*spy, RET_OK, "kadPutValue");
 
         // ---- 3: Register provider ----
-        QVERIFY(plugin.addProvider(cid));
+        QVERIFY(plugin.kadAddProvider(cid));
         waitForEvents(*spy, 1);
 
-        assertEvent(*spy, RET_OK, "addProvider");
+        assertEvent(*spy, RET_OK, "kadAddProvider");
 
         // ---- 4: Query providers ----
-        QVERIFY(plugin.getProviders(cid));
+        QVERIFY(plugin.kadGetProviders(cid));
         waitForEvents(*spy, 1);
 
         auto providersEvent = takeEvent(*spy);
 
-        QCOMPARE(providersEvent.at(2).toString(), "getProviders");
+        QCOMPARE(providersEvent.at(2).toString(), "kadGetProviders");
         QCOMPARE(providersEvent.at(1).toInt(), RET_OK);
 
         QVariant providersVariant = providersEvent.at(4);
@@ -242,7 +242,7 @@ private slots:
         stopPlugin(plugin, *spy);
     }
 
-    void testGetRandomRecords()
+    void testKadGetRandomRecords()
     {
         Libp2pModulePlugin plugin;
 
@@ -250,12 +250,12 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        QVERIFY(plugin.getRandomRecords());
+        QVERIFY(plugin.kadGetRandomRecords());
         waitForEvents(*spy, 1);
 
         auto randomRecordsEvent = takeEvent(*spy);
 
-        QCOMPARE(randomRecordsEvent.at(2).toString(), "getRandomRecords");
+        QCOMPARE(randomRecordsEvent.at(2).toString(), "kadGetRandomRecords");
         QCOMPARE(randomRecordsEvent.at(1).toInt(), RET_OK);
 
         QVariant randomRecordsVariant = randomRecordsEvent.at(4);
