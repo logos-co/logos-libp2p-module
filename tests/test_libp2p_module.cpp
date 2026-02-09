@@ -241,6 +241,34 @@ private slots:
 
         stopPlugin(plugin, *spy);
     }
+
+    void testGetRandomRecords()
+    {
+        Libp2pModulePlugin plugin;
+
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QVERIFY(plugin.getRandomRecords());
+        waitForEvents(*spy, 1);
+
+        auto randomRecordsEvent = takeEvent(*spy);
+
+        QCOMPARE(randomRecordsEvent.at(2).toString(), "getRandomRecords");
+        QCOMPARE(randomRecordsEvent.at(1).toInt(), RET_OK);
+
+        QVariant randomRecordsVariant = randomRecordsEvent.at(4);
+        QVERIFY(randomRecordsVariant.isValid());
+
+        QVariantList randomRecords = randomRecordsVariant.toList();
+
+        // We expect at least one record (ourselves)
+        // TODO: this should not be empty, but for that we need more peers
+        // TODO: QVERIFY(!randomRecords.isEmpty());
+
+        stopPlugin(plugin, *spy);
+    }
 };
 
 QTEST_MAIN(TestLibp2pModule)

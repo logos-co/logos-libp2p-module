@@ -40,6 +40,8 @@ public:
     Q_INVOKABLE bool stopProviding(const QString &cid) override;
     Q_INVOKABLE bool getProviders(const QString &cid) override;
 
+    Q_INVOKABLE bool getRandomRecords() override;
+
     Q_INVOKABLE bool setEventCallback() override;
 
     Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);
@@ -75,6 +77,16 @@ private:
         size_t len,
         void *userData
     );
+
+    static void randomRecordsCallback(
+        int callerRet,
+        const Libp2pExtendedPeerRecord *records,
+        size_t recordsLen,
+        const char *msg,
+        size_t len,
+        void *userData
+    );
+
 
     static void peersCallback(
         int callerRet,

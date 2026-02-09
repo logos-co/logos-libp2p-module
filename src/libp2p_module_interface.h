@@ -18,6 +18,7 @@ public:
     Q_INVOKABLE virtual bool libp2pStart() = 0;
     Q_INVOKABLE virtual bool libp2pStop() = 0;
 
+    /* Kademlia */
     Q_INVOKABLE virtual bool findNode(const QString &peerId) = 0;
     Q_INVOKABLE virtual bool putValue(const QByteArray &key, const QByteArray &value) = 0;
     Q_INVOKABLE virtual bool getValue(const QByteArray &key, int quorum = -1) = 0;
@@ -25,6 +26,10 @@ public:
     Q_INVOKABLE virtual bool startProviding(const QString &cid) = 0;
     Q_INVOKABLE virtual bool stopProviding(const QString &cid) = 0;
     Q_INVOKABLE virtual bool getProviders(const QString &cid) = 0;
+
+    /* Kademlia Discovery (kad disco) */
+    Q_INVOKABLE virtual bool getRandomRecords() = 0;
+
     Q_INVOKABLE virtual bool setEventCallback() = 0;
 
 signals:

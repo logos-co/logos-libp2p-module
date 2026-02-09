@@ -12,8 +12,20 @@ struct CallbackContext {
 };
 
 struct PeerInfo {
-    QByteArray peerId;
-    QList<QByteArray> addrs;
+    QString peerId;
+    QList<QString> addrs;
+};
+
+struct ServiceInfo{
+    QString id;
+    QByteArray data;
+};
+
+struct ExtendedPeerRecord{
+    QString peerId;
+    uint64_t seqNo;
+    QList<QString> addrs;
+    QList<ServiceInfo> services;
 };
 
 
@@ -68,6 +80,134 @@ void Libp2pModulePlugin::libp2pCallback(
                 caller,
                 message,
                 QVariant()
+            );
+        },
+        Qt::QueuedConnection
+    );
+
+    delete callbackCtx;
+}
+
+QList<ServiceInfo> copyServiceInfos(
+    const Libp2pServiceInfo *services,
+    size_t servicesLen
+)
+{
+    QList<ServiceInfo> servicesCopy;
+
+    if (!services || servicesLen == 0) {
+        return servicesCopy;
+    }
+
+    servicesCopy.reserve(servicesLen);
+
+    for (size_t i = 0; i < servicesLen; ++i) {
+        ServiceInfo copy;
+
+        if (services[i].id) {
+            copy.id = services[i].id;
+        }
+
+        if (services[i].data && services[i].dataLen > 0) {
+            copy.data = QByteArray(
+                reinterpret_cast<const char *>(services[i].data),
+                int(services[i].dataLen)
+            );
+        }
+
+        servicesCopy.append(std::move(copy));
+    }
+
+    return servicesCopy;
+}
+
+ExtendedPeerRecord copyExtendedPeerRecord(
+    const Libp2pExtendedPeerRecord &record
+)
+{
+    ExtendedPeerRecord copy;
+
+    if (record.peerId) {
+        copy.peerId = record.peerId;
+    }
+
+    copy.seqNo = record.seqNo;
+
+    /* ---- Addresses ---- */
+    if (record.addrs && record.addrsLen > 0) {
+        copy.addrs.reserve(record.addrsLen);
+
+        for (size_t i = 0; i < record.addrsLen; ++i) {
+            const char *addr = record.addrs[i];
+            if (addr) {
+                copy.addrs.append(addr);
+            }
+        }
+    }
+
+    copy.services = copyServiceInfos(record.services, record.servicesLen);
+
+    return copy;
+}
+
+QList<ExtendedPeerRecord> copyExtendedRecords(
+    const Libp2pExtendedPeerRecord *records,
+    size_t recordsLen
+)
+{
+    QList<ExtendedPeerRecord> recordsCopy;
+
+    if (!records || recordsLen == 0) {
+        return recordsCopy;
+    }
+
+    recordsCopy.reserve(recordsLen);
+
+    for (size_t i = 0; i < recordsLen; ++i) {
+        recordsCopy.append(copyExtendedPeerRecord(records[i]));
+    }
+
+    return recordsCopy;
+}
+
+
+
+void Libp2pModulePlugin::randomRecordsCallback(
+    int callerRet,
+    const Libp2pExtendedPeerRecord *records,
+    size_t recordsLen,
+    const char *msg,
+    size_t len,
+    void *userData
+)
+{
+    auto *callbackCtx = static_cast<CallbackContext *>(userData);
+    if (!callbackCtx) return;
+
+    Libp2pModulePlugin *self = callbackCtx->instance;
+    if (!self) { delete callbackCtx; return; }
+
+    QString caller = callbackCtx->caller;
+    QString reqId = callbackCtx->reqId;
+
+    QList<ExtendedPeerRecord> recordsCopy = copyExtendedRecords(records, recordsLen);
+
+    QString message;
+    if (msg && len > 0)
+        message = QString::fromUtf8(msg, int(len));
+
+    QPointer<Libp2pModulePlugin> safeSelf(self);
+    QMetaObject::invokeMethod(
+        safeSelf,
+        [safeSelf, callerRet, reqId, caller, message,
+         recordsCopy = std::move(recordsCopy)]() { // avoid copying providers again
+            if (!safeSelf) return;
+            emit safeSelf->libp2pEvent(
+                callerRet,
+                reqId,
+                caller,
+                message,
+                QVariant::fromValue(recordsCopy)
             );
         },
         Qt::QueuedConnection
@@ -232,8 +372,14 @@ void Libp2pModulePlugin::getProvidersCallback(
 Libp2pModulePlugin::Libp2pModulePlugin()
     : ctx(nullptr)
 {
-    qRegisterMetaType<Libp2pPeerInfo>("Libp2pPeerInfo");
+    qRegisterMetaType<PeerInfo>("PeerInfo");
+    qRegisterMetaType<ServiceInfo>("ServiceInfo");
+    qRegisterMetaType<ExtendedPeerRecord>("ExtendedPeerRecord");
+
+    /* ---- QList containers ---- */
     qRegisterMetaType<QList<PeerInfo>>("QList<PeerInfo>");
+    qRegisterMetaType<QList<ServiceInfo>>("QList<ServiceInfo>");
+    qRegisterMetaType<QList<ExtendedPeerRecord>>("QList<ExtendedPeerRecord>");
 
     std::memset(&config, 0, sizeof(config));
 
@@ -374,7 +520,7 @@ bool Libp2pModulePlugin::findNode(const QString &peerId)
 
     auto *callbackCtx = new CallbackContext{ "findNode", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_find_node(
+    int ret = libp2p_kad_find_node(
         ctx,
         peerId.toUtf8().constData(),
         &Libp2pModulePlugin::peersCallback,
@@ -398,7 +544,7 @@ bool Libp2pModulePlugin::putValue(const QByteArray &key, const QByteArray &value
 
     auto *callbackCtx = new CallbackContext{ "putValue", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_put_value(
+    int ret = libp2p_kad_put_value(
         ctx,
         reinterpret_cast<const uint8_t *>(key.constData()),
         key.size(),
@@ -425,7 +571,7 @@ bool Libp2pModulePlugin::getValue(const QByteArray &key, int quorum)
 
     auto *callbackCtx = new CallbackContext{ "getValue", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_get_value(
+    int ret = libp2p_kad_get_value(
         ctx,
         reinterpret_cast<const uint8_t *>(key.constData()),
         key.size(),
@@ -451,7 +597,7 @@ bool Libp2pModulePlugin::addProvider(const QString &cid)
 
     auto *callbackCtx = new CallbackContext{ "addProvider", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_add_provider(
+    int ret = libp2p_kad_add_provider(
         ctx,
         cid.toUtf8().constData(),
         &Libp2pModulePlugin::libp2pCallback,
@@ -475,7 +621,7 @@ bool Libp2pModulePlugin::getProviders(const QString &cid)
 
     auto *callbackCtx = new CallbackContext{ "getProviders", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_get_providers(
+    int ret = libp2p_kad_get_providers(
         ctx,
         cid.toUtf8().constData(),
         &Libp2pModulePlugin::getProvidersCallback,
@@ -499,7 +645,7 @@ bool Libp2pModulePlugin::startProviding(const QString &cid)
 
     auto *callbackCtx = new CallbackContext{ "startProviding", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_start_providing(
+    int ret = libp2p_kad_start_providing(
         ctx,
         cid.toUtf8().constData(),
         &Libp2pModulePlugin::libp2pCallback,
@@ -523,10 +669,35 @@ bool Libp2pModulePlugin::stopProviding(const QString &cid)
 
     auto *callbackCtx = new CallbackContext{ "stopProviding", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_stop_providing(
+    int ret = libp2p_kad_stop_providing(
         ctx,
         cid.toUtf8().constData(),
         &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK) {
+        delete callbackCtx;
+    }
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::getRandomRecords()
+{
+    qDebug() << "Libp2pModulePlugin::getRandomRecords called";
+
+    if (!ctx) {
+        qDebug() << "getRandomRecords called without a context";
+        return false;
+    }
+
+    auto *callbackCtx =
+        new CallbackContext{ "getRandomRecords", QUuid::createUuid().toString(), this };
+
+    int ret = libp2p_kad_random_records(
+        ctx,
+        &Libp2pModulePlugin::randomRecordsCallback,
         callbackCtx
     );
 
