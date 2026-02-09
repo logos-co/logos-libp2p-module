@@ -113,5 +113,29 @@ private:
         size_t len,
         void *userData
     );
+
+};
+
+struct CallbackContext {
+    QString caller;
+    QString reqId;
+    Libp2pModulePlugin *instance;
+};
+
+struct PeerInfo {
+    QString peerId;
+    QList<QString> addrs;
+};
+
+struct ServiceInfo{
+    QString id;
+    QByteArray data;
+};
+
+struct ExtendedPeerRecord{
+    QString peerId;
+    uint64_t seqNo;
+    QList<QString> addrs;
+    QList<ServiceInfo> services;
 };
 

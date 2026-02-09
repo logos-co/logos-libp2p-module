@@ -6,7 +6,6 @@ class TestLibp2pModule : public QObject
     Q_OBJECT
 
 private:
-
     /* ---------------------------
      * Shared helpers
      * --------------------------- */
