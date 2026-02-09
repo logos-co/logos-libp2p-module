@@ -11,6 +11,12 @@ struct CallbackContext {
     Libp2pModulePlugin *instance;
 };
 
+struct PeerInfo {
+    QByteArray peerId;
+    QList<QByteArray> addrs;
+};
+
+
 /* -------------------- Callbacks -------------------- */
 
 void Libp2pModulePlugin::onLibp2pEventDefault(
@@ -146,6 +152,36 @@ void Libp2pModulePlugin::libp2pBufferCallback(
     delete callbackCtx;
 }
 
+QList<PeerInfo> copyProviders(
+    const Libp2pPeerInfo *providers,
+    size_t providersLen
+)
+{
+    QList<PeerInfo> providersCopy;
+
+    if (!providers || providersLen == 0) {
+        return providersCopy;
+    }
+
+    providersCopy.reserve(providersLen);
+
+    for (size_t i = 0; i < providersLen; ++i) {
+        PeerInfo copy;
+
+        if (providers[i].peerId)
+            copy.peerId = providers[i].peerId;
+
+        for (size_t j = 0; j < providers[i].addrsLen; ++j) {
+            const char* addr = providers[i].addrs[j];
+            if (addr)
+                copy.addrs.append(addr);
+        }
+
+        providersCopy.append(std::move(copy));
+    }
+
+    return providersCopy;
+}
 
 void Libp2pModulePlugin::getProvidersCallback(
     int callerRet,
@@ -165,22 +201,28 @@ void Libp2pModulePlugin::getProvidersCallback(
     QString caller = callbackCtx->caller;
     QString reqId = callbackCtx->reqId;
 
-    QVector<Libp2pPeerInfo> providersCopy;
-    if (providers && providersLen > 0) {
-        providersCopy.reserve(providersLen);
-        for (size_t i = 0; i < providersLen; ++i)
-            providersCopy.append(providers[i]);
-    }
+    QList<PeerInfo> providersCopy = copyProviders(providers, providersLen);
 
     QString message;
     if (msg && len > 0)
         message = QString::fromUtf8(msg, int(len));
 
     QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(safeSelf, [safeSelf, callerRet, reqId, caller, message, providersCopy]() {
-        if (!safeSelf) return;
-        emit safeSelf->libp2pEvent(callerRet, reqId, caller, message, QVariant::fromValue(providersCopy));
-    }, Qt::QueuedConnection);
+    QMetaObject::invokeMethod(
+        safeSelf,
+        [safeSelf, callerRet, reqId, caller, message,
+         providersCopy = std::move(providersCopy)]() { // avoid copying providers again
+            if (!safeSelf) return;
+            emit safeSelf->libp2pEvent(
+                callerRet,
+                reqId,
+                caller,
+                message,
+                QVariant::fromValue(providersCopy)
+            );
+        },
+        Qt::QueuedConnection
+    );
 
     delete callbackCtx;
 }
@@ -191,7 +233,7 @@ Libp2pModulePlugin::Libp2pModulePlugin()
     : ctx(nullptr)
 {
     qRegisterMetaType<Libp2pPeerInfo>("Libp2pPeerInfo");
-    qRegisterMetaType<QVector<Libp2pPeerInfo>>("QVector<Libp2pPeerInfo>");
+    qRegisterMetaType<QList<PeerInfo>>("QList<PeerInfo>");
 
     std::memset(&config, 0, sizeof(config));
 
@@ -260,26 +302,6 @@ bool Libp2pModulePlugin::toCid(const QByteArray &key)
 
     return ret == RET_OK;
 }
-
-
-// QByteArray Libp2pModulePlugin::toKey(const QString &cid)
-// {
-//     QByteArray utf8 = cid.toUtf8();
-
-//     size_t outLen = 0;
-//     uint8_t *rawKey = libp2p_from_cid(utf8.constData(), &outLen);
-
-//     if (!rawKey || outLen == 0)
-//         return {};
-
-//     QByteArray key(reinterpret_cast<const char *>(rawKey),
-//                    static_cast<int>(outLen));
-
-//     libp2p_free(rawKey);
-
-//     return key;
-// }
-
 
 bool Libp2pModulePlugin::foo(const QString &bar)
 {

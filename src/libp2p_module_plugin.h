@@ -26,7 +26,6 @@ public:
     QString version() const override { return "1.0.0"; }
 
     Q_INVOKABLE bool toCid(const QByteArray &key) override;
-    // Q_INVOKABLE bool toKey(const QString &cid) override;
     Q_INVOKABLE bool foo(const QString &bar) override;
 
     Q_INVOKABLE bool libp2pStart() override;

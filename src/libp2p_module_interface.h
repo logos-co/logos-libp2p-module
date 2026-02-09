@@ -13,7 +13,6 @@ class Libp2pModuleInterface : public PluginInterface
 public:
     virtual ~Libp2pModuleInterface() {}
     Q_INVOKABLE virtual bool toCid(const QByteArray &key) = 0;
-    // Q_INVOKABLE virtual bool toKey(const QString &cid) = 0;
     Q_INVOKABLE virtual bool foo(const QString &bar) = 0;
 
     Q_INVOKABLE virtual bool libp2pStart() = 0;
