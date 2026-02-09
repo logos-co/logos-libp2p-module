@@ -266,35 +266,35 @@ void Libp2pModulePlugin::libp2pBufferCallback(
     delete callbackCtx;
 }
 
-QList<PeerInfo> copyProviders(
-    const Libp2pPeerInfo *providers,
-    size_t providersLen
+QList<PeerInfo> copyPeerInfos(
+    const Libp2pPeerInfo *peerInfos,
+    size_t peerInfosLen
 )
 {
-    QList<PeerInfo> providersCopy;
+    QList<PeerInfo> peerInfosCopy;
 
-    if (!providers || providersLen == 0) {
-        return providersCopy;
+    if (!peerInfos || peerInfosLen == 0) {
+        return peerInfosCopy;
     }
 
-    providersCopy.reserve(providersLen);
+    peerInfosCopy.reserve(peerInfosLen);
 
-    for (size_t i = 0; i < providersLen; ++i) {
+    for (size_t i = 0; i < peerInfosLen; ++i) {
         PeerInfo copy;
 
-        if (providers[i].peerId)
-            copy.peerId = providers[i].peerId;
+        if (peerInfos[i].peerId)
+            copy.peerId = peerInfos[i].peerId;
 
-        for (size_t j = 0; j < providers[i].addrsLen; ++j) {
-            const char* addr = providers[i].addrs[j];
+        for (size_t j = 0; j < peerInfos[i].addrsLen; ++j) {
+            const char* addr = peerInfos[i].addrs[j];
             if (addr)
                 copy.addrs.append(addr);
         }
 
-        providersCopy.append(std::move(copy));
+        peerInfosCopy.append(std::move(copy));
     }
 
-    return providersCopy;
+    return peerInfosCopy;
 }
 
 void Libp2pModulePlugin::getProvidersCallback(
@@ -315,7 +315,7 @@ void Libp2pModulePlugin::getProvidersCallback(
     QString caller = callbackCtx->caller;
     QString reqId = callbackCtx->reqId;
 
-    QList<PeerInfo> providersCopy = copyProviders(providers, providersLen);
+    QList<PeerInfo> providersCopy = copyPeerInfos(providers, providersLen);
 
     QString message;
     if (msg && len > 0)
@@ -341,5 +341,92 @@ void Libp2pModulePlugin::getProvidersCallback(
     delete callbackCtx;
 }
 
-/* -------------------- End Callbacks -------------------- */
+void Libp2pModulePlugin::peerInfoCallback(
+    int callerRet,
+    const Libp2pPeerInfo *info,
+    const char *msg,
+    size_t len,
+    void *userData
+)
+{
+    auto *callbackCtx = static_cast<CallbackContext *>(userData);
+    if (!callbackCtx) return;
+
+    Libp2pModulePlugin *self = callbackCtx->instance;
+    if (!self) { delete callbackCtx; return; }
+
+    QString caller = callbackCtx->caller;
+    QString reqId = callbackCtx->reqId;
+
+    PeerInfo copy = copyPeerInfos(info, 1)[0];
+
+    QString message;
+    if (msg && len > 0)
+        message = QString::fromUtf8(msg, int(len));
+
+    QPointer<Libp2pModulePlugin> safeSelf(self);
+    QMetaObject::invokeMethod(
+        safeSelf,
+        [safeSelf, callerRet, reqId, caller, message,
+         copy = std::move(copy)]() {
+            if (!safeSelf) return;
+
+            emit safeSelf->libp2pEvent(
+                callerRet,
+                reqId,
+                caller,
+                message,
+                QVariant::fromValue(copy)
+            );
+        },
+        Qt::QueuedConnection
+    );
+
+    delete callbackCtx;
+}
+
+void Libp2pModulePlugin::connectionCallback(
+    int callerRet,
+    libp2p_stream_t *conn,
+    const char *msg,
+    size_t len,
+    void *userData
+)
+{
+    auto *callbackCtx = static_cast<CallbackContext *>(userData);
+    if (!callbackCtx) return;
+
+    Libp2pModulePlugin *self = callbackCtx->instance;
+    if (!self) { delete callbackCtx; return; }
+
+    QString caller = callbackCtx->caller;
+    QString reqId = callbackCtx->reqId;
+
+    QVariant connVariant = QVariant::fromValue(reinterpret_cast<quintptr>(conn));
+
+    QString message;
+    if (msg && len > 0)
+        message = QString::fromUtf8(msg, int(len));
+
+    QPointer<Libp2pModulePlugin> safeSelf(self);
+    QMetaObject::invokeMethod(
+        safeSelf,
+        [safeSelf, callerRet, reqId, caller, message, connVariant]() {
+            if (!safeSelf) return;
+
+            emit safeSelf->libp2pEvent(
+                callerRet,
+                reqId,
+                caller,
+                message,
+                connVariant
+            );
+        },
+        Qt::QueuedConnection
+    );
+
+    delete callbackCtx;
+}
+
+
 

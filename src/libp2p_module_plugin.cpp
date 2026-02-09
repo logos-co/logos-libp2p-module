@@ -145,6 +145,314 @@ bool Libp2pModulePlugin::libp2pStop()
     return ret == RET_OK;
 }
 
+/* --------------- Connectivity --------------- */
+bool Libp2pModulePlugin::connectPeer(
+    const QString peerId,
+    const QList<QString> multiaddrs,
+    int64_t timeoutMs
+)
+{
+    if (!ctx) return false;
+
+    QByteArray peerIdUtf8 = peerId.toUtf8();
+
+    QList<QByteArray> addrBuffers;
+    QVector<const char*> addrPtrs;
+
+    addrBuffers.reserve(multiaddrs.size());
+    addrPtrs.reserve(multiaddrs.size());
+
+    for (const auto &addr : multiaddrs) {
+        addrBuffers.append(addr.toUtf8());
+        addrPtrs.append(addrBuffers.last().constData());
+    }
+
+    auto *callbackCtx = new CallbackContext{
+        "connectPeer",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_connect(
+        ctx,
+        peerIdUtf8.constData(),
+        addrPtrs.data(),
+        addrPtrs.size(),
+        timeoutMs,
+        &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK)
+        delete callbackCtx;
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::disconnectPeer(const QString peerId)
+{
+    if (!ctx) return false;
+
+    QByteArray peerIdUtf8 = peerId.toUtf8();
+
+    auto *callbackCtx = new CallbackContext{
+        "disconnectPeer",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_disconnect(
+        ctx,
+        peerIdUtf8.constData(),
+        &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK)
+        delete callbackCtx;
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::peerInfo()
+{
+    if (!ctx) return false;
+
+    auto *callbackCtx = new CallbackContext{
+        "peerInfo",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_peerinfo(
+        ctx,
+        &Libp2pModulePlugin::peerInfoCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK)
+        delete callbackCtx;
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::connectedPeers(int direction)
+{
+    if (!ctx) return false;
+
+    auto *callbackCtx = new CallbackContext{
+        "connectedPeers",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_connected_peers(
+        ctx,
+        direction,
+        &Libp2pModulePlugin::peersCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK)
+        delete callbackCtx;
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
+{
+    if (!ctx) return false;
+
+    QByteArray peerIdUtf8 = peerId.toUtf8();
+    QByteArray protoUtf8 = proto.toUtf8();
+
+    auto *callbackCtx = new CallbackContext{
+        "dial",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_dial(
+        ctx,
+        peerIdUtf8.constData(),
+        protoUtf8.constData(),
+        &Libp2pModulePlugin::connectionCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK)
+        delete callbackCtx;
+
+    return ret == RET_OK;
+}
+
+// bool Libp2pModulePlugin::streamClose(libp2p_stream_t *conn)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamClose",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_close(
+//         ctx,
+//         conn,
+//         &Libp2pModulePlugin::libp2pCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamCloseEOF(libp2p_stream_t *conn)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamCloseEOF",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_closeWithEOF(
+//         ctx,
+//         conn,
+//         &Libp2pModulePlugin::libp2pCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamRelease(libp2p_stream_t *conn)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamRelease",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_release(
+//         ctx,
+//         conn,
+//         &Libp2pModulePlugin::libp2pCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamReadExactly(libp2p_stream_t *conn, size_t len)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamReadExactly",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_readExactly(
+//         ctx,
+//         conn,
+//         len,
+//         &Libp2pModulePlugin::libp2pBufferCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamReadLp(libp2p_stream_t *conn, int64_t maxSize)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamReadLp",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_readLp(
+//         ctx,
+//         conn,
+//         maxSize,
+//         &Libp2pModulePlugin::libp2pBufferCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamWrite(libp2p_stream_t *conn, const QByteArray &data)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamWrite",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_write(
+//         ctx,
+//         conn,
+//         reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
+//         data.size(),
+//         &Libp2pModulePlugin::libp2pCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamWriteLp(libp2p_stream_t *conn, const QByteArray &data)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamWriteLp",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_writeLp(
+//         ctx,
+//         conn,
+//         reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
+//         data.size(),
+//         &Libp2pModulePlugin::libp2pCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
 /* --------------- Kademlia --------------- */
 
 bool Libp2pModulePlugin::kadFindNode(const QString &peerId)

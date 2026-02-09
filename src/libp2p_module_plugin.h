@@ -30,7 +30,23 @@ public:
     Q_INVOKABLE bool libp2pStart() override;
     Q_INVOKABLE bool libp2pStop() override;
 
-    /* Kademlia-related functions */
+    /* ----------- Connectivity ----------- */
+    Q_INVOKABLE bool connectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
+    Q_INVOKABLE bool disconnectPeer(const QString peerId) override;
+    Q_INVOKABLE bool peerInfo() override;
+    Q_INVOKABLE bool connectedPeers(int direction = 0) override;
+    Q_INVOKABLE bool dial(const QString peerId, const QString proto) override;
+
+    /* ----------- Streams ----------- */
+    // Q_INVOKABLE bool streamClose(quintptr stream) override;
+    // Q_INVOKABLE bool streamCloseWithEOF(quintptr stream) override;
+    // Q_INVOKABLE bool streamRelease(quintptr stream) override;
+    // Q_INVOKABLE bool streamReadExactly(quintptr stream, qsizetype dataLen) override;
+    // Q_INVOKABLE bool streamReadLp(quintptr stream, qint64 maxSize) override;
+    // Q_INVOKABLE bool streamWrite(quintptr stream, const QByteArray &data) override;
+    // Q_INVOKABLE bool streamWriteLp(quintptr stream, const QByteArray &data) override;
+
+    /* ----------- Kademlia ----------- */
     Q_INVOKABLE bool toCid(const QByteArray &key) override;
     Q_INVOKABLE bool kadFindNode(const QString &peerId) override;
     Q_INVOKABLE bool kadPutValue(const QByteArray &key, const QByteArray &value) override;
@@ -114,6 +130,21 @@ private:
         void *userData
     );
 
+    static void peerInfoCallback(
+        int callerRet,
+        const Libp2pPeerInfo *info,
+        const char *msg,
+        size_t len,
+        void *userData
+    );
+
+    static void connectionCallback(
+        int callerRet,
+        libp2p_stream_t *conn,
+        const char *msg,
+        size_t len,
+        void *userData
+    );
 };
 
 struct CallbackContext {

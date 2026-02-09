@@ -17,7 +17,23 @@ public:
     Q_INVOKABLE virtual bool libp2pStart() = 0;
     Q_INVOKABLE virtual bool libp2pStop() = 0;
 
-    /* Kademlia */
+    /* ----------- Connectivity ----------- */
+    Q_INVOKABLE virtual bool connectPeer(const QString peerId, const QStringList multiaddrs, int64_t timeoutMs = -1) = 0;
+    Q_INVOKABLE virtual bool disconnectPeer(const QString peerId) = 0;
+    Q_INVOKABLE virtual bool peerInfo() = 0;
+    Q_INVOKABLE virtual bool connectedPeers(int direction = 0) = 0;
+    Q_INVOKABLE virtual bool dial(const QString peerId, const QString proto) = 0;
+
+    /* ----------- Streams ----------- */
+    // Q_INVOKABLE virtual bool streamClose(quintptr stream) = 0;
+    // Q_INVOKABLE virtual bool streamCloseWithEOF(quintptr stream) = 0;
+    // Q_INVOKABLE virtual bool streamRelease(quintptr stream) = 0;
+    // Q_INVOKABLE virtual bool streamReadExactly(quintptr stream, qsizetype dataLen) = 0;
+    // Q_INVOKABLE virtual bool streamReadLp(quintptr stream, qint64 maxSize) = 0;
+    // Q_INVOKABLE virtual bool streamWrite(quintptr stream, const QByteArray &data) = 0;
+    // Q_INVOKABLE virtual bool streamWriteLp(quintptr stream, const QByteArray &data) = 0;
+
+    /* ----------- Kademlia ----------- */
     Q_INVOKABLE virtual bool toCid(const QByteArray &key) = 0;
     Q_INVOKABLE virtual bool kadFindNode(const QString &peerId) = 0;
     Q_INVOKABLE virtual bool kadPutValue(const QByteArray &key, const QByteArray &value) = 0;
