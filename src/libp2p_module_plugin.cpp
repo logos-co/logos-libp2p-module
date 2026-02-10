@@ -12,6 +12,7 @@ Libp2pModulePlugin::Libp2pModulePlugin()
     qRegisterMetaType<PeerInfo>("PeerInfo");
     qRegisterMetaType<ServiceInfo>("ServiceInfo");
     qRegisterMetaType<ExtendedPeerRecord>("ExtendedPeerRecord");
+    qRegisterMetaType<Connection>("Connection");
 
     /* ---- QList containers ---- */
     qRegisterMetaType<QList<PeerInfo>>("QList<PeerInfo>");
@@ -152,7 +153,9 @@ bool Libp2pModulePlugin::connectPeer(
     int64_t timeoutMs
 )
 {
-    if (!ctx) return false;
+    if (!ctx) {
+		return false;
+	}
 
     QByteArray peerIdUtf8 = peerId.toUtf8();
 
@@ -183,15 +186,18 @@ bool Libp2pModulePlugin::connectPeer(
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
 
 bool Libp2pModulePlugin::disconnectPeer(const QString peerId)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        return false;
+    }
 
     QByteArray peerIdUtf8 = peerId.toUtf8();
 
@@ -208,15 +214,18 @@ bool Libp2pModulePlugin::disconnectPeer(const QString peerId)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
 
 bool Libp2pModulePlugin::peerInfo()
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "peerInfo",
@@ -230,15 +239,18 @@ bool Libp2pModulePlugin::peerInfo()
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
 
 bool Libp2pModulePlugin::connectedPeers(int direction)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "connectedPeers",
@@ -253,15 +265,18 @@ bool Libp2pModulePlugin::connectedPeers(int direction)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
 
 bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+		return false;
+	}
 
     QByteArray peerIdUtf8 = peerId.toUtf8();
     QByteArray protoUtf8 = proto.toUtf8();
@@ -280,178 +295,194 @@ bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
 
-// bool Libp2pModulePlugin::streamClose(libp2p_stream_t *conn)
-// {
-//     if (!ctx || !conn) return false;
+/* --------------- Streams --------------- */
+bool Libp2pModulePlugin::streamClose(const Connection &connection)
+{
+    libp2p_stream_t *stream = connection.get();
 
-//     auto *callbackCtx = new CallbackContext{
-//         "libp2pStreamClose",
-//         QUuid::createUuid().toString(),
-//         this
-//     };
+    if (!ctx || !stream)
+        return false;
 
-//     int ret = libp2p_stream_close(
-//         ctx,
-//         conn,
-//         &Libp2pModulePlugin::libp2pCallback,
-//         callbackCtx
-//     );
+    auto *callbackCtx = new CallbackContext{
+        "streamClose",
+        QUuid::createUuid().toString(),
+        this
+    };
 
-//     if (ret != RET_OK)
-//         delete callbackCtx;
+    int ret = libp2p_stream_close(
+        ctx,
+        stream,
+        &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
 
-//     return ret == RET_OK;
-// }
+     if (ret != RET_OK) { delete callbackCtx; }
 
-// bool Libp2pModulePlugin::streamCloseEOF(libp2p_stream_t *conn)
-// {
-//     if (!ctx || !conn) return false;
+    return ret == RET_OK;
+}
 
-//     auto *callbackCtx = new CallbackContext{
-//         "libp2pStreamCloseEOF",
-//         QUuid::createUuid().toString(),
-//         this
-//     };
+bool Libp2pModulePlugin::streamCloseEOF(const Connection &connection)
+{
+    libp2p_stream_t *stream = connection.get();
 
-//     int ret = libp2p_stream_closeWithEOF(
-//         ctx,
-//         conn,
-//         &Libp2pModulePlugin::libp2pCallback,
-//         callbackCtx
-//     );
+    if (!ctx || !stream)
+        return false;
 
-//     if (ret != RET_OK)
-//         delete callbackCtx;
+    auto *callbackCtx = new CallbackContext{
+        "streamCloseEOF",
+        QUuid::createUuid().toString(),
+        this
+    };
 
-//     return ret == RET_OK;
-// }
+    int ret = libp2p_stream_closeWithEOF(
+        ctx,
+        stream,
+        &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
 
-// bool Libp2pModulePlugin::streamRelease(libp2p_stream_t *conn)
-// {
-//     if (!ctx || !conn) return false;
+     if (ret != RET_OK) { delete callbackCtx; }
 
-//     auto *callbackCtx = new CallbackContext{
-//         "libp2pStreamRelease",
-//         QUuid::createUuid().toString(),
-//         this
-//     };
+    return ret == RET_OK;
+}
 
-//     int ret = libp2p_stream_release(
-//         ctx,
-//         conn,
-//         &Libp2pModulePlugin::libp2pCallback,
-//         callbackCtx
-//     );
+bool Libp2pModulePlugin::streamRelease(const Connection &connection)
+{
+    libp2p_stream_t *stream = connection.get();
 
-//     if (ret != RET_OK)
-//         delete callbackCtx;
+    if (!ctx || !stream)
+        return false;
 
-//     return ret == RET_OK;
-// }
+    auto *callbackCtx = new CallbackContext{
+        "streamRelease",
+        QUuid::createUuid().toString(),
+        this
+    };
 
-// bool Libp2pModulePlugin::streamReadExactly(libp2p_stream_t *conn, size_t len)
-// {
-//     if (!ctx || !conn) return false;
+    int ret = libp2p_stream_release(
+        ctx,
+        stream,
+        &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
 
-//     auto *callbackCtx = new CallbackContext{
-//         "libp2pStreamReadExactly",
-//         QUuid::createUuid().toString(),
-//         this
-//     };
+     if (ret != RET_OK) { delete callbackCtx; }
 
-//     int ret = libp2p_stream_readExactly(
-//         ctx,
-//         conn,
-//         len,
-//         &Libp2pModulePlugin::libp2pBufferCallback,
-//         callbackCtx
-//     );
+    return ret == RET_OK;
+}
 
-//     if (ret != RET_OK)
-//         delete callbackCtx;
+bool Libp2pModulePlugin::streamReadExactly(const Connection &connection, size_t len)
+{
+    libp2p_stream_t *stream = connection.get();
 
-//     return ret == RET_OK;
-// }
+    if (!ctx || !stream)
+        return false;
 
-// bool Libp2pModulePlugin::streamReadLp(libp2p_stream_t *conn, int64_t maxSize)
-// {
-//     if (!ctx || !conn) return false;
+    auto *callbackCtx = new CallbackContext{
+        "streamReadExactly",
+        QUuid::createUuid().toString(),
+        this
+    };
 
-//     auto *callbackCtx = new CallbackContext{
-//         "libp2pStreamReadLp",
-//         QUuid::createUuid().toString(),
-//         this
-//     };
+    int ret = libp2p_stream_readExactly(
+        ctx,
+        stream,
+        len,
+        &Libp2pModulePlugin::libp2pBufferCallback,
+        callbackCtx
+    );
 
-//     int ret = libp2p_stream_readLp(
-//         ctx,
-//         conn,
-//         maxSize,
-//         &Libp2pModulePlugin::libp2pBufferCallback,
-//         callbackCtx
-//     );
+     if (ret != RET_OK) { delete callbackCtx; }
 
-//     if (ret != RET_OK)
-//         delete callbackCtx;
+    return ret == RET_OK;
+}
 
-//     return ret == RET_OK;
-// }
+bool Libp2pModulePlugin::streamReadLp(const Connection &connection, int64_t maxSize)
+{
+    libp2p_stream_t *stream = connection.get();
 
-// bool Libp2pModulePlugin::streamWrite(libp2p_stream_t *conn, const QByteArray &data)
-// {
-//     if (!ctx || !conn) return false;
+    if (!ctx || !stream)
+        return false;
 
-//     auto *callbackCtx = new CallbackContext{
-//         "libp2pStreamWrite",
-//         QUuid::createUuid().toString(),
-//         this
-//     };
+    auto *callbackCtx = new CallbackContext{
+        "streamReadLp",
+        QUuid::createUuid().toString(),
+        this
+    };
 
-//     int ret = libp2p_stream_write(
-//         ctx,
-//         conn,
-//         reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
-//         data.size(),
-//         &Libp2pModulePlugin::libp2pCallback,
-//         callbackCtx
-//     );
+    int ret = libp2p_stream_readLp(
+        ctx,
+        stream,
+        maxSize,
+        &Libp2pModulePlugin::libp2pBufferCallback,
+        callbackCtx
+    );
 
-//     if (ret != RET_OK)
-//         delete callbackCtx;
+     if (ret != RET_OK) { delete callbackCtx; }
 
-//     return ret == RET_OK;
-// }
+    return ret == RET_OK;
+}
 
-// bool Libp2pModulePlugin::streamWriteLp(libp2p_stream_t *conn, const QByteArray &data)
-// {
-//     if (!ctx || !conn) return false;
+bool Libp2pModulePlugin::streamWrite(const Connection &connection, const QByteArray &data)
+{
+    libp2p_stream_t *stream = connection.get();
 
-//     auto *callbackCtx = new CallbackContext{
-//         "libp2pStreamWriteLp",
-//         QUuid::createUuid().toString(),
-//         this
-//     };
+    if (!ctx || !stream)
+        return false;
 
-//     int ret = libp2p_stream_writeLp(
-//         ctx,
-//         conn,
-//         reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
-//         data.size(),
-//         &Libp2pModulePlugin::libp2pCallback,
-//         callbackCtx
-//     );
+    auto *callbackCtx = new CallbackContext{
+        "streamWrite",
+        QUuid::createUuid().toString(),
+        this
+    };
 
-//     if (ret != RET_OK)
-//         delete callbackCtx;
+    int ret = libp2p_stream_write(
+        ctx,
+        stream,
+        reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
+        data.size(),
+        &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
 
-//     return ret == RET_OK;
-// }
+     if (ret != RET_OK) { delete callbackCtx; }
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::streamWriteLp(const Connection &connection, const QByteArray &data)
+{
+    libp2p_stream_t *stream = connection.get();
+
+    if (!ctx || !stream)
+        return false;
+
+    auto *callbackCtx = new CallbackContext{
+        "streamWriteLp",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_stream_writeLp(
+        ctx,
+        stream,
+        reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
+        data.size(),
+        &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
+
+     if (ret != RET_OK) { delete callbackCtx; }
+
+    return ret == RET_OK;
+}
 
 /* --------------- Kademlia --------------- */
 
