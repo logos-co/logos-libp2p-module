@@ -430,8 +430,6 @@ private slots:
 
         QVERIFY(plugin.syncLibp2pStop());
     }
-
-
 };
 
 QTEST_MAIN(TestLibp2pModule)

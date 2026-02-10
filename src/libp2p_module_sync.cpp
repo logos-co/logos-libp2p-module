@@ -121,4 +121,3 @@ QString Libp2pModulePlugin::syncToCid(const QByteArray &key)
     auto res = runSync(this, [&]() { return toCid(key); });
     return res.ok ? res.data.toString() : QString{};
 }
-
