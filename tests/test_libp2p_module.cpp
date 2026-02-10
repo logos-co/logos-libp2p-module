@@ -6,7 +6,6 @@ class TestLibp2pModule : public QObject
     Q_OBJECT
 
 private:
-
     /* ---------------------------
      * Shared helpers
      * --------------------------- */
@@ -113,7 +112,7 @@ private:
 private slots:
 
     /* ---------------------------
-     * Tests
+     * Construction + destruction + foo
      * --------------------------- */
 
     void testConstruction()
@@ -145,7 +144,117 @@ private slots:
         stopPlugin(plugin, *spy);
     }
 
-    void testGetPutValue()
+    /* ---------------------------
+     * Connectivity tests
+     * --------------------------- */
+
+    void testConnectPeer()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QString fakePeer =
+            "12D3KooWInvalidPeerForTest";
+
+        QStringList fakeAddrs = {
+            "/ip4/127.0.0.1/tcp/9999"
+        };
+
+        QVERIFY(plugin.connectPeer(fakePeer, fakeAddrs));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+
+        QCOMPARE(event.at(2).toString(), "connectPeer");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testDisconnectPeer()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QString fakePeer =
+            "12D3KooWInvalidPeerForTest";
+
+        QVERIFY(plugin.disconnectPeer(fakePeer));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+
+        QCOMPARE(event.at(2).toString(), "disconnectPeer");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testPeerInfo()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QVERIFY(plugin.peerInfo());
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+
+        QCOMPARE(event.at(2).toString(), "peerInfo");
+        QCOMPARE(event.at(0).toInt(), RET_OK);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testConnectedPeers()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QVERIFY(plugin.connectedPeers());
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+
+        QCOMPARE(event.at(2).toString(), "connectedPeers");
+        QCOMPARE(event.at(0).toInt(), RET_OK);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testDial()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QString fakePeer =
+            "12D3KooWInvalidPeerForTest";
+
+        QString proto = "/test/1.0.0";
+
+        QVERIFY(plugin.dial(fakePeer, proto));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+
+        QCOMPARE(event.at(2).toString(), "dial");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    /* ---------------------------
+     * Kademlia tests
+     * --------------------------- */
+
+    void testKadGetPutValue()
     {
         Libp2pModulePlugin plugin;
 
@@ -156,13 +265,13 @@ private slots:
         QByteArray key = "test-key";
         QByteArray expectedValue = "hello-world";
 
-        QVERIFY(plugin.putValue(key, expectedValue));
+        QVERIFY(plugin.kadPutValue(key, expectedValue));
         waitForEvents(*libp2pEventSpy, 1);
-        assertEvent(*libp2pEventSpy, RET_OK, "putValue");
+        assertEvent(*libp2pEventSpy, RET_OK, "kadPutValue");
 
-        QVERIFY(plugin.getValue(key, 1));
+        QVERIFY(plugin.kadGetValue(key, 1));
         waitForEvents(*libp2pEventSpy, 1);
-        assertEvent(*libp2pEventSpy, RET_OK, "getValue", expectedValue);
+        assertEvent(*libp2pEventSpy, RET_OK, "kadGetValue", expectedValue);
 
         stopPlugin(plugin, *libp2pEventSpy);
     }
@@ -186,7 +295,7 @@ private slots:
     }
 
 
-    void testGetProviders()
+    void testKadGetProviders()
     {
         Libp2pModulePlugin plugin;
 
@@ -210,24 +319,24 @@ private slots:
         QVERIFY(!cid.isEmpty());
 
         // ---- 2: Put value so key exists in DHT ----
-        QVERIFY(plugin.putValue(key, value));
+        QVERIFY(plugin.kadPutValue(key, value));
         waitForEvents(*spy, 1);
 
-        assertEvent(*spy, RET_OK, "putValue");
+        assertEvent(*spy, RET_OK, "kadPutValue");
 
         // ---- 3: Register provider ----
-        QVERIFY(plugin.addProvider(cid));
+        QVERIFY(plugin.kadAddProvider(cid));
         waitForEvents(*spy, 1);
 
-        assertEvent(*spy, RET_OK, "addProvider");
+        assertEvent(*spy, RET_OK, "kadAddProvider");
 
         // ---- 4: Query providers ----
-        QVERIFY(plugin.getProviders(cid));
+        QVERIFY(plugin.kadGetProviders(cid));
         waitForEvents(*spy, 1);
 
         auto providersEvent = takeEvent(*spy);
 
-        QCOMPARE(providersEvent.at(2).toString(), "getProviders");
+        QCOMPARE(providersEvent.at(2).toString(), "kadGetProviders");
         QCOMPARE(providersEvent.at(1).toInt(), RET_OK);
 
         QVariant providersVariant = providersEvent.at(4);
@@ -238,6 +347,34 @@ private slots:
         // We expect at least one provider (ourselves)
         // TODO: this should not be empty, but for that we need more peers
         // TODO: QVERIFY(!providers.isEmpty());
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testKadGetRandomRecords()
+    {
+        Libp2pModulePlugin plugin;
+
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QVERIFY(plugin.kadGetRandomRecords());
+        waitForEvents(*spy, 1);
+
+        auto randomRecordsEvent = takeEvent(*spy);
+
+        QCOMPARE(randomRecordsEvent.at(2).toString(), "kadGetRandomRecords");
+        QCOMPARE(randomRecordsEvent.at(1).toInt(), RET_OK);
+
+        QVariant randomRecordsVariant = randomRecordsEvent.at(4);
+        QVERIFY(randomRecordsVariant.isValid());
+
+        QVariantList randomRecords = randomRecordsVariant.toList();
+
+        // We expect at least one record (ourselves)
+        // TODO: this should not be empty, but for that we need more peers
+        // TODO: QVERIFY(!randomRecords.isEmpty());
 
         stopPlugin(plugin, *spy);
     }

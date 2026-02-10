@@ -5,235 +5,18 @@
 #include <cstring>
 #include <QDebug>
 
-struct CallbackContext {
-    QString caller;
-    QString reqId;
-    Libp2pModulePlugin *instance;
-};
-
-struct PeerInfo {
-    QByteArray peerId;
-    QList<QByteArray> addrs;
-};
-
-
-/* -------------------- Callbacks -------------------- */
-
-void Libp2pModulePlugin::onLibp2pEventDefault(
-    int result,
-    const QString &reqId,
-    const QString &caller,
-    const QString &message,
-    const QVariant &data
-)
-{
-    QByteArray buffer = data.toByteArray();
-
-    qDebug() << "[" << caller << "]"
-             << "reqId:" << reqId
-             << "ret:" << result
-             << "msg:" << message
-             << "data size:" << buffer.size();
-}
-
-
-void Libp2pModulePlugin::libp2pCallback(
-    int callerRet,
-    const char *msg,
-    size_t len,
-    void *userData
-)
-{
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, callerRet, message, caller, reqId]() {
-            if (!safeSelf) return;
-            emit safeSelf->libp2pEvent(
-                callerRet,
-                reqId,
-                caller,
-                message,
-                QVariant()
-            );
-        },
-        Qt::QueuedConnection
-    );
-
-    delete callbackCtx;
-}
-
-void Libp2pModulePlugin::peersCallback(
-    int callerRet,
-    const char **peerIds,
-    size_t peerIdsLen,
-    const char *msg,
-    size_t len,
-    void *userData
-)
-{
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, callerRet, message, caller, reqId]() {
-            if (!safeSelf) return;
-            emit safeSelf->libp2pEvent(
-                callerRet,
-                reqId,
-                caller,
-                message,
-                QVariant()
-            );
-        },
-        Qt::QueuedConnection
-    );
-
-    delete callbackCtx;
-}
-
-void Libp2pModulePlugin::libp2pBufferCallback(
-    int callerRet,
-    const uint8_t *data,
-    size_t dataLen,
-    const char *msg,
-    size_t len,
-    void *userData
-)
-{
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QByteArray buffer;
-    if (data && dataLen > 0)
-        buffer = QByteArray(reinterpret_cast<const char *>(data), int(dataLen));
-
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(safeSelf, [safeSelf, callerRet, message, buffer, caller, reqId]() {
-        if (!safeSelf) return;
-        emit safeSelf->libp2pEvent(callerRet, reqId, caller, message, QVariant(buffer));
-    }, Qt::QueuedConnection);
-
-    delete callbackCtx;
-}
-
-QList<PeerInfo> copyProviders(
-    const Libp2pPeerInfo *providers,
-    size_t providersLen
-)
-{
-    QList<PeerInfo> providersCopy;
-
-    if (!providers || providersLen == 0) {
-        return providersCopy;
-    }
-
-    providersCopy.reserve(providersLen);
-
-    for (size_t i = 0; i < providersLen; ++i) {
-        PeerInfo copy;
-
-        if (providers[i].peerId)
-            copy.peerId = providers[i].peerId;
-
-        for (size_t j = 0; j < providers[i].addrsLen; ++j) {
-            const char* addr = providers[i].addrs[j];
-            if (addr)
-                copy.addrs.append(addr);
-        }
-
-        providersCopy.append(std::move(copy));
-    }
-
-    return providersCopy;
-}
-
-void Libp2pModulePlugin::getProvidersCallback(
-    int callerRet,
-    const Libp2pPeerInfo *providers,
-    size_t providersLen,
-    const char *msg,
-    size_t len,
-    void *userData
-)
-{
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QList<PeerInfo> providersCopy = copyProviders(providers, providersLen);
-
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, callerRet, reqId, caller, message,
-         providersCopy = std::move(providersCopy)]() { // avoid copying providers again
-            if (!safeSelf) return;
-            emit safeSelf->libp2pEvent(
-                callerRet,
-                reqId,
-                caller,
-                message,
-                QVariant::fromValue(providersCopy)
-            );
-        },
-        Qt::QueuedConnection
-    );
-
-    delete callbackCtx;
-}
-
-/* -------------------- End Callbacks -------------------- */
 
 Libp2pModulePlugin::Libp2pModulePlugin()
     : ctx(nullptr)
 {
-    qRegisterMetaType<Libp2pPeerInfo>("Libp2pPeerInfo");
+    qRegisterMetaType<PeerInfo>("PeerInfo");
+    qRegisterMetaType<ServiceInfo>("ServiceInfo");
+    qRegisterMetaType<ExtendedPeerRecord>("ExtendedPeerRecord");
+
+    /* ---- QList containers ---- */
     qRegisterMetaType<QList<PeerInfo>>("QList<PeerInfo>");
+    qRegisterMetaType<QList<ServiceInfo>>("QList<ServiceInfo>");
+    qRegisterMetaType<QList<ExtendedPeerRecord>>("QList<ExtendedPeerRecord>");
 
     std::memset(&config, 0, sizeof(config));
 
@@ -362,19 +145,327 @@ bool Libp2pModulePlugin::libp2pStop()
     return ret == RET_OK;
 }
 
+/* --------------- Connectivity --------------- */
+bool Libp2pModulePlugin::connectPeer(
+    const QString peerId,
+    const QList<QString> multiaddrs,
+    int64_t timeoutMs
+)
+{
+    if (!ctx) return false;
+
+    QByteArray peerIdUtf8 = peerId.toUtf8();
+
+    QList<QByteArray> addrBuffers;
+    QVector<const char*> addrPtrs;
+
+    addrBuffers.reserve(multiaddrs.size());
+    addrPtrs.reserve(multiaddrs.size());
+
+    for (const auto &addr : multiaddrs) {
+        addrBuffers.append(addr.toUtf8());
+        addrPtrs.append(addrBuffers.last().constData());
+    }
+
+    auto *callbackCtx = new CallbackContext{
+        "connectPeer",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_connect(
+        ctx,
+        peerIdUtf8.constData(),
+        addrPtrs.data(),
+        addrPtrs.size(),
+        timeoutMs,
+        &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK)
+        delete callbackCtx;
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::disconnectPeer(const QString peerId)
+{
+    if (!ctx) return false;
+
+    QByteArray peerIdUtf8 = peerId.toUtf8();
+
+    auto *callbackCtx = new CallbackContext{
+        "disconnectPeer",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_disconnect(
+        ctx,
+        peerIdUtf8.constData(),
+        &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK)
+        delete callbackCtx;
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::peerInfo()
+{
+    if (!ctx) return false;
+
+    auto *callbackCtx = new CallbackContext{
+        "peerInfo",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_peerinfo(
+        ctx,
+        &Libp2pModulePlugin::peerInfoCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK)
+        delete callbackCtx;
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::connectedPeers(int direction)
+{
+    if (!ctx) return false;
+
+    auto *callbackCtx = new CallbackContext{
+        "connectedPeers",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_connected_peers(
+        ctx,
+        direction,
+        &Libp2pModulePlugin::peersCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK)
+        delete callbackCtx;
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
+{
+    if (!ctx) return false;
+
+    QByteArray peerIdUtf8 = peerId.toUtf8();
+    QByteArray protoUtf8 = proto.toUtf8();
+
+    auto *callbackCtx = new CallbackContext{
+        "dial",
+        QUuid::createUuid().toString(),
+        this
+    };
+
+    int ret = libp2p_dial(
+        ctx,
+        peerIdUtf8.constData(),
+        protoUtf8.constData(),
+        &Libp2pModulePlugin::connectionCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK)
+        delete callbackCtx;
+
+    return ret == RET_OK;
+}
+
+// bool Libp2pModulePlugin::streamClose(libp2p_stream_t *conn)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamClose",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_close(
+//         ctx,
+//         conn,
+//         &Libp2pModulePlugin::libp2pCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamCloseEOF(libp2p_stream_t *conn)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamCloseEOF",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_closeWithEOF(
+//         ctx,
+//         conn,
+//         &Libp2pModulePlugin::libp2pCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamRelease(libp2p_stream_t *conn)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamRelease",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_release(
+//         ctx,
+//         conn,
+//         &Libp2pModulePlugin::libp2pCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamReadExactly(libp2p_stream_t *conn, size_t len)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamReadExactly",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_readExactly(
+//         ctx,
+//         conn,
+//         len,
+//         &Libp2pModulePlugin::libp2pBufferCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamReadLp(libp2p_stream_t *conn, int64_t maxSize)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamReadLp",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_readLp(
+//         ctx,
+//         conn,
+//         maxSize,
+//         &Libp2pModulePlugin::libp2pBufferCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamWrite(libp2p_stream_t *conn, const QByteArray &data)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamWrite",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_write(
+//         ctx,
+//         conn,
+//         reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
+//         data.size(),
+//         &Libp2pModulePlugin::libp2pCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
+// bool Libp2pModulePlugin::streamWriteLp(libp2p_stream_t *conn, const QByteArray &data)
+// {
+//     if (!ctx || !conn) return false;
+
+//     auto *callbackCtx = new CallbackContext{
+//         "libp2pStreamWriteLp",
+//         QUuid::createUuid().toString(),
+//         this
+//     };
+
+//     int ret = libp2p_stream_writeLp(
+//         ctx,
+//         conn,
+//         reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
+//         data.size(),
+//         &Libp2pModulePlugin::libp2pCallback,
+//         callbackCtx
+//     );
+
+//     if (ret != RET_OK)
+//         delete callbackCtx;
+
+//     return ret == RET_OK;
+// }
+
 /* --------------- Kademlia --------------- */
 
-bool Libp2pModulePlugin::findNode(const QString &peerId)
+bool Libp2pModulePlugin::kadFindNode(const QString &peerId)
 {
-    qDebug() << "Libp2pModulePlugin::findNode called:" << peerId;
+    qDebug() << "Libp2pModulePlugin::kadFindNode called:" << peerId;
     if (!ctx) {
-        qDebug() << "findNode called without a context";
+        qDebug() << "kadFindNode called without a context";
         return false;
     }
 
-    auto *callbackCtx = new CallbackContext{ "findNode", QUuid::createUuid().toString(), this };
+    auto *callbackCtx = new CallbackContext{ "kadFindNode", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_find_node(
+    int ret = libp2p_kad_find_node(
         ctx,
         peerId.toUtf8().constData(),
         &Libp2pModulePlugin::peersCallback,
@@ -388,17 +479,17 @@ bool Libp2pModulePlugin::findNode(const QString &peerId)
     return ret == RET_OK;
 }
 
-bool Libp2pModulePlugin::putValue(const QByteArray &key, const QByteArray &value)
+bool Libp2pModulePlugin::kadPutValue(const QByteArray &key, const QByteArray &value)
 {
-    qDebug() << "Libp2pModulePlugin::putValue called";
+    qDebug() << "Libp2pModulePlugin::kadPutValue called";
     if (!ctx) {
-        qDebug() << "putValue called without a context";
+        qDebug() << "kadPutValue called without a context";
         return false;
     }
 
-    auto *callbackCtx = new CallbackContext{ "putValue", QUuid::createUuid().toString(), this };
+    auto *callbackCtx = new CallbackContext{ "kadPutValue", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_put_value(
+    int ret = libp2p_kad_put_value(
         ctx,
         reinterpret_cast<const uint8_t *>(key.constData()),
         key.size(),
@@ -415,17 +506,17 @@ bool Libp2pModulePlugin::putValue(const QByteArray &key, const QByteArray &value
     return ret == RET_OK;
 }
 
-bool Libp2pModulePlugin::getValue(const QByteArray &key, int quorum)
+bool Libp2pModulePlugin::kadGetValue(const QByteArray &key, int quorum)
 {
-    qDebug() << "Libp2pModulePlugin::getValue called";
+    qDebug() << "Libp2pModulePlugin::kadGetValue called";
     if (!ctx) {
-        qDebug() << "getValue called without a context";
+        qDebug() << "kadGetValue called without a context";
         return false;
     }
 
-    auto *callbackCtx = new CallbackContext{ "getValue", QUuid::createUuid().toString(), this };
+    auto *callbackCtx = new CallbackContext{ "kadGetValue", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_get_value(
+    int ret = libp2p_kad_get_value(
         ctx,
         reinterpret_cast<const uint8_t *>(key.constData()),
         key.size(),
@@ -441,17 +532,17 @@ bool Libp2pModulePlugin::getValue(const QByteArray &key, int quorum)
     return ret == RET_OK;
 }
 
-bool Libp2pModulePlugin::addProvider(const QString &cid)
+bool Libp2pModulePlugin::kadAddProvider(const QString &cid)
 {
-    qDebug() << "Libp2pModulePlugin::addProvider called:" << cid;
+    qDebug() << "Libp2pModulePlugin::kadAddProvider called:" << cid;
     if (!ctx) {
-        qDebug() << "addProvider called without a context";
+        qDebug() << "kadAddProvider called without a context";
         return false;
     }
 
-    auto *callbackCtx = new CallbackContext{ "addProvider", QUuid::createUuid().toString(), this };
+    auto *callbackCtx = new CallbackContext{ "kadAddProvider", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_add_provider(
+    int ret = libp2p_kad_add_provider(
         ctx,
         cid.toUtf8().constData(),
         &Libp2pModulePlugin::libp2pCallback,
@@ -465,17 +556,17 @@ bool Libp2pModulePlugin::addProvider(const QString &cid)
     return ret == RET_OK;
 }
 
-bool Libp2pModulePlugin::getProviders(const QString &cid)
+bool Libp2pModulePlugin::kadGetProviders(const QString &cid)
 {
-    qDebug() << "Libp2pModulePlugin::getProviders called:" << cid;
+    qDebug() << "Libp2pModulePlugin::kadGetProviders called:" << cid;
     if (!ctx) {
-        qDebug() << "getProviders called without a context";
+        qDebug() << "kadGetProviders called without a context";
         return false;
     }
 
-    auto *callbackCtx = new CallbackContext{ "getProviders", QUuid::createUuid().toString(), this };
+    auto *callbackCtx = new CallbackContext{ "kadGetProviders", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_get_providers(
+    int ret = libp2p_kad_get_providers(
         ctx,
         cid.toUtf8().constData(),
         &Libp2pModulePlugin::getProvidersCallback,
@@ -489,17 +580,17 @@ bool Libp2pModulePlugin::getProviders(const QString &cid)
     return ret == RET_OK;
 }
 
-bool Libp2pModulePlugin::startProviding(const QString &cid)
+bool Libp2pModulePlugin::kadStartProviding(const QString &cid)
 {
-    qDebug() << "Libp2pModulePlugin::startProviding called:" << cid;
+    qDebug() << "Libp2pModulePlugin::kadStartProviding called:" << cid;
     if (!ctx) {
-        qDebug() << "startProviding called without a context";
+        qDebug() << "kadStartProviding called without a context";
         return false;
     }
 
-    auto *callbackCtx = new CallbackContext{ "startProviding", QUuid::createUuid().toString(), this };
+    auto *callbackCtx = new CallbackContext{ "kadStartProviding", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_start_providing(
+    int ret = libp2p_kad_start_providing(
         ctx,
         cid.toUtf8().constData(),
         &Libp2pModulePlugin::libp2pCallback,
@@ -513,20 +604,45 @@ bool Libp2pModulePlugin::startProviding(const QString &cid)
     return ret == RET_OK;
 }
 
-bool Libp2pModulePlugin::stopProviding(const QString &cid)
+bool Libp2pModulePlugin::kadStopProviding(const QString &cid)
 {
-    qDebug() << "Libp2pModulePlugin::stopProviding called:" << cid;
+    qDebug() << "Libp2pModulePlugin::kadStopProviding called:" << cid;
     if (!ctx) {
-        qDebug() << "stopProviding called without a context";
+        qDebug() << "kadStopProviding called without a context";
         return false;
     }
 
-    auto *callbackCtx = new CallbackContext{ "stopProviding", QUuid::createUuid().toString(), this };
+    auto *callbackCtx = new CallbackContext{ "kadStopProviding", QUuid::createUuid().toString(), this };
 
-    int ret = libp2p_stop_providing(
+    int ret = libp2p_kad_stop_providing(
         ctx,
         cid.toUtf8().constData(),
         &Libp2pModulePlugin::libp2pCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK) {
+        delete callbackCtx;
+    }
+
+    return ret == RET_OK;
+}
+
+bool Libp2pModulePlugin::kadGetRandomRecords()
+{
+    qDebug() << "Libp2pModulePlugin::kadGetRandomRecords called";
+
+    if (!ctx) {
+        qDebug() << "kadGetRandomRecords called without a context";
+        return false;
+    }
+
+    auto *callbackCtx =
+        new CallbackContext{ "kadGetRandomRecords", QUuid::createUuid().toString(), this };
+
+    int ret = libp2p_kad_random_records(
+        ctx,
+        &Libp2pModulePlugin::randomRecordsCallback,
         callbackCtx
     );
 
