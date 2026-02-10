@@ -190,6 +190,26 @@ void Libp2pModulePlugin::randomRecordsCallback(
     delete callbackCtx;
 }
 
+QList<QString> copyPeerIds(
+    const char **peerIds,
+    size_t peerIdsLen
+)
+{
+    QList<QString> peerIdsCopy;
+
+    if (!peerIds || peerIdsLen == 0) {
+        return peerIdsCopy;
+    }
+
+    peerIdsCopy.reserve(peerIdsLen);
+
+    for (size_t i = 0; i < peerIdsLen; ++i) {
+        peerIdsCopy.append(QString::fromUtf8(peerIds[i]));
+    }
+
+    return peerIdsCopy;
+}
+
 void Libp2pModulePlugin::peersCallback(
     int callerRet,
     const char **peerIds,
@@ -208,6 +228,8 @@ void Libp2pModulePlugin::peersCallback(
     QString caller = callbackCtx->caller;
     QString reqId = callbackCtx->reqId;
 
+    QList<QString> peerIdsCopy = copyPeerIds(peerIds, peerIdsLen);
+
     QString message;
     if (msg && len > 0)
         message = QString::fromUtf8(msg, int(len));
@@ -215,14 +237,15 @@ void Libp2pModulePlugin::peersCallback(
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
         safeSelf,
-        [safeSelf, callerRet, message, caller, reqId]() {
+        [safeSelf, callerRet, message, caller, reqId,
+        peerIdsCopy = std::move(peerIdsCopy)]() { // avoid copying again
             if (!safeSelf) return;
             emit safeSelf->libp2pEvent(
                 callerRet,
                 reqId,
                 caller,
                 message,
-                QVariant()
+                QVariant::fromValue(peerIdsCopy)
             );
         },
         Qt::QueuedConnection
@@ -285,6 +308,9 @@ QList<PeerInfo> copyPeerInfos(
         if (peerInfos[i].peerId)
             copy.peerId = peerInfos[i].peerId;
 
+        if (!peerInfos[i].addrs){
+            continue;
+        }
         for (size_t j = 0; j < peerInfos[i].addrsLen; ++j) {
             const char* addr = peerInfos[i].addrs[j];
             if (addr)
@@ -358,7 +384,13 @@ void Libp2pModulePlugin::peerInfoCallback(
     QString caller = callbackCtx->caller;
     QString reqId = callbackCtx->reqId;
 
-    PeerInfo copy = copyPeerInfos(info, 1)[0];
+    PeerInfo copy;
+    if (info) {
+        auto copies = copyPeerInfos(info, 1);
+        if (!copies.empty()) {
+            copy = std::move(copies[0]);
+        }
+    }
 
     QString message;
     if (msg && len > 0)
