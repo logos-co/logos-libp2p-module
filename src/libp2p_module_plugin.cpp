@@ -152,7 +152,9 @@ bool Libp2pModulePlugin::connectPeer(
     int64_t timeoutMs
 )
 {
-    if (!ctx) return false;
+    if (!ctx) {
+		return false;
+	}
 
     QByteArray peerIdUtf8 = peerId.toUtf8();
 
@@ -183,15 +185,18 @@ bool Libp2pModulePlugin::connectPeer(
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
 
 bool Libp2pModulePlugin::disconnectPeer(const QString peerId)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        return false;
+    }
 
     QByteArray peerIdUtf8 = peerId.toUtf8();
 
@@ -208,15 +213,18 @@ bool Libp2pModulePlugin::disconnectPeer(const QString peerId)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
 
 bool Libp2pModulePlugin::peerInfo()
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "peerInfo",
@@ -230,15 +238,18 @@ bool Libp2pModulePlugin::peerInfo()
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
 
 bool Libp2pModulePlugin::connectedPeers(int direction)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "connectedPeers",
@@ -253,15 +264,18 @@ bool Libp2pModulePlugin::connectedPeers(int direction)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
 
 bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+		return false;
+	}
 
     QByteArray peerIdUtf8 = peerId.toUtf8();
     QByteArray protoUtf8 = proto.toUtf8();
@@ -280,8 +294,9 @@ bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
@@ -292,7 +307,9 @@ bool Libp2pModulePlugin::streamClose(quintptr stream)
 {
     auto *conn = reinterpret_cast<libp2p_stream_t *>(stream);
 
-    if (!ctx || !conn) return false;
+    if (!ctx || !conn) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "streamClose",
@@ -307,8 +324,9 @@ bool Libp2pModulePlugin::streamClose(quintptr stream)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
@@ -317,7 +335,9 @@ bool Libp2pModulePlugin::streamCloseEOF(quintptr stream)
 {
     auto *conn = reinterpret_cast<libp2p_stream_t *>(stream);
 
-    if (!ctx || !conn) return false;
+    if (!ctx || !conn) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "streamCloseEOF",
@@ -332,8 +352,9 @@ bool Libp2pModulePlugin::streamCloseEOF(quintptr stream)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
@@ -342,7 +363,9 @@ bool Libp2pModulePlugin::streamRelease(quintptr stream)
 {
     auto *conn = reinterpret_cast<libp2p_stream_t *>(stream);
 
-    if (!ctx || !conn) return false;
+    if (!ctx || !conn) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "streamRelease",
@@ -357,8 +380,9 @@ bool Libp2pModulePlugin::streamRelease(quintptr stream)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
@@ -367,7 +391,9 @@ bool Libp2pModulePlugin::streamReadExactly(quintptr stream, size_t len)
 {
     auto *conn = reinterpret_cast<libp2p_stream_t *>(stream);
 
-    if (!ctx || !conn) return false;
+    if (!ctx || !conn) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "streamReadExactly",
@@ -383,8 +409,9 @@ bool Libp2pModulePlugin::streamReadExactly(quintptr stream, size_t len)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
@@ -393,7 +420,9 @@ bool Libp2pModulePlugin::streamReadLp(quintptr stream, int64_t maxSize)
 {
     auto *conn = reinterpret_cast<libp2p_stream_t *>(stream);
 
-    if (!ctx || !conn) return false;
+    if (!ctx || !conn) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "streamReadLp",
@@ -409,8 +438,9 @@ bool Libp2pModulePlugin::streamReadLp(quintptr stream, int64_t maxSize)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
@@ -419,7 +449,9 @@ bool Libp2pModulePlugin::streamWrite(quintptr stream, const QByteArray &data)
 {
     auto *conn = reinterpret_cast<libp2p_stream_t *>(stream);
 
-    if (!ctx || !conn) return false;
+    if (!ctx || !conn) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "streamWrite",
@@ -436,8 +468,9 @@ bool Libp2pModulePlugin::streamWrite(quintptr stream, const QByteArray &data)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
@@ -446,7 +479,9 @@ bool Libp2pModulePlugin::streamWriteLp(quintptr stream, const QByteArray &data)
 {
     auto *conn = reinterpret_cast<libp2p_stream_t *>(stream);
 
-    if (!ctx || !conn) return false;
+    if (!ctx || !conn) {
+        return false;
+    }
 
     auto *callbackCtx = new CallbackContext{
         "streamWriteLp",
@@ -463,8 +498,9 @@ bool Libp2pModulePlugin::streamWriteLp(quintptr stream, const QByteArray &data)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+    }
 
     return ret == RET_OK;
 }
