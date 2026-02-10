@@ -20,6 +20,7 @@ logos_module(
         src/libp2p_module_interface.h
         src/libp2p_module_plugin.h
         src/libp2p_module_plugin.cpp
+        src/libp2p_module_callbacks.cpp
     EXTERNAL_LIBS
         libp2p
     INCLUDE_DIRS
