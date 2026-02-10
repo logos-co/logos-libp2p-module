@@ -251,6 +251,141 @@ private slots:
     }
 
     /* ---------------------------
+     * Stream tests
+     * --------------------------- */
+
+    void testStreamClose()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        quintptr fakeStream = 0x1234;
+
+        QVERIFY(plugin.streamClose(fakeStream));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+        QCOMPARE(event.at(2).toString(), "streamClose");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamCloseEOF()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        quintptr fakeStream = 0x1234;
+
+        QVERIFY(plugin.streamCloseEOF(fakeStream));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+        QCOMPARE(event.at(2).toString(), "streamCloseEOF");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamRelease()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        quintptr fakeStream = 0x1234;
+
+        QVERIFY(plugin.streamRelease(fakeStream));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+        QCOMPARE(event.at(2).toString(), "streamRelease");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamReadExactly()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        quintptr fakeStream = 0x1234;
+        qsizetype len = 16;
+
+        QVERIFY(plugin.streamReadExactly(fakeStream, len));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+        QCOMPARE(event.at(2).toString(), "streamReadExactly");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamReadLp()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        quintptr fakeStream = 0x1234;
+        qint64 maxSize = 4096;
+
+        QVERIFY(plugin.streamReadLp(fakeStream, maxSize));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+        QCOMPARE(event.at(2).toString(), "streamReadLp");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamWrite()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        quintptr fakeStream = 0x1234;
+        QByteArray data = "hello-stream";
+
+        QVERIFY(plugin.streamWrite(fakeStream, data));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+        QCOMPARE(event.at(2).toString(), "streamWrite");
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamWriteLp()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        quintptr fakeStream = 0x1234;
+        QByteArray data = "hello-stream-lp";
+
+        QVERIFY(plugin.streamWriteLp(fakeStream, data));
+        waitForEvents(*spy, 1);
+
+        auto event = takeEvent(*spy);
+        QCOMPARE(event.at(2).toString(), "streamWriteLp");
+
+        stopPlugin(plugin, *spy);
+    }
+
+
+    /* ---------------------------
      * Kademlia tests
      * --------------------------- */
 

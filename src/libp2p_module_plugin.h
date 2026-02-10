@@ -38,13 +38,13 @@ public:
     Q_INVOKABLE bool dial(const QString peerId, const QString proto) override;
 
     /* ----------- Streams ----------- */
-    // Q_INVOKABLE bool streamClose(quintptr stream) override;
-    // Q_INVOKABLE bool streamCloseWithEOF(quintptr stream) override;
-    // Q_INVOKABLE bool streamRelease(quintptr stream) override;
-    // Q_INVOKABLE bool streamReadExactly(quintptr stream, qsizetype dataLen) override;
-    // Q_INVOKABLE bool streamReadLp(quintptr stream, qint64 maxSize) override;
-    // Q_INVOKABLE bool streamWrite(quintptr stream, const QByteArray &data) override;
-    // Q_INVOKABLE bool streamWriteLp(quintptr stream, const QByteArray &data) override;
+    Q_INVOKABLE bool streamClose(quintptr stream) override;
+    Q_INVOKABLE bool streamCloseEOF(quintptr stream) override;
+    Q_INVOKABLE bool streamRelease(quintptr stream) override;
+    Q_INVOKABLE bool streamReadExactly(quintptr stream, size_t len) override;
+    Q_INVOKABLE bool streamReadLp(quintptr stream, int64_t maxSize) override;
+    Q_INVOKABLE bool streamWrite(quintptr stream, const QByteArray &data) override;
+    Q_INVOKABLE bool streamWriteLp(quintptr stream, const QByteArray &data) override;
 
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE bool toCid(const QByteArray &key) override;
