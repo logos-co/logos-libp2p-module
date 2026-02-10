@@ -323,8 +323,7 @@ bool Libp2pModulePlugin::streamClose(const Connection &connection)
         callbackCtx
     );
 
-    if (ret != RET_OK)
-        delete callbackCtx;
+     if (ret != RET_OK) { delete callbackCtx; }
 
     return ret == RET_OK;
 }
@@ -349,8 +348,7 @@ bool Libp2pModulePlugin::streamCloseEOF(const Connection &connection)
         callbackCtx
     );
 
-    if (ret != RET_OK)
-        delete callbackCtx;
+     if (ret != RET_OK) { delete callbackCtx; }
 
     return ret == RET_OK;
 }
@@ -375,8 +373,7 @@ bool Libp2pModulePlugin::streamRelease(const Connection &connection)
         callbackCtx
     );
 
-    if (ret != RET_OK)
-        delete callbackCtx;
+     if (ret != RET_OK) { delete callbackCtx; }
 
     return ret == RET_OK;
 }
@@ -402,8 +399,7 @@ bool Libp2pModulePlugin::streamReadExactly(const Connection &connection, size_t 
         callbackCtx
     );
 
-    if (ret != RET_OK)
-        delete callbackCtx;
+     if (ret != RET_OK) { delete callbackCtx; }
 
     return ret == RET_OK;
 }
@@ -429,8 +425,7 @@ bool Libp2pModulePlugin::streamReadLp(const Connection &connection, int64_t maxS
         callbackCtx
     );
 
-    if (ret != RET_OK)
-        delete callbackCtx;
+     if (ret != RET_OK) { delete callbackCtx; }
 
     return ret == RET_OK;
 }
@@ -457,8 +452,7 @@ bool Libp2pModulePlugin::streamWrite(const Connection &connection, const QByteAr
         callbackCtx
     );
 
-    if (ret != RET_OK)
-        delete callbackCtx;
+     if (ret != RET_OK) { delete callbackCtx; }
 
     return ret == RET_OK;
 }
@@ -485,8 +479,7 @@ bool Libp2pModulePlugin::streamWriteLp(const Connection &connection, const QByte
         callbackCtx
     );
 
-    if (ret != RET_OK)
-        delete callbackCtx;
+     if (ret != RET_OK) { delete callbackCtx; }
 
     return ret == RET_OK;
 }

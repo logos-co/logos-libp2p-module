@@ -31,7 +31,9 @@ void Libp2pModulePlugin::libp2pCallback(
 )
 {
     auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
+    if (!callbackCtx) {
+		return;
+	}
 
     Libp2pModulePlugin *self = callbackCtx->instance;
     if (!self) { delete callbackCtx; return; }
@@ -40,14 +42,15 @@ void Libp2pModulePlugin::libp2pCallback(
     QString reqId = callbackCtx->reqId;
 
     QString message;
-    if (msg && len > 0)
+    if (msg && len > 0) {
         message = QString::fromUtf8(msg, int(len));
+    }
 
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
         safeSelf,
         [safeSelf, callerRet, message, caller, reqId]() {
-            if (!safeSelf) return;
+            if (!safeSelf) { return; }
             emit safeSelf->libp2pEvent(
                 callerRet,
                 reqId,
@@ -156,7 +159,9 @@ void Libp2pModulePlugin::randomRecordsCallback(
 )
 {
     auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
+    if (!callbackCtx) {
+		return;
+	}
 
     Libp2pModulePlugin *self = callbackCtx->instance;
     if (!self) { delete callbackCtx; return; }
@@ -167,15 +172,16 @@ void Libp2pModulePlugin::randomRecordsCallback(
     QList<ExtendedPeerRecord> recordsCopy = copyExtendedRecords(records, recordsLen);
 
     QString message;
-    if (msg && len > 0)
+    if (msg && len > 0) {
         message = QString::fromUtf8(msg, int(len));
+    }
 
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
         safeSelf,
         [safeSelf, callerRet, reqId, caller, message,
          recordsCopy = std::move(recordsCopy)]() { // avoid copying providers again
-            if (!safeSelf) return;
+            if (!safeSelf) { return; }
             emit safeSelf->libp2pEvent(
                 callerRet,
                 reqId,
@@ -220,7 +226,9 @@ void Libp2pModulePlugin::peersCallback(
 )
 {
     auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
+    if (!callbackCtx) {
+		return;
+	}
 
     Libp2pModulePlugin *self = callbackCtx->instance;
     if (!self) { delete callbackCtx; return; }
@@ -231,15 +239,16 @@ void Libp2pModulePlugin::peersCallback(
     QList<QString> peerIdsCopy = copyPeerIds(peerIds, peerIdsLen);
 
     QString message;
-    if (msg && len > 0)
+    if (msg && len > 0) {
         message = QString::fromUtf8(msg, int(len));
+    }
 
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
         safeSelf,
         [safeSelf, callerRet, message, caller, reqId,
         peerIdsCopy = std::move(peerIdsCopy)]() { // avoid copying again
-            if (!safeSelf) return;
+            if (!safeSelf) { return; }
             emit safeSelf->libp2pEvent(
                 callerRet,
                 reqId,
@@ -264,7 +273,9 @@ void Libp2pModulePlugin::libp2pBufferCallback(
 )
 {
     auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
+    if (!callbackCtx) {
+		return;
+	}
 
     Libp2pModulePlugin *self = callbackCtx->instance;
     if (!self) { delete callbackCtx; return; }
@@ -277,12 +288,13 @@ void Libp2pModulePlugin::libp2pBufferCallback(
         buffer = QByteArray(reinterpret_cast<const char *>(data), int(dataLen));
 
     QString message;
-    if (msg && len > 0)
+    if (msg && len > 0) {
         message = QString::fromUtf8(msg, int(len));
+    }
 
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(safeSelf, [safeSelf, callerRet, message, buffer, caller, reqId]() {
-        if (!safeSelf) return;
+        if (!safeSelf) { return; }
         emit safeSelf->libp2pEvent(callerRet, reqId, caller, message, QVariant(buffer));
     }, Qt::QueuedConnection);
 
@@ -333,7 +345,9 @@ void Libp2pModulePlugin::getProvidersCallback(
 )
 {
     auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
+    if (!callbackCtx) {
+		return;
+	}
 
     Libp2pModulePlugin *self = callbackCtx->instance;
     if (!self) { delete callbackCtx; return; }
@@ -344,15 +358,16 @@ void Libp2pModulePlugin::getProvidersCallback(
     QList<PeerInfo> providersCopy = copyPeerInfos(providers, providersLen);
 
     QString message;
-    if (msg && len > 0)
+    if (msg && len > 0) {
         message = QString::fromUtf8(msg, int(len));
+    }
 
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
         safeSelf,
         [safeSelf, callerRet, reqId, caller, message,
          providersCopy = std::move(providersCopy)]() { // avoid copying providers again
-            if (!safeSelf) return;
+            if (!safeSelf) { return; }
             emit safeSelf->libp2pEvent(
                 callerRet,
                 reqId,
@@ -376,7 +391,9 @@ void Libp2pModulePlugin::peerInfoCallback(
 )
 {
     auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
+    if (!callbackCtx) {
+		return;
+	}
 
     Libp2pModulePlugin *self = callbackCtx->instance;
     if (!self) { delete callbackCtx; return; }
@@ -393,16 +410,16 @@ void Libp2pModulePlugin::peerInfoCallback(
     }
 
     QString message;
-    if (msg && len > 0)
+    if (msg && len > 0) {
         message = QString::fromUtf8(msg, int(len));
+    }
 
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
         safeSelf,
         [safeSelf, callerRet, reqId, caller, message,
          copy = std::move(copy)]() {
-            if (!safeSelf) return;
-
+            if (!safeSelf) { return; }
             emit safeSelf->libp2pEvent(
                 callerRet,
                 reqId,
@@ -426,7 +443,9 @@ void Libp2pModulePlugin::connectionCallback(
 )
 {
     auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
+    if (!callbackCtx) {
+		return;
+	}
 
     Libp2pModulePlugin *self = callbackCtx->instance;
     if (!self) { delete callbackCtx; return; }
@@ -438,14 +457,15 @@ void Libp2pModulePlugin::connectionCallback(
     QVariant data = QVariant::fromValue(connection);
 
     QString message;
-    if (msg && len > 0)
+    if (msg && len > 0) {
         message = QString::fromUtf8(msg, int(len));
+    }
 
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
         safeSelf,
         [safeSelf, callerRet, reqId, caller, message, data]() {
-            if (!safeSelf) return;
+            if (!safeSelf) { return; }
 
             emit safeSelf->libp2pEvent(
                 callerRet,
