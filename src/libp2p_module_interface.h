@@ -8,6 +8,8 @@
 
 #include "interface.h"
 
+class Connection;
+
 class Libp2pModuleInterface : public PluginInterface
 {
 public:
@@ -25,13 +27,13 @@ public:
     Q_INVOKABLE virtual bool dial(const QString peerId, const QString proto) = 0;
 
     /* ----------- Streams ----------- */
-    Q_INVOKABLE virtual bool streamClose(quintptr stream) = 0;
-    Q_INVOKABLE virtual bool streamCloseEOF(quintptr stream) = 0;
-    Q_INVOKABLE virtual bool streamRelease(quintptr stream) = 0;
-    Q_INVOKABLE virtual bool streamReadExactly(quintptr stream, size_t len) = 0;
-    Q_INVOKABLE virtual bool streamReadLp(quintptr stream, int64_t maxSize) = 0;
-    Q_INVOKABLE virtual bool streamWrite(quintptr stream, const QByteArray &data) = 0;
-    Q_INVOKABLE virtual bool streamWriteLp(quintptr stream, const QByteArray &data) = 0;
+    Q_INVOKABLE virtual bool streamClose(const Connection &conn) = 0;
+    Q_INVOKABLE virtual bool streamCloseEOF(const Connection &conn) = 0;
+    Q_INVOKABLE virtual bool streamRelease(const Connection &conn) = 0;
+    Q_INVOKABLE virtual bool streamReadExactly(const Connection &conn, size_t len) = 0;
+    Q_INVOKABLE virtual bool streamReadLp(const Connection &conn, int64_t maxSize) = 0;
+    Q_INVOKABLE virtual bool streamWrite(const Connection &conn, const QByteArray &data) = 0;
+    Q_INVOKABLE virtual bool streamWriteLp(const Connection &conn, const QByteArray &data) = 0;
 
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE virtual bool toCid(const QByteArray &key) = 0;

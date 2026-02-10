@@ -12,6 +12,8 @@
 
 #include "libp2p_module_interface.h"
 
+class Connection;
+
 class Libp2pModulePlugin : public QObject, public Libp2pModuleInterface
 {
     Q_OBJECT
@@ -38,13 +40,13 @@ public:
     Q_INVOKABLE bool dial(const QString peerId, const QString proto) override;
 
     /* ----------- Streams ----------- */
-    Q_INVOKABLE bool streamClose(quintptr stream) override;
-    Q_INVOKABLE bool streamCloseEOF(quintptr stream) override;
-    Q_INVOKABLE bool streamRelease(quintptr stream) override;
-    Q_INVOKABLE bool streamReadExactly(quintptr stream, size_t len) override;
-    Q_INVOKABLE bool streamReadLp(quintptr stream, int64_t maxSize) override;
-    Q_INVOKABLE bool streamWrite(quintptr stream, const QByteArray &data) override;
-    Q_INVOKABLE bool streamWriteLp(quintptr stream, const QByteArray &data) override;
+    Q_INVOKABLE bool streamReadExactly(const Connection &conn, size_t len) override;
+    Q_INVOKABLE bool streamReadLp(const Connection &conn, int64_t maxSize) override;
+    Q_INVOKABLE bool streamWrite(const Connection &conn, const QByteArray &data) override;
+    Q_INVOKABLE bool streamWriteLp(const Connection &conn, const QByteArray &data) override;
+    Q_INVOKABLE bool streamClose(const Connection &conn) override;
+    Q_INVOKABLE bool streamCloseEOF(const Connection &conn) override;
+    Q_INVOKABLE bool streamRelease(const Connection &conn) override;
 
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE bool toCid(const QByteArray &key) override;
@@ -168,5 +170,33 @@ struct ExtendedPeerRecord{
     uint64_t seqNo;
     QList<QString> addrs;
     QList<ServiceInfo> services;
+};
+
+class Connection
+{
+public:
+    Connection() = default;
+
+    Connection(Libp2pModuleInterface *owner,
+               libp2p_stream_t *stream);
+
+    ~Connection();
+
+    /* ---- Disable copy ---- */
+    Connection(const Connection &) = delete;
+    Connection &operator=(const Connection &) = delete;
+
+    /* ---- Move support ---- */
+    Connection(Connection &&other) noexcept;
+    Connection &operator=(Connection &&other) noexcept;
+
+    libp2p_stream_t *get() const;
+    bool isValid() const;
+
+    void release();
+
+private:
+    Libp2pModuleInterface *owner_ = nullptr;
+    libp2p_stream_t *stream_ = nullptr;
 };
 

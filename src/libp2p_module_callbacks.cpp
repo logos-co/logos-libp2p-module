@@ -434,7 +434,8 @@ void Libp2pModulePlugin::connectionCallback(
     QString caller = callbackCtx->caller;
     QString reqId = callbackCtx->reqId;
 
-    QVariant connVariant = QVariant::fromValue(reinterpret_cast<quintptr>(conn));
+    auto connection = std::make_shared<Connection>(self, conn);
+    QVariant data = QVariant::fromValue(connection);
 
     QString message;
     if (msg && len > 0)
@@ -443,7 +444,7 @@ void Libp2pModulePlugin::connectionCallback(
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
         safeSelf,
-        [safeSelf, callerRet, reqId, caller, message, connVariant]() {
+        [safeSelf, callerRet, reqId, caller, message, data]() {
             if (!safeSelf) return;
 
             emit safeSelf->libp2pEvent(
@@ -451,7 +452,7 @@ void Libp2pModulePlugin::connectionCallback(
                 reqId,
                 caller,
                 message,
-                connVariant
+                data
             );
         },
         Qt::QueuedConnection

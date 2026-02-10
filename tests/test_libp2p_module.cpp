@@ -261,13 +261,13 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        quintptr fakeStream = 0x1234;
+        Connection conn(&plugin,
+            reinterpret_cast<libp2p_stream_t*>(0x1234));
 
-        QVERIFY(plugin.streamClose(fakeStream));
+        QVERIFY(plugin.streamClose(conn));
         waitForEvents(*spy, 1);
 
-        auto event = takeEvent(*spy);
-        QCOMPARE(event.at(2).toString(), "streamClose");
+        assertEvent(*spy, RET_ERR, "streamClose");
 
         stopPlugin(plugin, *spy);
     }
@@ -279,13 +279,13 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        quintptr fakeStream = 0x1234;
+        Connection conn(&plugin,
+            reinterpret_cast<libp2p_stream_t*>(0x1234));
 
-        QVERIFY(plugin.streamCloseEOF(fakeStream));
+        QVERIFY(plugin.streamCloseEOF(conn));
         waitForEvents(*spy, 1);
 
-        auto event = takeEvent(*spy);
-        QCOMPARE(event.at(2).toString(), "streamCloseEOF");
+        assertEvent(*spy, RET_ERR, "streamCloseEOF");
 
         stopPlugin(plugin, *spy);
     }
@@ -297,13 +297,13 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        quintptr fakeStream = 0x1234;
+        Connection conn(&plugin,
+            reinterpret_cast<libp2p_stream_t*>(0x1234));
 
-        QVERIFY(plugin.streamRelease(fakeStream));
+        QVERIFY(plugin.streamRelease(conn));
         waitForEvents(*spy, 1);
 
-        auto event = takeEvent(*spy);
-        QCOMPARE(event.at(2).toString(), "streamRelease");
+        assertEvent(*spy, RET_ERR, "streamRelease");
 
         stopPlugin(plugin, *spy);
     }
@@ -315,14 +315,15 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        quintptr fakeStream = 0x1234;
+        Connection conn(&plugin,
+            reinterpret_cast<libp2p_stream_t*>(0x1234));
+
         qsizetype len = 16;
 
-        QVERIFY(plugin.streamReadExactly(fakeStream, len));
+        QVERIFY(plugin.streamReadExactly(conn, len));
         waitForEvents(*spy, 1);
 
-        auto event = takeEvent(*spy);
-        QCOMPARE(event.at(2).toString(), "streamReadExactly");
+        assertEvent(*spy, RET_ERR, "streamReadExactly", QVariant(QByteArray()));
 
         stopPlugin(plugin, *spy);
     }
@@ -334,14 +335,15 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        quintptr fakeStream = 0x1234;
+        Connection conn(&plugin,
+            reinterpret_cast<libp2p_stream_t*>(0x1234));
+
         qint64 maxSize = 4096;
 
-        QVERIFY(plugin.streamReadLp(fakeStream, maxSize));
+        QVERIFY(plugin.streamReadLp(conn, maxSize));
         waitForEvents(*spy, 1);
 
-        auto event = takeEvent(*spy);
-        QCOMPARE(event.at(2).toString(), "streamReadLp");
+        assertEvent(*spy, RET_ERR, "streamReadLp", QVariant(QByteArray()));
 
         stopPlugin(plugin, *spy);
     }
@@ -353,14 +355,15 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        quintptr fakeStream = 0x1234;
+        Connection conn(&plugin,
+            reinterpret_cast<libp2p_stream_t*>(0x1234));
+
         QByteArray data = "hello-stream";
 
-        QVERIFY(plugin.streamWrite(fakeStream, data));
+        QVERIFY(plugin.streamWrite(conn, data));
         waitForEvents(*spy, 1);
 
-        auto event = takeEvent(*spy);
-        QCOMPARE(event.at(2).toString(), "streamWrite");
+        assertEvent(*spy, RET_ERR, "streamWrite");
 
         stopPlugin(plugin, *spy);
     }
@@ -372,18 +375,18 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        quintptr fakeStream = 0x1234;
+        Connection conn(&plugin,
+            reinterpret_cast<libp2p_stream_t*>(0x1234));
+
         QByteArray data = "hello-stream-lp";
 
-        QVERIFY(plugin.streamWriteLp(fakeStream, data));
+        QVERIFY(plugin.streamWriteLp(conn, data));
         waitForEvents(*spy, 1);
 
-        auto event = takeEvent(*spy);
-        QCOMPARE(event.at(2).toString(), "streamWriteLp");
+        assertEvent(*spy, RET_ERR, "streamWriteLp");
 
         stopPlugin(plugin, *spy);
     }
-
 
     /* ---------------------------
      * Kademlia tests
