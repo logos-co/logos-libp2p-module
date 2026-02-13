@@ -3,6 +3,7 @@
 #include <QtCore/QObject>
 #include <QtCore/QVariant>
 #include <QtCore/QByteArray>
+#include <QtCore/QJsonObject>
 #include <QtCore/QString>
 #include <QtCore/QStringList>
 
@@ -34,7 +35,7 @@ public:
     // Q_INVOKABLE virtual bool streamWriteLp(quintptr stream, const QByteArray &data) = 0;
 
     /* ----------- Kademlia ----------- */
-    Q_INVOKABLE virtual bool toCid(const QByteArray &key) = 0;
+    Q_INVOKABLE virtual QJsonObject toCid(const QByteArray &key) = 0;
     Q_INVOKABLE virtual bool kadFindNode(const QString &peerId) = 0;
     Q_INVOKABLE virtual bool kadPutValue(const QByteArray &key, const QByteArray &value) = 0;
     Q_INVOKABLE virtual bool kadGetValue(const QByteArray &key, int quorum = -1) = 0;

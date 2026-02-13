@@ -1,9 +1,41 @@
 #include "libp2p_module_plugin.h"
 
-#include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
+#include <QtCore/QEventLoop>
 #include <cstring>
 #include <QDebug>
+
+namespace {
+    
+struct Libp2pSyncContext {
+    QEventLoop *loop = nullptr;
+    int result = -1;
+    QString message;
+};
+
+QJsonObject makeErrorResponse(
+    int code,
+    const QString &message
+)
+{
+    QJsonObject error;
+    error["code"] = code;
+    error["message"] = message;
+
+    QJsonObject response;
+    response["error"] = error;
+    return response;
+}
+
+QJsonObject makeResultResponse(
+    const QString &cid
+)
+{
+    QJsonObject response;
+    response["result"] = cid;
+    return response;
+}
+} // namespace
 
 
 Libp2pModulePlugin::Libp2pModulePlugin()
@@ -62,12 +94,14 @@ void Libp2pModulePlugin::initLogos(LogosAPI* logosAPIInstance) {
 
 /* ---------------- Helper Functions ----------------- */
 
-bool Libp2pModulePlugin::toCid(const QByteArray &key)
+QJsonObject Libp2pModulePlugin::toCid(const QByteArray &key)
 {
-    if (key.isEmpty())
-        return {};
+    if (key.isEmpty()) {
+        return makeErrorResponse(-32602, "Invalid params: key is empty");
+    }
 
-    auto *callbackCtx = new CallbackContext{ "toCid", QUuid::createUuid().toString(), this };
+    QEventLoop loop;
+    Libp2pSyncContext syncCtx{ &loop, -1, QString() };
 
     int ret = libp2p_create_cid(
         1,                      // CIDv1
@@ -75,15 +109,48 @@ bool Libp2pModulePlugin::toCid(const QByteArray &key)
         "sha2-256",
         reinterpret_cast<const uint8_t *>(key.constData()),
         size_t(key.size()),
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
+        &Libp2pModulePlugin::Libp2pSyncCallback,
+        &syncCtx
     );
 
     if (ret != RET_OK) {
-        delete callbackCtx;
+        return makeErrorResponse(ret, "libp2p_create_cid failed");
     }
 
-    return ret == RET_OK;
+    loop.exec();
+
+    if (syncCtx.result == RET_OK) {
+        return makeResultResponse(syncCtx.message);
+    }
+
+    return makeErrorResponse(syncCtx.result, syncCtx.message);
+}
+
+void Libp2pModulePlugin::Libp2pSyncCallback(
+    int callerRet,
+    const char *msg,
+    size_t len,
+    void *userData
+)
+{
+    auto *syncCtx = static_cast<Libp2pSyncContext *>(userData);
+    if (!syncCtx) return;
+
+    const QString message = (msg && len > 0)
+        ? QString::fromUtf8(msg, int(len))
+        : QString();
+
+    QMetaObject::invokeMethod(
+        syncCtx->loop,
+        [syncCtx, callerRet, message]() {
+            syncCtx->result = callerRet;
+            syncCtx->message = message;
+            if (syncCtx->loop) {
+                syncCtx->loop->quit();
+            }
+        },
+        Qt::QueuedConnection
+    );
 }
 
 bool Libp2pModulePlugin::foo(const QString &bar)
@@ -662,4 +729,3 @@ bool Libp2pModulePlugin::setEventCallback()
     libp2p_set_event_callback(ctx, &Libp2pModulePlugin::libp2pCallback, NULL);
     return true;
 }
-
