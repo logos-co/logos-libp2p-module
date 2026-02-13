@@ -3,6 +3,7 @@
 #include <QtCore/QObject>
 #include <QtCore/QVariant>
 #include <QtCore/QByteArray>
+#include <QtCore/QJsonObject>
 #include <QtCore/QString>
 #include <QtCore/QStringList>
 
@@ -47,7 +48,7 @@ public:
     // Q_INVOKABLE bool streamWriteLp(quintptr stream, const QByteArray &data) override;
 
     /* ----------- Kademlia ----------- */
-    Q_INVOKABLE bool toCid(const QByteArray &key) override;
+    Q_INVOKABLE QJsonObject toCid(const QByteArray &key) override;
     Q_INVOKABLE bool kadFindNode(const QString &peerId) override;
     Q_INVOKABLE bool kadPutValue(const QByteArray &key, const QByteArray &value) override;
     Q_INVOKABLE bool kadGetValue(const QByteArray &key, int quorum = -1) override;
@@ -87,6 +88,13 @@ private:
     QString lastCaller; // for logging
 
     static void libp2pCallback(
+        int callerRet,
+        const char *msg,
+        size_t len,
+        void *userData
+    );
+    
+    static void Libp2pSyncCallback(
         int callerRet,
         const char *msg,
         size_t len,
@@ -169,4 +177,3 @@ struct ExtendedPeerRecord{
     QList<QString> addrs;
     QList<ServiceInfo> services;
 };
-

@@ -1,4 +1,5 @@
 #include <QtTest>
+#include <QtCore/QJsonObject>
 #include <libp2p_module_plugin.h>
 
 class TestLibp2pModule : public QObject
@@ -283,15 +284,10 @@ private slots:
         startPlugin(plugin, *spy);
 
         QByteArray key = "some-key";
-        QVERIFY(plugin.toCid(key));
-        waitForEvents(*spy, 1);
-        auto args = takeEvent(*spy);
-
-        QCOMPARE(args.at(2).toString(), "toCid");
-
-        // in toCid msg is set to the cid string
-        QByteArray cidBytes = args.at(3).toByteArray();
-        QVERIFY(!cidBytes.isEmpty());
+        QJsonObject response = plugin.toCid(key);
+        QVERIFY(response.contains("result"));
+        QString cid = response.value("result").toString();
+        QVERIFY(!cid.isEmpty());
     }
 
 
@@ -307,14 +303,9 @@ private slots:
         QByteArray value = "provider-test-value";
 
         // ---- 1: Generate CID from key ----
-        QVERIFY(plugin.toCid(key));
-        waitForEvents(*spy, 1);
-
-        auto cidEvent = takeEvent(*spy);
-        QCOMPARE(cidEvent.at(2).toString(), "toCid");
-
-        QString cid =
-            QString::fromUtf8(cidEvent.at(3).toByteArray());
+        QJsonObject cidResponse = plugin.toCid(key);
+        QVERIFY(cidResponse.contains("result"));
+        QString cid = cidResponse.value("result").toString();
 
         QVERIFY(!cid.isEmpty());
 
@@ -382,4 +373,3 @@ private slots:
 
 QTEST_MAIN(TestLibp2pModule)
 #include "test_libp2p_module.moc"
-
