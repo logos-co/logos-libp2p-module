@@ -378,6 +378,103 @@ private slots:
 
         stopPlugin(plugin, *spy);
     }
+
+    /* ---------------------------
+     * Sync Kademlia tests
+     * --------------------------- */
+
+    void testSyncKadGetPutValue()
+    {
+        Libp2pModulePlugin plugin;
+
+        QVERIFY(plugin.syncLibp2pStart());
+
+        QByteArray key = "sync-test-key";
+        QByteArray value = "sync-hello-world";
+
+        QVERIFY(plugin.syncKadPutValue(key, value));
+        QVERIFY(plugin.syncKadGetValue(key, 1));
+
+        QVERIFY(plugin.syncLibp2pStop());
+    }
+
+    void testSyncKeyToCidAndProviders()
+    {
+        Libp2pModulePlugin plugin;
+
+        QVERIFY(plugin.syncLibp2pStart());
+
+        QByteArray key = "sync-provider-test-key";
+        QByteArray value = "sync-provider-test-value";
+
+        /* ----- obtain CID via async API (needed for provider ops) ----- */
+
+        QVERIFY(plugin.toCid(key));
+        waitForEvents(*spy, 1);
+
+        auto cidEvent = takeEvent(*spy);
+        QCOMPARE(cidEvent.at(2).toString(), "toCid");
+
+        QString cid = QString::fromUtf8(cidEvent.at(3).toByteArray());
+        QVERIFY(!cid.isEmpty());
+
+        /* ----- Sync operations ----- */
+
+        QVERIFY(plugin.syncKadPutValue(key, value));
+        QVERIFY(plugin.syncKadAddProvider(cid));
+        QVERIFY(plugin.syncKadGetProviders(cid));
+
+        QVERIFY(plugin.syncLibp2pStop());
+    }
+
+    void testSyncKadFindNode()
+    {
+        Libp2pModulePlugin plugin;
+
+        QVERIFY(plugin.libp2pStart());
+
+        QString fakePeer = "12D3KooWInvalidPeerForSyncTest";
+
+        QVERIFY(plugin.syncKadFindNode(fakePeer));
+
+        QVERIFY(plugin.libp2pStop());
+    }
+
+    void testSyncKadProvidingLifecycle()
+    {
+        Libp2pModulePlugin plugin;
+
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QByteArray key = "sync-providing-key";
+
+        QVERIFY(plugin.toCid(key));
+        waitForEvents(*spy, 1);
+
+        auto cidEvent = takeEvent(*spy);
+        QString cid = QString::fromUtf8(cidEvent.at(3).toByteArray());
+
+        QVERIFY(!cid.isEmpty());
+
+        QVERIFY(plugin.syncKadStartProviding(cid));
+        QVERIFY(plugin.syncKadStopProviding(cid));
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testSyncKadRandomRecords()
+    {
+        Libp2pModulePlugin plugin;
+
+        QVERIFY(plugin.libp2pStart());
+
+        QVERIFY(plugin.syncKadGetRandomRecords());
+
+        QVERIFY(plugin.libp2pStop());
+    }
+
 };
 
 QTEST_MAIN(TestLibp2pModule)

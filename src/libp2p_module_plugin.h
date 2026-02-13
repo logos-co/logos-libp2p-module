@@ -27,8 +27,10 @@ public:
 
     Q_INVOKABLE bool foo(const QString &bar) override;
 
-    Q_INVOKABLE bool libp2pStart() override;
-    Q_INVOKABLE bool libp2pStop() override;
+    Q_INVOKABLE QString libp2pStart() override;
+    Q_INVOKABLE QString libp2pStop() override;
+    Q_INVOKABLE bool    syncLibp2pStart() override;
+    Q_INVOKABLE bool    syncLibp2pStop() override;
 
     /* ----------- Connectivity ----------- */
     Q_INVOKABLE bool connectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
@@ -47,15 +49,27 @@ public:
     // Q_INVOKABLE bool streamWriteLp(quintptr stream, const QByteArray &data) override;
 
     /* ----------- Kademlia ----------- */
-    Q_INVOKABLE bool toCid(const QByteArray &key) override;
-    Q_INVOKABLE bool kadFindNode(const QString &peerId) override;
-    Q_INVOKABLE bool kadPutValue(const QByteArray &key, const QByteArray &value) override;
-    Q_INVOKABLE bool kadGetValue(const QByteArray &key, int quorum = -1) override;
-    Q_INVOKABLE bool kadAddProvider(const QString &cid) override;
-    Q_INVOKABLE bool kadStartProviding(const QString &cid) override;
-    Q_INVOKABLE bool kadStopProviding(const QString &cid) override;
-    Q_INVOKABLE bool kadGetProviders(const QString &cid) override;
-    Q_INVOKABLE bool kadGetRandomRecords() override;
+    Q_INVOKABLE QString toCid(const QByteArray &key) override;
+    Q_INVOKABLE QString kadFindNode(const QString &peerId) override;
+    Q_INVOKABLE QString kadPutValue(const QByteArray &key, const QByteArray &value) override;
+    Q_INVOKABLE QString kadGetValue(const QByteArray &key, int quorum = -1) override;
+    Q_INVOKABLE QString kadAddProvider(const QString &cid) override;
+    Q_INVOKABLE QString kadStartProviding(const QString &cid) override;
+    Q_INVOKABLE QString kadStopProviding(const QString &cid) override;
+    Q_INVOKABLE QString kadGetProviders(const QString &cid) override;
+    Q_INVOKABLE QString kadGetRandomRecords() override;
+
+    /* ----------- Sync Kademlia ----------- */
+    Q_INVOKABLE bool syncToCid(const QByteArray &key) override;
+    Q_INVOKABLE bool syncKadFindNode(const QString &peerId);
+    Q_INVOKABLE bool syncKadPutValue(const QByteArray &key, const QByteArray &value);
+    Q_INVOKABLE bool syncKadGetValue(const QByteArray &key, int quorum = -1);
+    Q_INVOKABLE bool syncKadAddProvider(const QString &cid);
+    Q_INVOKABLE bool syncKadGetProviders(const QString &cid);
+    Q_INVOKABLE bool syncKadStartProviding(const QString &cid);
+    Q_INVOKABLE bool syncKadStopProviding(const QString &cid);
+    Q_INVOKABLE bool syncKadGetRandomRecords();
+
 
     Q_INVOKABLE bool setEventCallback() override;
 
@@ -85,6 +99,8 @@ private:
     libp2p_ctx_t *ctx = nullptr;
     libp2p_config_t config = {};
     QString lastCaller; // for logging
+
+    bool waitForUuid(const QString &uuid, const QString &caller);
 
     static void libp2pCallback(
         int callerRet,
