@@ -16,8 +16,6 @@ public:
 
     Q_INVOKABLE virtual QString libp2pStart() = 0;
     Q_INVOKABLE virtual QString libp2pStop() = 0;
-    Q_INVOKABLE virtual bool    syncLibp2pStart() = 0;
-    Q_INVOKABLE virtual bool    syncLibp2pStop() = 0;
 
     /* ----------- Connectivity ----------- */
     Q_INVOKABLE virtual bool connectPeer(const QString peerId, const QStringList multiaddrs, int64_t timeoutMs = -1) = 0;
@@ -47,15 +45,18 @@ public:
     Q_INVOKABLE virtual QString kadGetRandomRecords() = 0;
 
     /* ----------- Sync Kademlia ----------- */
-    Q_INVOKABLE virtual bool syncToCid(const QByteArray &key) = 0;
-    Q_INVOKABLE virtual bool syncKadFindNode(const QString &peerId) = 0;
+    Q_INVOKABLE virtual bool    syncLibp2pStart() = 0;
+    Q_INVOKABLE virtual bool    syncLibp2pStop() = 0;
+
+    // Q_INVOKABLE virtual bool syncToCid(const QByteArray &key) = 0;
+    // Q_INVOKABLE virtual bool syncKadFindNode(const QString &peerId) = 0;
     Q_INVOKABLE virtual bool syncKadPutValue(const QByteArray &key, const QByteArray &value) = 0;
-    Q_INVOKABLE virtual bool syncKadGetValue(const QByteArray &key, int quorum = -1) = 0;
-    Q_INVOKABLE virtual bool syncKadAddProvider(const QString &cid) = 0;
-    Q_INVOKABLE virtual bool syncKadGetProviders(const QString &cid) = 0;
-    Q_INVOKABLE virtual bool syncKadStartProviding(const QString &cid) = 0;
-    Q_INVOKABLE virtual bool syncKadStopProviding(const QString &cid) = 0;
-    Q_INVOKABLE virtual bool syncKadGetRandomRecords() = 0;
+    Q_INVOKABLE virtual QByteArray syncKadGetValue(const QByteArray &key, int quorum = -1) = 0;
+    // Q_INVOKABLE virtual bool syncKadAddProvider(const QString &cid) = 0;
+    // Q_INVOKABLE virtual bool syncKadGetProviders(const QString &cid) = 0;
+    // Q_INVOKABLE virtual bool syncKadStartProviding(const QString &cid) = 0;
+    // Q_INVOKABLE virtual bool syncKadStopProviding(const QString &cid) = 0;
+    // Q_INVOKABLE virtual bool syncKadGetRandomRecords() = 0;
 
     Q_INVOKABLE virtual bool setEventCallback() = 0;
 

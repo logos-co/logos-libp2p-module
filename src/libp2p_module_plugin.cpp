@@ -62,12 +62,13 @@ void Libp2pModulePlugin::initLogos(LogosAPI* logosAPIInstance) {
 
 /* ---------------- Helper Functions ----------------- */
 
-bool Libp2pModulePlugin::toCid(const QByteArray &key)
+QString Libp2pModulePlugin::toCid(const QByteArray &key)
 {
     if (key.isEmpty())
         return {};
 
-    auto *callbackCtx = new CallbackContext{ "toCid", QUuid::createUuid().toString(), this };
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "toCid", uuid, this };
 
     int ret = libp2p_create_cid(
         1,                      // CIDv1
@@ -81,9 +82,10 @@ bool Libp2pModulePlugin::toCid(const QByteArray &key)
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
 bool Libp2pModulePlugin::foo(const QString &bar)
@@ -112,7 +114,7 @@ QString Libp2pModulePlugin::libp2pStart()
     qDebug() << "Libp2pModulePlugin::libp2pStart called";
     if (!ctx) {
         qDebug() << "libp2pStart called without a context";
-        return false;
+        return {};
     }
 
     QString uuid = QUuid::createUuid().toString();
@@ -133,7 +135,7 @@ QString Libp2pModulePlugin::libp2pStop()
     qDebug() << "Libp2pModulePlugin::libp2pStop called";
     if (!ctx) {
         qDebug() << "libp2pStop called without a context";
-        return false;
+        return {};
     }
 
     QString uuid = QUuid::createUuid().toString();

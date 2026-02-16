@@ -12,6 +12,11 @@
 
 #include "libp2p_module_interface.h"
 
+struct WaitResult {
+    bool ok;
+    QVariant data;
+};
+
 class Libp2pModulePlugin : public QObject, public Libp2pModuleInterface
 {
     Q_OBJECT
@@ -29,8 +34,10 @@ public:
 
     Q_INVOKABLE QString libp2pStart() override;
     Q_INVOKABLE QString libp2pStop() override;
-    Q_INVOKABLE bool    syncLibp2pStart() override;
-    Q_INVOKABLE bool    syncLibp2pStop() override;
+
+    /* ----------- Sync Libp2p ----------- */
+    Q_INVOKABLE bool syncLibp2pStart();
+    Q_INVOKABLE bool syncLibp2pStop();
 
     /* ----------- Connectivity ----------- */
     Q_INVOKABLE bool connectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
@@ -38,15 +45,6 @@ public:
     Q_INVOKABLE bool peerInfo() override;
     Q_INVOKABLE bool connectedPeers(int direction = 0) override;
     Q_INVOKABLE bool dial(const QString peerId, const QString proto) override;
-
-    /* ----------- Streams ----------- */
-    // Q_INVOKABLE bool streamClose(quintptr stream) override;
-    // Q_INVOKABLE bool streamCloseWithEOF(quintptr stream) override;
-    // Q_INVOKABLE bool streamRelease(quintptr stream) override;
-    // Q_INVOKABLE bool streamReadExactly(quintptr stream, qsizetype dataLen) override;
-    // Q_INVOKABLE bool streamReadLp(quintptr stream, qint64 maxSize) override;
-    // Q_INVOKABLE bool streamWrite(quintptr stream, const QByteArray &data) override;
-    // Q_INVOKABLE bool streamWriteLp(quintptr stream, const QByteArray &data) override;
 
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE QString toCid(const QByteArray &key) override;
@@ -60,21 +58,17 @@ public:
     Q_INVOKABLE QString kadGetRandomRecords() override;
 
     /* ----------- Sync Kademlia ----------- */
-    Q_INVOKABLE bool syncToCid(const QByteArray &key) override;
-    Q_INVOKABLE bool syncKadFindNode(const QString &peerId);
+    // Q_INVOKABLE bool syncKadFindNode(const QString &peerId);
     Q_INVOKABLE bool syncKadPutValue(const QByteArray &key, const QByteArray &value);
-    Q_INVOKABLE bool syncKadGetValue(const QByteArray &key, int quorum = -1);
-    Q_INVOKABLE bool syncKadAddProvider(const QString &cid);
-    Q_INVOKABLE bool syncKadGetProviders(const QString &cid);
-    Q_INVOKABLE bool syncKadStartProviding(const QString &cid);
-    Q_INVOKABLE bool syncKadStopProviding(const QString &cid);
-    Q_INVOKABLE bool syncKadGetRandomRecords();
-
+    Q_INVOKABLE QByteArray syncKadGetValue(const QByteArray &key, int quorum = -1);
+    // Q_INVOKABLE bool syncKadAddProvider(const QString &cid);
+    // Q_INVOKABLE bool syncKadGetProviders(const QString &cid);
+    // Q_INVOKABLE bool syncKadStartProviding(const QString &cid);
+    // Q_INVOKABLE bool syncKadStopProviding(const QString &cid);
+    // Q_INVOKABLE bool syncKadGetRandomRecords();
 
     Q_INVOKABLE bool setEventCallback() override;
-
     Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);
-
 
 signals:
     void libp2pEvent(
@@ -100,7 +94,7 @@ private:
     libp2p_config_t config = {};
     QString lastCaller; // for logging
 
-    bool waitForUuid(const QString &uuid, const QString &caller);
+    WaitResult waitForUuid(const QString &uuid, const QString &caller);
 
     static void libp2pCallback(
         int callerRet,
@@ -117,7 +111,6 @@ private:
         size_t len,
         void *userData
     );
-
 
     static void peersCallback(
         int callerRet,
@@ -174,12 +167,12 @@ struct PeerInfo {
     QList<QString> addrs;
 };
 
-struct ServiceInfo{
+struct ServiceInfo {
     QString id;
     QByteArray data;
 };
 
-struct ExtendedPeerRecord{
+struct ExtendedPeerRecord {
     QString peerId;
     uint64_t seqNo;
     QList<QString> addrs;
