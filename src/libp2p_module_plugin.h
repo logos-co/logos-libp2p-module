@@ -40,11 +40,15 @@ public:
     Q_INVOKABLE bool syncLibp2pStop();
 
     /* ----------- Connectivity ----------- */
-    Q_INVOKABLE bool connectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
-    Q_INVOKABLE bool disconnectPeer(const QString peerId) override;
-    Q_INVOKABLE bool peerInfo() override;
-    Q_INVOKABLE bool connectedPeers(int direction = 0) override;
-    Q_INVOKABLE bool dial(const QString peerId, const QString proto) override;
+    Q_INVOKABLE QString connectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
+    Q_INVOKABLE QString disconnectPeer(const QString peerId) override;
+    Q_INVOKABLE bool    peerInfo() override;
+    Q_INVOKABLE bool    connectedPeers(int direction = 0) override;
+    Q_INVOKABLE bool    dial(const QString peerId, const QString proto) override;
+
+    /* ----------- Sync Connectivity ----------- */
+    Q_INVOKABLE bool syncConnectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
+    Q_INVOKABLE bool syncDisconnectPeer(const QString peerId) override;
 
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE QString toCid(const QByteArray &key) override;

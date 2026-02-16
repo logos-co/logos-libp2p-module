@@ -208,12 +208,10 @@ private slots:
             "/ip4/127.0.0.1/tcp/9999"
         };
 
-        QVERIFY(plugin.connectPeer(fakePeer, fakeAddrs));
-        waitForEvents(*spy, 1);
-
-        auto event = takeEvent(*spy);
-
-        QCOMPARE(event.at(2).toString(), "connectPeer");
+        QString uuid = plugin.connectPeer(fakePeer, fakeAddrs);
+        auto res = waitForUuid(plugin, *spy, uuid, "connectPeer");
+        // should return false, peer is fake
+        QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
     }
@@ -228,12 +226,10 @@ private slots:
         QString fakePeer =
             "12D3KooWInvalidPeerForTest";
 
-        QVERIFY(plugin.disconnectPeer(fakePeer));
-        waitForEvents(*spy, 1);
-
-        auto event = takeEvent(*spy);
-
-        QCOMPARE(event.at(2).toString(), "disconnectPeer");
+        QString uuid = plugin.disconnectPeer(fakePeer);
+        auto res = waitForUuid(plugin, *spy, uuid, "disconnectPeer");
+        // should return false, peer is fake
+        QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
     }

@@ -62,6 +62,10 @@ static WaitResult runSync(Libp2pModulePlugin* self, AsyncCall asyncCall)
     return result;
 }
 
+/* ---------------------------
+ * Start / Stop
+ * --------------------------- */
+
 bool Libp2pModulePlugin::syncLibp2pStart()
 {
     return runSync(this, [&]() { return libp2pStart(); }).ok;
@@ -71,6 +75,26 @@ bool Libp2pModulePlugin::syncLibp2pStop()
 {
     return runSync(this, [&]() { return libp2pStop(); }).ok;
 }
+
+/* ---------------------------
+ * Connectivity
+ * --------------------------- */
+
+bool Libp2pModulePlugin::syncConnectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs)
+{
+    QString uuid = connectPeer(peerId, multiaddrs, timeoutMs);
+    return waitForUuid(uuid, "connectPeer").ok;
+}
+
+bool Libp2pModulePlugin::syncDisconnectPeer(const QString peerId)
+{
+    QString uuid = disconnectPeer(peerId);
+    return waitForUuid(uuid, "disconnectPeer").ok;
+}
+
+/* ---------------------------
+ * Kademlia
+ * --------------------------- */
 
 QList<QString> Libp2pModulePlugin::syncKadFindNode(const QString &peerId)
 {
