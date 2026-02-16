@@ -26,8 +26,14 @@ Libp2pModulePlugin::Libp2pModulePlugin()
     config.flags |= LIBP2P_CFG_GOSSIPSUB_TRIGGER_SELF;
     config.gossipsub_trigger_self = 1;
 
+    // TODO: bootstrap nodes
+    // config.flags |= LIBP2P_CFG_KAD_BOOTSTRAP_NODES;
+
     config.flags |= LIBP2P_CFG_KAD;
     config.mount_kad = 1;
+
+    config.flags |= LIBP2P_CFG_KAD_DISCOVERY;
+    config.mount_kad_discovery = 1;
 
     auto *callbackCtx = new CallbackContext{ "libp2pNew", QUuid::createUuid().toString(), this };
 
