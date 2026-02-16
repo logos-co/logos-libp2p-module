@@ -10,12 +10,12 @@ Libp2pModulePlugin::Libp2pModulePlugin()
     : ctx(nullptr)
 {
     qRegisterMetaType<PeerInfo>("PeerInfo");
-    qRegisterMetaType<ServiceInfo>("ServiceInfo");
-    qRegisterMetaType<ExtendedPeerRecord>("ExtendedPeerRecord");
-
-    /* ---- QList containers ---- */
     qRegisterMetaType<QList<PeerInfo>>("QList<PeerInfo>");
+
+    qRegisterMetaType<ServiceInfo>("ServiceInfo");
     qRegisterMetaType<QList<ServiceInfo>>("QList<ServiceInfo>");
+
+    qRegisterMetaType<ExtendedPeerRecord>("ExtendedPeerRecord");
     qRegisterMetaType<QList<ExtendedPeerRecord>>("QList<ExtendedPeerRecord>");
 
     std::memset(&config, 0, sizeof(config));

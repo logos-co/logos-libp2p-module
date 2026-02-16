@@ -12,11 +12,15 @@ struct PeerInfo {
     QString peerId;
     QList<QString> addrs;
 };
+Q_DECLARE_METATYPE(PeerInfo);
+Q_DECLARE_METATYPE(QList<PeerInfo>);
 
 struct ServiceInfo {
     QString id;
     QByteArray data;
 };
+Q_DECLARE_METATYPE(ServiceInfo);
+Q_DECLARE_METATYPE(QList<ServiceInfo>);
 
 struct ExtendedPeerRecord {
     QString peerId;
@@ -24,6 +28,9 @@ struct ExtendedPeerRecord {
     QList<QString> addrs;
     QList<ServiceInfo> services;
 };
+Q_DECLARE_METATYPE(ExtendedPeerRecord);
+Q_DECLARE_METATYPE(QList<ExtendedPeerRecord>);
+
 
 class Libp2pModuleInterface : public PluginInterface
 {
