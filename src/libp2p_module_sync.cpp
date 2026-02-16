@@ -92,6 +92,13 @@ bool Libp2pModulePlugin::syncDisconnectPeer(const QString peerId)
     return waitForUuid(uuid, "disconnectPeer").ok;
 }
 
+PeerInfo Libp2pModulePlugin::syncPeerInfo()
+{
+    QString uuid = peerInfo();
+    WaitResult res = waitForUuid(uuid, "peerInfo");
+    return res.ok ? res.data.value<PeerInfo>() : PeerInfo();
+}
+
 /* ---------------------------
  * Kademlia
  * --------------------------- */

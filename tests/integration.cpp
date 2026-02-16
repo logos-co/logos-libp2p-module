@@ -15,6 +15,9 @@ private slots:
         QVERIFY(nodeA.syncLibp2pStart());
         QVERIFY(nodeB.syncLibp2pStart());
 
+        PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo();
+        nodeB.syncConnectPeer(nodeAPeerInfo.peerId, nodeAPeerInfo.addrs, 500)
+
         QByteArray key = "integration-key";
         QByteArray value = "hello";
 
@@ -23,6 +26,8 @@ private slots:
         auto result = nodeB.syncKadGetValue(key);
 
         QCOMPARE(result, value);
+
+        nodeB.syncDisconnectPeer(nodeAPeerInfo.peerId);
 
         QVERIFY(nodeA.syncLibp2pStop());
         QVERIFY(nodeB.syncLibp2pStop());

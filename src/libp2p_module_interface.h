@@ -44,13 +44,14 @@ public:
     /* ----------- Connectivity ----------- */
     Q_INVOKABLE virtual QString connectPeer(const QString peerId, const QStringList multiaddrs, int64_t timeoutMs = -1) = 0;
     Q_INVOKABLE virtual QString disconnectPeer(const QString peerId) = 0;
-    Q_INVOKABLE virtual bool    peerInfo() = 0;
+    Q_INVOKABLE virtual QString peerInfo() = 0;
     Q_INVOKABLE virtual bool    connectedPeers(int direction = 0) = 0;
     Q_INVOKABLE virtual bool    dial(const QString peerId, const QString proto) = 0;
 
     /* ----------- Sync Connectivity ----------- */
-    Q_INVOKABLE virtual bool syncConnectPeer(const QString peerId, const QStringList multiaddrs, int64_t timeoutMs = -1) = 0;
-    Q_INVOKABLE virtual bool syncDisconnectPeer(const QString peerId) = 0;
+    Q_INVOKABLE virtual bool     syncConnectPeer(const QString peerId, const QStringList multiaddrs, int64_t timeoutMs = -1) = 0;
+    Q_INVOKABLE virtual bool     syncDisconnectPeer(const QString peerId) = 0;
+    Q_INVOKABLE virtual PeerInfo syncPeerInfo() = 0;
 
     /* ----------- Streams ----------- */
     // Q_INVOKABLE virtual bool streamClose(quintptr stream) = 0;

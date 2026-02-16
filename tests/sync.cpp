@@ -28,23 +28,13 @@ private slots:
         QVERIFY(plugin.syncLibp2pStop());
     }
 
-    // void testSyncPeerInfo()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     auto spy = createLibp2pEventSpy(&plugin);
-
-    //     startPlugin(plugin, *spy);
-
-    //     QVERIFY(plugin.peerInfo());
-    //     waitForEvents(*spy, 1);
-
-    //     auto event = takeEvent(*spy);
-
-    //     QCOMPARE(event.at(2).toString(), "peerInfo");
-    //     QCOMPARE(event.at(0).toInt(), RET_OK);
-
-    //     stopPlugin(plugin, *spy);
-    // }
+    void testSyncPeerInfo()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart());
+        QVERIFY(!plugin.syncPeerInfo().peerId.isEmpty());
+        QVERIFY(plugin.syncLibp2pStop());
+    }
 
     // void testSyncConnectedPeers()
     // {

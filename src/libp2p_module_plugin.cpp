@@ -232,13 +232,14 @@ QString Libp2pModulePlugin::disconnectPeer(const QString peerId)
     return uuid;
 }
 
-bool Libp2pModulePlugin::peerInfo()
+QString Libp2pModulePlugin::peerInfo()
 {
-    if (!ctx) return false;
+    if (!ctx) return {};
 
+    QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "peerInfo",
-        QUuid::createUuid().toString(),
+        uuid,
         this
     };
 
@@ -248,10 +249,12 @@ bool Libp2pModulePlugin::peerInfo()
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
+    }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
 bool Libp2pModulePlugin::connectedPeers(int direction)
