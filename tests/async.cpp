@@ -433,5 +433,5 @@ private slots:
 };
 
 QTEST_MAIN(TestLibp2pModule)
-#include "test_libp2p_module.moc"
+#include "async.moc"
 

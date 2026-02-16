@@ -92,5 +92,5 @@ private slots:
 };
 
 QTEST_MAIN(TestLibp2pModuleSync)
-#include "test_libp2p_module_sync.moc"
+#include "sync.moc"
 

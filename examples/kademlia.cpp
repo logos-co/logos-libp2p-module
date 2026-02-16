@@ -1,6 +1,6 @@
 #include <QCoreApplication>
 #include <QDebug>
-#include <libp2p_module_plugin.h>
+#include "libp2p_module_plugin.h"
 
 int main(int argc, char *argv[])
 {
