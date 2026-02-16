@@ -65,3 +65,33 @@ target_link_libraries(test_libp2p_module PRIVATE
 
 add_test(NAME test_libp2p_module COMMAND test_libp2p_module)
 
+# sync test
+add_executable(test_libp2p_module_sync
+    tests/test_libp2p_module_sync.cpp
+)
+
+target_include_directories(test_libp2p_module_sync PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+if(LOGOS_CPP_SDK_IS_SOURCE)
+    target_include_directories(test_libp2p_module_sync PRIVATE
+        ${LOGOS_CPP_SDK_ROOT}/cpp
+        ${LOGOS_CPP_SDK_ROOT}/cpp/generated
+    )
+else()
+    target_include_directories(test_libp2p_module_sync PRIVATE
+        ${LOGOS_CPP_SDK_ROOT}/include
+        ${LOGOS_CPP_SDK_ROOT}/include/cpp
+        ${LOGOS_CPP_SDK_ROOT}/include/core
+    )
+endif()
+
+target_link_libraries(test_libp2p_module_sync PRIVATE
+    libp2p_module_module_plugin
+    Qt6::Core
+    Qt6::Test
+)
+
+add_test(NAME test_libp2p_module_sync COMMAND test_libp2p_module_sync)
