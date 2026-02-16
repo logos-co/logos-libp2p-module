@@ -431,82 +431,68 @@ private slots:
         QVERIFY(plugin.syncLibp2pStop());
     }
 
-    // void testSyncKeyToCidAndProviders()
-    // {
-    //     Libp2pModulePlugin plugin;
+    void testSyncKeyToCidAndProviders()
+    {
+        Libp2pModulePlugin plugin;
 
-    //     QVERIFY(plugin.syncLibp2pStart());
+        QVERIFY(plugin.syncLibp2pStart());
 
-    //     QByteArray key = "sync-provider-test-key";
-    //     QByteArray value = "sync-provider-test-value";
+        QByteArray key = "sync-provider-test-key";
+        QByteArray value = "sync-provider-test-value";
 
-    //     /* ----- obtain CID via async API (needed for provider ops) ----- */
+        QString cid = plugin.syncToCid(key);
+        QVERIFY(!cid.isEmpty());
 
-    //     QVERIFY(plugin.toCid(key));
-    //     waitForEvents(*spy, 1);
+        QVERIFY(plugin.syncKadPutValue(key, value));
+        QVERIFY(plugin.syncKadAddProvider(cid));
+        // no providers are registered yet
+        QVERIFY(plugin.syncKadGetProviders(cid).size() == 0);
 
-    //     auto cidEvent = takeEvent(*spy);
-    //     QCOMPARE(cidEvent.at(2).toString(), "toCid");
+        QVERIFY(plugin.syncLibp2pStop());
+    }
 
-    //     QString cid = QString::fromUtf8(cidEvent.at(3).toByteArray());
-    //     QVERIFY(!cid.isEmpty());
+    void testSyncKadFindNode()
+    {
+        Libp2pModulePlugin plugin;
 
-    //     /* ----- Sync operations ----- */
+        QVERIFY(plugin.syncLibp2pStart());
 
-    //     QVERIFY(plugin.syncKadPutValue(key, value));
-    //     QVERIFY(plugin.syncKadAddProvider(cid));
-    //     QVERIFY(plugin.syncKadGetProviders(cid));
+        QString fakePeer = "12D3KooWInvalidPeerForSyncTest";
 
-    //     QVERIFY(plugin.syncLibp2pStop());
-    // }
+        // no nodes are registered yet
+        QVERIFY(plugin.syncKadFindNode(fakePeer).size() == 0);
 
-    // void testSyncKadFindNode()
-    // {
-    //     Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStop());
+    }
 
-    //     QVERIFY(plugin.libp2pStart());
+    void testSyncKadProvideLifecycle()
+    {
+        Libp2pModulePlugin plugin;
 
-    //     QString fakePeer = "12D3KooWInvalidPeerForSyncTest";
+        QVERIFY(plugin.syncLibp2pStart());
 
-    //     QVERIFY(plugin.syncKadFindNode(fakePeer));
+        QByteArray key = "sync-providing-key";
 
-    //     QVERIFY(plugin.libp2pStop());
-    // }
+        QString cid = plugin.syncToCid(key);
+        QVERIFY(!cid.isEmpty());
 
-    // void testSyncKadProvidingLifecycle()
-    // {
-    //     Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncKadStartProviding(cid));
+        QVERIFY(plugin.syncKadStopProviding(cid));
 
-    //     auto spy = createLibp2pEventSpy(&plugin);
+        QVERIFY(plugin.syncLibp2pStop());
+    }
 
-    //     startPlugin(plugin, *spy);
+    void testSyncKadRandomRecords()
+    {
+        Libp2pModulePlugin plugin;
 
-    //     QByteArray key = "sync-providing-key";
+        QVERIFY(plugin.syncLibp2pStart());
 
-    //     QVERIFY(plugin.toCid(key));
-    //     waitForEvents(*spy, 1);
+        // no registered records yet
+        QVERIFY(plugin.syncKadGetRandomRecords().size() == 0);
 
-    //     auto cidEvent = takeEvent(*spy);
-    //     QString cid = QString::fromUtf8(cidEvent.at(3).toByteArray());
-
-    //     QVERIFY(!cid.isEmpty());
-
-    //     QVERIFY(plugin.syncKadStartProviding(cid));
-    //     QVERIFY(plugin.syncKadStopProviding(cid));
-
-    //     stopPlugin(plugin, *spy);
-    // }
-
-    // void testSyncKadRandomRecords()
-    // {
-    //     Libp2pModulePlugin plugin;
-
-    //     QVERIFY(plugin.libp2pStart());
-
-    //     QVERIFY(plugin.syncKadGetRandomRecords());
-
-    //     QVERIFY(plugin.libp2pStop());
-    // }
+        QVERIFY(plugin.syncLibp2pStop());
+    }
 
 };
 

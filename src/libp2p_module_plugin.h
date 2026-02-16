@@ -58,14 +58,15 @@ public:
     Q_INVOKABLE QString kadGetRandomRecords() override;
 
     /* ----------- Sync Kademlia ----------- */
-    // Q_INVOKABLE bool syncKadFindNode(const QString &peerId);
-    Q_INVOKABLE bool syncKadPutValue(const QByteArray &key, const QByteArray &value);
-    Q_INVOKABLE QByteArray syncKadGetValue(const QByteArray &key, int quorum = -1);
-    // Q_INVOKABLE bool syncKadAddProvider(const QString &cid);
-    // Q_INVOKABLE bool syncKadGetProviders(const QString &cid);
-    // Q_INVOKABLE bool syncKadStartProviding(const QString &cid);
-    // Q_INVOKABLE bool syncKadStopProviding(const QString &cid);
-    // Q_INVOKABLE bool syncKadGetRandomRecords();
+    Q_INVOKABLE QString                   syncToCid(const QByteArray &key) override;
+    Q_INVOKABLE QList<QString>            syncKadFindNode(const QString &peerId) override;
+    Q_INVOKABLE bool                      syncKadPutValue(const QByteArray &key, const QByteArray &value) override;
+    Q_INVOKABLE QByteArray                syncKadGetValue(const QByteArray &key, int quorum = -1) override;
+    Q_INVOKABLE bool                      syncKadAddProvider(const QString &cid) override;
+    Q_INVOKABLE QList<PeerInfo>           syncKadGetProviders(const QString &cid) override;
+    Q_INVOKABLE bool                      syncKadStartProviding(const QString &cid) override;
+    Q_INVOKABLE bool                      syncKadStopProviding(const QString &cid) override;
+    Q_INVOKABLE QList<ExtendedPeerRecord> syncKadGetRandomRecords() override;
 
     Q_INVOKABLE bool setEventCallback() override;
     Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);
@@ -160,22 +161,5 @@ struct CallbackContext {
     QString caller;
     QString reqId;
     Libp2pModulePlugin *instance;
-};
-
-struct PeerInfo {
-    QString peerId;
-    QList<QString> addrs;
-};
-
-struct ServiceInfo {
-    QString id;
-    QByteArray data;
-};
-
-struct ExtendedPeerRecord {
-    QString peerId;
-    uint64_t seqNo;
-    QList<QString> addrs;
-    QList<ServiceInfo> services;
 };
 
