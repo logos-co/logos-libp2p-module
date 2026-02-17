@@ -62,12 +62,13 @@ void Libp2pModulePlugin::initLogos(LogosAPI* logosAPIInstance) {
 
 /* ---------------- Helper Functions ----------------- */
 
-bool Libp2pModulePlugin::toCid(const QByteArray &key)
+QString Libp2pModulePlugin::toCid(const QByteArray &key)
 {
     if (key.isEmpty())
         return {};
 
-    auto *callbackCtx = new CallbackContext{ "toCid", QUuid::createUuid().toString(), this };
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "toCid", uuid, this };
 
     int ret = libp2p_create_cid(
         1,                      // CIDv1
@@ -81,9 +82,10 @@ bool Libp2pModulePlugin::toCid(const QByteArray &key)
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
 bool Libp2pModulePlugin::foo(const QString &bar)
@@ -107,42 +109,46 @@ bool Libp2pModulePlugin::foo(const QString &bar)
 
 /* --------------- Start/stop --------------- */
 
-bool Libp2pModulePlugin::libp2pStart()
+QString Libp2pModulePlugin::libp2pStart()
 {
     qDebug() << "Libp2pModulePlugin::libp2pStart called";
     if (!ctx) {
         qDebug() << "libp2pStart called without a context";
-        return false;
+        return {};
     }
 
-    auto *callbackCtx = new CallbackContext{ "libp2pStart", QUuid::createUuid().toString(), this };
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "libp2pStart", uuid, this };
 
     int ret = libp2p_start(ctx, &Libp2pModulePlugin::libp2pCallback, callbackCtx);
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::libp2pStop()
+QString Libp2pModulePlugin::libp2pStop()
 {
     qDebug() << "Libp2pModulePlugin::libp2pStop called";
     if (!ctx) {
         qDebug() << "libp2pStop called without a context";
-        return false;
+        return {};
     }
 
-    auto *callbackCtx = new CallbackContext{ "libp2pStop", QUuid::createUuid().toString(), this };
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "libp2pStop", uuid, this };
 
     int ret = libp2p_stop(ctx, &Libp2pModulePlugin::libp2pCallback, callbackCtx);
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
 /* --------------- Connectivity --------------- */
@@ -455,15 +461,17 @@ bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
 
 /* --------------- Kademlia --------------- */
 
-bool Libp2pModulePlugin::kadFindNode(const QString &peerId)
+QString Libp2pModulePlugin::kadFindNode(const QString &peerId)
 {
     qDebug() << "Libp2pModulePlugin::kadFindNode called:" << peerId;
+
     if (!ctx) {
         qDebug() << "kadFindNode called without a context";
-        return false;
+        return {};
     }
 
-    auto *callbackCtx = new CallbackContext{ "kadFindNode", QUuid::createUuid().toString(), this };
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "kadFindNode", uuid, this };
 
     int ret = libp2p_kad_find_node(
         ctx,
@@ -474,20 +482,22 @@ bool Libp2pModulePlugin::kadFindNode(const QString &peerId)
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::kadPutValue(const QByteArray &key, const QByteArray &value)
+
+QString Libp2pModulePlugin::kadPutValue(const QByteArray &key, const QByteArray &value)
 {
     qDebug() << "Libp2pModulePlugin::kadPutValue called";
-    if (!ctx) {
-        qDebug() << "kadPutValue called without a context";
-        return false;
-    }
 
-    auto *callbackCtx = new CallbackContext{ "kadPutValue", QUuid::createUuid().toString(), this };
+    if (!ctx)
+        return {};
+
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "kadPutValue", uuid, this };
 
     int ret = libp2p_kad_put_value(
         ctx,
@@ -501,20 +511,19 @@ bool Libp2pModulePlugin::kadPutValue(const QByteArray &key, const QByteArray &va
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::kadGetValue(const QByteArray &key, int quorum)
+QString Libp2pModulePlugin::kadGetValue(const QByteArray &key, int quorum)
 {
-    qDebug() << "Libp2pModulePlugin::kadGetValue called";
-    if (!ctx) {
-        qDebug() << "kadGetValue called without a context";
-        return false;
-    }
+    if (!ctx)
+        return {};
 
-    auto *callbackCtx = new CallbackContext{ "kadGetValue", QUuid::createUuid().toString(), this };
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "kadGetValue", uuid, this };
 
     int ret = libp2p_kad_get_value(
         ctx,
@@ -527,20 +536,19 @@ bool Libp2pModulePlugin::kadGetValue(const QByteArray &key, int quorum)
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::kadAddProvider(const QString &cid)
+QString Libp2pModulePlugin::kadAddProvider(const QString &cid)
 {
-    qDebug() << "Libp2pModulePlugin::kadAddProvider called:" << cid;
-    if (!ctx) {
-        qDebug() << "kadAddProvider called without a context";
-        return false;
-    }
+    if (!ctx)
+        return {};
 
-    auto *callbackCtx = new CallbackContext{ "kadAddProvider", QUuid::createUuid().toString(), this };
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "kadAddProvider", uuid, this };
 
     int ret = libp2p_kad_add_provider(
         ctx,
@@ -551,20 +559,19 @@ bool Libp2pModulePlugin::kadAddProvider(const QString &cid)
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::kadGetProviders(const QString &cid)
+QString Libp2pModulePlugin::kadGetProviders(const QString &cid)
 {
-    qDebug() << "Libp2pModulePlugin::kadGetProviders called:" << cid;
-    if (!ctx) {
-        qDebug() << "kadGetProviders called without a context";
-        return false;
-    }
+    if (!ctx)
+        return {};
 
-    auto *callbackCtx = new CallbackContext{ "kadGetProviders", QUuid::createUuid().toString(), this };
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "kadGetProviders", uuid, this };
 
     int ret = libp2p_kad_get_providers(
         ctx,
@@ -575,20 +582,19 @@ bool Libp2pModulePlugin::kadGetProviders(const QString &cid)
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::kadStartProviding(const QString &cid)
+QString Libp2pModulePlugin::kadStartProviding(const QString &cid)
 {
-    qDebug() << "Libp2pModulePlugin::kadStartProviding called:" << cid;
-    if (!ctx) {
-        qDebug() << "kadStartProviding called without a context";
-        return false;
-    }
+    if (!ctx)
+        return {};
 
-    auto *callbackCtx = new CallbackContext{ "kadStartProviding", QUuid::createUuid().toString(), this };
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "kadStartProviding", uuid, this };
 
     int ret = libp2p_kad_start_providing(
         ctx,
@@ -599,20 +605,19 @@ bool Libp2pModulePlugin::kadStartProviding(const QString &cid)
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::kadStopProviding(const QString &cid)
+QString Libp2pModulePlugin::kadStopProviding(const QString &cid)
 {
-    qDebug() << "Libp2pModulePlugin::kadStopProviding called:" << cid;
-    if (!ctx) {
-        qDebug() << "kadStopProviding called without a context";
-        return false;
-    }
+    if (!ctx)
+        return {};
 
-    auto *callbackCtx = new CallbackContext{ "kadStopProviding", QUuid::createUuid().toString(), this };
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "kadStopProviding", uuid, this };
 
     int ret = libp2p_kad_stop_providing(
         ctx,
@@ -623,22 +628,20 @@ bool Libp2pModulePlugin::kadStopProviding(const QString &cid)
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::kadGetRandomRecords()
+QString Libp2pModulePlugin::kadGetRandomRecords()
 {
-    qDebug() << "Libp2pModulePlugin::kadGetRandomRecords called";
+    if (!ctx)
+        return {};
 
-    if (!ctx) {
-        qDebug() << "kadGetRandomRecords called without a context";
-        return false;
-    }
-
+    QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx =
-        new CallbackContext{ "kadGetRandomRecords", QUuid::createUuid().toString(), this };
+        new CallbackContext{ "kadGetRandomRecords", uuid, this };
 
     int ret = libp2p_kad_random_records(
         ctx,
@@ -648,9 +651,10 @@ bool Libp2pModulePlugin::kadGetRandomRecords()
 
     if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
     }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
 bool Libp2pModulePlugin::setEventCallback()

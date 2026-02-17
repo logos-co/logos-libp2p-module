@@ -8,14 +8,31 @@
 
 #include "interface.h"
 
+struct PeerInfo {
+    QString peerId;
+    QList<QString> addrs;
+};
+
+struct ServiceInfo {
+    QString id;
+    QByteArray data;
+};
+
+struct ExtendedPeerRecord {
+    QString peerId;
+    uint64_t seqNo;
+    QList<QString> addrs;
+    QList<ServiceInfo> services;
+};
+
 class Libp2pModuleInterface : public PluginInterface
 {
 public:
     virtual ~Libp2pModuleInterface() {}
     Q_INVOKABLE virtual bool foo(const QString &bar) = 0;
 
-    Q_INVOKABLE virtual bool libp2pStart() = 0;
-    Q_INVOKABLE virtual bool libp2pStop() = 0;
+    Q_INVOKABLE virtual QString libp2pStart() = 0;
+    Q_INVOKABLE virtual QString libp2pStop() = 0;
 
     /* ----------- Connectivity ----------- */
     Q_INVOKABLE virtual bool connectPeer(const QString peerId, const QStringList multiaddrs, int64_t timeoutMs = -1) = 0;
@@ -34,15 +51,29 @@ public:
     // Q_INVOKABLE virtual bool streamWriteLp(quintptr stream, const QByteArray &data) = 0;
 
     /* ----------- Kademlia ----------- */
-    Q_INVOKABLE virtual bool toCid(const QByteArray &key) = 0;
-    Q_INVOKABLE virtual bool kadFindNode(const QString &peerId) = 0;
-    Q_INVOKABLE virtual bool kadPutValue(const QByteArray &key, const QByteArray &value) = 0;
-    Q_INVOKABLE virtual bool kadGetValue(const QByteArray &key, int quorum = -1) = 0;
-    Q_INVOKABLE virtual bool kadAddProvider(const QString &cid) = 0;
-    Q_INVOKABLE virtual bool kadStartProviding(const QString &cid) = 0;
-    Q_INVOKABLE virtual bool kadStopProviding(const QString &cid) = 0;
-    Q_INVOKABLE virtual bool kadGetProviders(const QString &cid) = 0;
-    Q_INVOKABLE virtual bool kadGetRandomRecords() = 0;
+    Q_INVOKABLE virtual QString toCid(const QByteArray &key) = 0;
+    Q_INVOKABLE virtual QString kadFindNode(const QString &peerId) = 0;
+    Q_INVOKABLE virtual QString kadPutValue(const QByteArray &key, const QByteArray &value) = 0;
+    Q_INVOKABLE virtual QString kadGetValue(const QByteArray &key, int quorum = -1) = 0;
+    Q_INVOKABLE virtual QString kadAddProvider(const QString &cid) = 0;
+    Q_INVOKABLE virtual QString kadStartProviding(const QString &cid) = 0;
+    Q_INVOKABLE virtual QString kadStopProviding(const QString &cid) = 0;
+    Q_INVOKABLE virtual QString kadGetProviders(const QString &cid) = 0;
+    Q_INVOKABLE virtual QString kadGetRandomRecords() = 0;
+
+    /* ----------- Sync Kademlia ----------- */
+    Q_INVOKABLE virtual bool    syncLibp2pStart() = 0;
+    Q_INVOKABLE virtual bool    syncLibp2pStop() = 0;
+
+    Q_INVOKABLE virtual QString                   syncToCid(const QByteArray &key) = 0;
+    Q_INVOKABLE virtual QList<QString>            syncKadFindNode(const QString &peerId) = 0;
+    Q_INVOKABLE virtual bool                      syncKadPutValue(const QByteArray &key, const QByteArray &value) = 0;
+    Q_INVOKABLE virtual QByteArray                syncKadGetValue(const QByteArray &key, int quorum = -1) = 0;
+    Q_INVOKABLE virtual bool                      syncKadAddProvider(const QString &cid) = 0;
+    Q_INVOKABLE virtual QList<PeerInfo>           syncKadGetProviders(const QString &cid) = 0;
+    Q_INVOKABLE virtual bool                      syncKadStartProviding(const QString &cid) = 0;
+    Q_INVOKABLE virtual bool                      syncKadStopProviding(const QString &cid) = 0;
+    Q_INVOKABLE virtual QList<ExtendedPeerRecord> syncKadGetRandomRecords() = 0;
 
     Q_INVOKABLE virtual bool setEventCallback() = 0;
 
