@@ -6,8 +6,9 @@
 #include <QDebug>
 
 
-Libp2pModulePlugin::Libp2pModulePlugin()
-    : ctx(nullptr)
+Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
+    : ctx(nullptr),
+      m_bootstrapNodes(bootstrapNodes)
 {
     qRegisterMetaType<PeerInfo>("PeerInfo");
     qRegisterMetaType<QList<PeerInfo>>("QList<PeerInfo>");
@@ -26,8 +27,44 @@ Libp2pModulePlugin::Libp2pModulePlugin()
     config.flags |= LIBP2P_CFG_GOSSIPSUB_TRIGGER_SELF;
     config.gossipsub_trigger_self = 1;
 
-    // TODO: bootstrap nodes
-    // config.flags |= LIBP2P_CFG_KAD_BOOTSTRAP_NODES;
+    // kad bootstrap nodes
+    if (!m_bootstrapNodes.isEmpty()) {
+        m_bootstrapCNodes.reserve(m_bootstrapNodes.size());
+        m_addrUtf8Storage.reserve(m_bootstrapNodes.size());
+        m_addrPtrStorage.reserve(m_bootstrapNodes.size());
+        for (const PeerInfo &p : m_bootstrapNodes) {
+            QVector<QByteArray> utf8List;
+            QVector<char*> ptrList;
+
+            utf8List.reserve(p.addrs.size());
+            ptrList.reserve(p.addrs.size());
+
+            for (const QString &addr : p.addrs) {
+                utf8List.push_back(addr.toUtf8());
+                ptrList.push_back(utf8List.back().data());
+            }
+
+            m_addrUtf8Storage.push_back(std::move(utf8List));
+            m_addrPtrStorage.push_back(std::move(ptrList));
+
+            // ---- peerId storage ----
+            m_peerIdStorage.push_back(p.peerId.toUtf8());
+
+            libp2p_bootstrap_node_t node{};
+            node.peerId = m_peerIdStorage.back().constData();
+
+            node.multiaddrs =
+                const_cast<const char**>(m_addrPtrStorage.back().data());
+
+            node.multiaddrsLen = m_addrPtrStorage.back().size();
+
+            m_bootstrapCNodes.push_back(node);
+        }
+
+        config.flags |= LIBP2P_CFG_KAD_BOOTSTRAP_NODES;
+        config.kad_bootstrap_nodes = m_bootstrapCNodes.data();
+        config.kad_bootstrap_nodes_len = m_bootstrapCNodes.size();
+    }
 
     config.flags |= LIBP2P_CFG_KAD;
     config.mount_kad = 1;

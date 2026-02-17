@@ -30,27 +30,35 @@ private slots:
     void kadPutGet()
     {
         Libp2pModulePlugin nodeA;
-        Libp2pModulePlugin nodeB;
-
         QVERIFY(nodeA.syncLibp2pStart());
-        QVERIFY(nodeB.syncLibp2pStart());
 
         PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo();
+
+        Libp2pModulePlugin nodeB({ nodeAPeerInfo });
+        QVERIFY(nodeB.syncLibp2pStart());
+        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo();
+
         QVERIFY(nodeB.syncConnectPeer(nodeAPeerInfo.peerId, nodeAPeerInfo.addrs, 500));
-        // TODO: need to issue a findNode
-        // so that peers know each other
-        // QVERIFY(nodeB.syncFindPeer(nodeAPeerInfo.peerId));
+
+        // warmup routing tables
+        nodeA.syncKadFindNode(nodeAPeerInfo.peerId);
+        nodeB.syncKadFindNode(nodeAPeerInfo.peerId);
 
         QByteArray key = "integration-key";
         QByteArray value = "hello";
 
-        QVERIFY(nodeB.syncKadPutValue(key, value));
-
-        // give time for key to be there
-        QThread::msleep(5000);
-
+        // put value until it shows on other peer
         int quorum = 1;
-        auto result = nodeA.syncKadGetValue(key, quorum);
+        QByteArray result;
+        for (int i = 0; i < 10; ++i) {
+            QVERIFY(nodeA.syncKadPutValue(key, value));
+            QThread::msleep(200);
+            result = nodeB.syncKadGetValue(key, quorum);
+            if (!result.isEmpty())
+                break;
+
+            QThread::msleep(200);
+        }
 
         QCOMPARE(result, value);
 

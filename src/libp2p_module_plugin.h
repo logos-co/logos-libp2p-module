@@ -24,7 +24,7 @@ class Libp2pModulePlugin : public QObject, public Libp2pModuleInterface
     Q_INTERFACES(Libp2pModuleInterface PluginInterface)
 
 public:
-    explicit Libp2pModulePlugin();
+    explicit Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes = {});
     ~Libp2pModulePlugin() override;
 
     QString name() const override { return "libp2p_module"; }
@@ -98,6 +98,14 @@ private slots:
     );
 
 private:
+    QList<PeerInfo> m_bootstrapNodes;
+    QVector<libp2p_bootstrap_node_t> m_bootstrapCNodes;
+    // keeps UTF8 buffers alive
+    QVector<QVector<QByteArray>> m_addrUtf8Storage;
+    // keeps char** arrays alive
+    QVector<QVector<char*>> m_addrPtrStorage;
+    QVector<QByteArray> m_peerIdStorage;
+
     libp2p_ctx_t *ctx = nullptr;
     libp2p_config_t config = {};
     QString lastCaller; // for logging
