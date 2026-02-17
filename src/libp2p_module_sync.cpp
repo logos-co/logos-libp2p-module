@@ -118,12 +118,6 @@ QList<QString> Libp2pModulePlugin::syncKadFindNode(const QString &peerId)
     return res.ok ? res.data.value<QList<QString>>() : QList<QString>();
 }
 
-QList<QString> Libp2pModulePlugin::syncKadFindNode(const QString &peerId)
-{
-    auto res = runSync(this, [&]() { return kadFindNode(peerId); });
-    return res.ok ? res.data.value<QList<QString>>() : QList<QString>();
-}
-
 bool Libp2pModulePlugin::syncKadPutValue(const QByteArray &key, const QByteArray &value)
 {
     return runSync(this, [&]() { return kadPutValue(key, value); }).ok;

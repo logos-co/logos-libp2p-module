@@ -37,17 +37,20 @@ private slots:
 
         PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo();
         QVERIFY(nodeB.syncConnectPeer(nodeAPeerInfo.peerId, nodeAPeerInfo.addrs, 500));
+        // TODO: need to issue a findNode
+        // so that peers know each other
+        // QVERIFY(nodeB.syncFindPeer(nodeAPeerInfo.peerId));
 
         QByteArray key = "integration-key";
         QByteArray value = "hello";
 
-        QVERIFY(nodeA.syncKadPutValue(key, value));
+        QVERIFY(nodeB.syncKadPutValue(key, value));
 
         // give time for key to be there
-        QThread::msleep(1000);
+        QThread::msleep(5000);
 
         int quorum = 1;
-        auto result = nodeB.syncKadGetValue(key, quorum);
+        auto result = nodeA.syncKadGetValue(key, quorum);
 
         QCOMPARE(result, value);
 
