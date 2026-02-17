@@ -37,6 +37,9 @@ private:
     )
     {
         WaitResult result{false, QVariant{}};
+        if (uuid.isEmpty()) {
+            return result;
+        }
 
         QElapsedTimer timer;
         timer.start();
@@ -94,48 +97,6 @@ private:
         }
         return spy.takeFirst();
     }
-
-    /* ---------------------------
-     * Event validators
-     * --------------------------- */
-
-    static void assertEvent(
-        EventSpy &spy,
-        int expectedResult,
-        const QString &expectedCaller,
-        const QVariant &expectedBuffer = QVariant()
-    )
-    {
-        auto args = takeEvent(spy);
-
-        QCOMPARE(args.at(0).toInt(), expectedResult);
-        QCOMPARE(args.at(2).toString(), expectedCaller);
-        QCOMPARE(args.at(4), expectedBuffer);
-    }
-
-    static void assertEventCount(EventSpy &spy, int expected)
-    {
-        QCOMPARE(spy.count(), expected);
-    }
-
-    static void assertGetProvidersResult(
-        EventSpy &spy,
-        int expectedResult,
-        const QString &expectedCaller,
-        int expectedProvidersLen
-    )
-    {
-        auto args = takeEvent(spy);
-
-        QCOMPARE(args.at(0).toInt(), expectedResult);
-        QCOMPARE(args.at(2).toString(), expectedCaller);
-
-        auto providers =
-            args.at(4).value<QVector<Libp2pPeerInfo>>();
-
-        QCOMPARE(providers.size(), expectedProvidersLen);
-    }
-
 
     /* ---------------------------
      * Plugin lifecycle helpers
@@ -241,13 +202,11 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        QVERIFY(plugin.peerInfo());
-        waitForEvents(*spy, 1);
-
-        auto event = takeEvent(*spy);
-
-        QCOMPARE(event.at(2).toString(), "peerInfo");
-        QCOMPARE(event.at(0).toInt(), RET_OK);
+        QString uuid = plugin.peerInfo();
+        auto res = waitForUuid(plugin, *spy, uuid, "peerInfo");
+        QVERIFY(res.ok);
+        PeerInfo peerInfo = res.data.value<PeerInfo>();
+        QVERIFY(!peerInfo.peerId.isEmpty());
 
         stopPlugin(plugin, *spy);
     }
@@ -259,13 +218,10 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        QVERIFY(plugin.connectedPeers());
-        waitForEvents(*spy, 1);
-
-        auto event = takeEvent(*spy);
-
-        QCOMPARE(event.at(2).toString(), "connectedPeers");
-        QCOMPARE(event.at(0).toInt(), RET_OK);
+        QString uuid = plugin.connectedPeers();
+        auto res = waitForUuid(plugin, *spy, uuid, "connectedPeers");
+        QVERIFY(res.ok);
+        QVERIFY(res.data.value<int>() == 0);
 
         stopPlugin(plugin, *spy);
     }
@@ -282,12 +238,12 @@ private slots:
 
         QString proto = "/test/1.0.0";
 
-        QVERIFY(plugin.dial(fakePeer, proto));
-        waitForEvents(*spy, 1);
-
-        auto event = takeEvent(*spy);
-
-        QCOMPARE(event.at(2).toString(), "dial");
+        QString uuid = plugin.dial(fakePeer, proto);
+        auto res = waitForUuid(plugin, *spy, uuid, "dial");
+        // cannot dial fake peer
+        QVERIFY(!res.ok);
+        quintptr conn = res.data.value<quintptr>();
+        QVERIFY(conn == 0);
 
         stopPlugin(plugin, *spy);
     }

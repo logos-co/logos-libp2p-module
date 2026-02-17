@@ -43,13 +43,15 @@ public:
     Q_INVOKABLE QString connectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
     Q_INVOKABLE QString disconnectPeer(const QString peerId) override;
     Q_INVOKABLE QString peerInfo() override;
-    Q_INVOKABLE bool    connectedPeers(int direction = 0) override;
-    Q_INVOKABLE bool    dial(const QString peerId, const QString proto) override;
+    Q_INVOKABLE QString connectedPeers(int direction = 0) override;
+    Q_INVOKABLE QString dial(const QString peerId, const QString proto) override;
 
     /* ----------- Sync Connectivity ----------- */
-    Q_INVOKABLE bool     syncConnectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
-    Q_INVOKABLE bool     syncDisconnectPeer(const QString peerId) override;
-    Q_INVOKABLE PeerInfo syncPeerInfo() override;
+    Q_INVOKABLE bool            syncConnectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
+    Q_INVOKABLE bool            syncDisconnectPeer(const QString peerId) override;
+    Q_INVOKABLE PeerInfo        syncPeerInfo() override;
+    Q_INVOKABLE QList<QString>  syncConnectedPeers(int direction = 0) override;
+    Q_INVOKABLE QVariant        syncDial(const QString peerId, const QString proto) override;
 
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE QString toCid(const QByteArray &key) override;
@@ -99,8 +101,6 @@ private:
     libp2p_ctx_t *ctx = nullptr;
     libp2p_config_t config = {};
     QString lastCaller; // for logging
-
-    WaitResult waitForUuid(const QString &uuid, const QString &caller);
 
     static void libp2pCallback(
         int callerRet,

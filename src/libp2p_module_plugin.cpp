@@ -257,13 +257,14 @@ QString Libp2pModulePlugin::peerInfo()
     return uuid;
 }
 
-bool Libp2pModulePlugin::connectedPeers(int direction)
+QString Libp2pModulePlugin::connectedPeers(int direction)
 {
-    if (!ctx) return false;
+    if (!ctx) return {};
 
+    QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "connectedPeers",
-        QUuid::createUuid().toString(),
+        uuid,
         this
     };
 
@@ -274,22 +275,25 @@ bool Libp2pModulePlugin::connectedPeers(int direction)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
+    }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
+QString Libp2pModulePlugin::dial(const QString peerId, const QString proto)
 {
-    if (!ctx) return false;
+    if (!ctx) return {};
 
     QByteArray peerIdUtf8 = peerId.toUtf8();
     QByteArray protoUtf8 = proto.toUtf8();
 
+    QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "dial",
-        QUuid::createUuid().toString(),
+        uuid,
         this
     };
 
@@ -301,10 +305,12 @@ bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
+    }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
 // bool Libp2pModulePlugin::streamClose(libp2p_stream_t *conn)

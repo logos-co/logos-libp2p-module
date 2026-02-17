@@ -36,45 +36,28 @@ private slots:
         QVERIFY(plugin.syncLibp2pStop());
     }
 
-    // void testSyncConnectedPeers()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     auto spy = createLibp2pEventSpy(&plugin);
+    void testSyncConnectedPeers()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart());
+        QVERIFY(plugin.syncConnectedPeers().size() == 0);
+        QVERIFY(plugin.syncLibp2pStop());
+    }
 
-    //     startPlugin(plugin, *spy);
+    void testSyncDial()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart());
 
-    //     QVERIFY(plugin.connectedPeers());
-    //     waitForEvents(*spy, 1);
+        QString fakePeer =
+            "12D3KooWInvalidPeerForTest";
 
-    //     auto event = takeEvent(*spy);
+        QString proto = "/test/1.0.0";
 
-    //     QCOMPARE(event.at(2).toString(), "connectedPeers");
-    //     QCOMPARE(event.at(0).toInt(), RET_OK);
+        QVERIFY(plugin.syncDial(fakePeer, proto) == QVariant{});
 
-    //     stopPlugin(plugin, *spy);
-    // }
-
-    // void testSyncDial()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     auto spy = createLibp2pEventSpy(&plugin);
-
-    //     startPlugin(plugin, *spy);
-
-    //     QString fakePeer =
-    //         "12D3KooWInvalidPeerForTest";
-
-    //     QString proto = "/test/1.0.0";
-
-    //     QVERIFY(plugin.dial(fakePeer, proto));
-    //     waitForEvents(*spy, 1);
-
-    //     auto event = takeEvent(*spy);
-
-    //     QCOMPARE(event.at(2).toString(), "dial");
-
-    //     stopPlugin(plugin, *spy);
-    // }
+        QVERIFY(plugin.syncLibp2pStop());
+    }
 
     /* ---------------------------
      * Sync Kademlia tests
