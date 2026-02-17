@@ -1,114 +1,124 @@
 #include "libp2p_module_plugin.h"
-#include <QEventLoop>
-#include <QMetaObject>
-#include <QTimer>
 
-WaitResult Libp2pModulePlugin::waitForUuid(
-    const QString &uuid,
-    const QString &caller
-)
+#include <QEventLoop>
+#include <QTimer>
+#include <QMetaObject>
+#include <QVariant>
+#include <QElapsedTimer>
+
+template<typename AsyncCall>
+static WaitResult runSync(Libp2pModulePlugin* self, AsyncCall asyncCall)
 {
     WaitResult result{false, QVariant{}};
-    if (uuid.isEmpty()) return result;
 
     QEventLoop loop;
     QMetaObject::Connection conn;
 
-    conn = connect(
-        this,
+    conn = QObject::connect(
+        self,
         &Libp2pModulePlugin::libp2pEvent,
-        this,
-        [&](int ret, const QString &reqId, const QString &eventCaller,
-            const QString &message, const QVariant &data) {
+        self,
+        [&](int ret,
+            const QString &reqId,
+            const QString &caller,
+            const QString &message,
+            const QVariant &data)
+        {
+            if (reqId != result.data.toString())
+                return;
 
-            if (reqId == uuid && eventCaller == caller) {
-                result.ok = (ret == RET_OK);
+            result.ok = (ret == RET_OK);
+            if (caller == "toCid")
+                result.data = message;
+            else
                 result.data = data;
-                if (eventCaller == "toCid")
-                    result.data = message;
-                disconnect(conn);
-                loop.quit();
-            }
+
+            QObject::disconnect(conn);
+            loop.quit();
         });
+
+    QString uuid = asyncCall();
+
+    if (uuid.isEmpty()) {
+        QObject::disconnect(conn);
+        return result;
+    }
+
+    // temporarily store UUID in result.data for matching
+    result.data = uuid;
 
     QTimer timer;
     timer.setSingleShot(true);
     QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-    timer.start(10000); // 10-second safety timeout
+    timer.start(10000);
 
     loop.exec();
-    disconnect(conn);
+
+    // if timeout, UUID is still stored
+    if (result.data.typeId() == QMetaType::QString && result.data.toString() == uuid)
+        result.data = QVariant{};
+
+    QObject::disconnect(conn);
     return result;
 }
 
 bool Libp2pModulePlugin::syncLibp2pStart()
 {
-    QString uuid = libp2pStart();
-    return waitForUuid(uuid, "libp2pStart").ok;
+    return runSync(this, [&]() { return libp2pStart(); }).ok;
 }
 
 bool Libp2pModulePlugin::syncLibp2pStop()
 {
-    QString uuid = libp2pStop();
-    return waitForUuid(uuid, "libp2pStop").ok;
+    return runSync(this, [&]() { return libp2pStop(); }).ok;
 }
 
 QList<QString> Libp2pModulePlugin::syncKadFindNode(const QString &peerId)
 {
-    QString uuid = kadFindNode(peerId);
-    WaitResult res = waitForUuid(uuid, "kadFindNode");
+    auto res = runSync(this, [&]() { return kadFindNode(peerId); });
     return res.ok ? res.data.value<QList<QString>>() : QList<QString>();
 }
 
 bool Libp2pModulePlugin::syncKadPutValue(const QByteArray &key, const QByteArray &value)
 {
-    QString uuid = kadPutValue(key, value);
-    return waitForUuid(uuid, "kadPutValue").ok;
+    return runSync(this, [&]() { return kadPutValue(key, value); }).ok;
 }
 
 QByteArray Libp2pModulePlugin::syncKadGetValue(const QByteArray &key, int quorum)
 {
-    QString uuid = kadGetValue(key, quorum);
-    WaitResult res = waitForUuid(uuid, "kadGetValue");
+    auto res = runSync(this, [&]() { return kadGetValue(key, quorum); });
     return res.ok ? res.data.toByteArray() : QByteArray{};
 }
 
 bool Libp2pModulePlugin::syncKadAddProvider(const QString &cid)
 {
-    QString uuid = kadAddProvider(cid);
-    return waitForUuid(uuid, "kadAddProvider").ok;
+    return runSync(this, [&]() { return kadAddProvider(cid); }).ok;
 }
 
 QList<PeerInfo> Libp2pModulePlugin::syncKadGetProviders(const QString &cid)
 {
-    QString uuid = kadGetProviders(cid);
-    WaitResult res = waitForUuid(uuid, "kadGetProviders");
+    auto res = runSync(this, [&]() { return kadGetProviders(cid); });
     return res.ok ? res.data.value<QList<PeerInfo>>() : QList<PeerInfo>();
 }
 
 bool Libp2pModulePlugin::syncKadStartProviding(const QString &cid)
 {
-    QString uuid = kadStartProviding(cid);
-    return waitForUuid(uuid, "kadStartProviding").ok;
+    return runSync(this, [&]() { return kadStartProviding(cid); }).ok;
 }
 
 bool Libp2pModulePlugin::syncKadStopProviding(const QString &cid)
 {
-    QString uuid = kadStopProviding(cid);
-    return waitForUuid(uuid, "kadStopProviding").ok;
+    return runSync(this, [&]() { return kadStopProviding(cid); }).ok;
 }
 
 QList<ExtendedPeerRecord> Libp2pModulePlugin::syncKadGetRandomRecords()
 {
-    QString uuid = kadGetRandomRecords();
-    WaitResult res = waitForUuid(uuid, "kadGetRandomRecords");
+    auto res = runSync(this, [&]() { return kadGetRandomRecords(); });
     return res.ok ? res.data.value<QList<ExtendedPeerRecord>>() : QList<ExtendedPeerRecord>();
 }
 
 QString Libp2pModulePlugin::syncToCid(const QByteArray &key)
 {
-    QString uuid = toCid(key);
-    WaitResult res = waitForUuid(uuid, "toCid");
+    auto res = runSync(this, [&]() { return toCid(key); });
     return res.ok ? res.data.toString() : QString{};
 }
 
