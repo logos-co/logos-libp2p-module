@@ -29,20 +29,15 @@ private slots:
 
     void kadPutGet()
     {
+        // setup node A
         Libp2pModulePlugin nodeA;
         QVERIFY(nodeA.syncLibp2pStart());
-
         PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo();
 
+        // setup node B
         Libp2pModulePlugin nodeB({ nodeAPeerInfo });
         QVERIFY(nodeB.syncLibp2pStart());
         PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo();
-
-        QVERIFY(nodeB.syncConnectPeer(nodeAPeerInfo.peerId, nodeAPeerInfo.addrs, 500));
-
-        // warmup routing tables
-        nodeA.syncKadFindNode(nodeAPeerInfo.peerId);
-        nodeB.syncKadFindNode(nodeAPeerInfo.peerId);
 
         QByteArray key = "integration-key";
         QByteArray value = "hello";

@@ -7,13 +7,15 @@ int main(int argc, char *argv[])
     QCoreApplication app(argc, argv);
 
     Libp2pModulePlugin nodeA;
-    Libp2pModulePlugin nodeB;
 
     qDebug() << "Starting nodes...";
 
     if (!nodeA.syncLibp2pStart()) {
         qFatal("Node A failed to start");
     }
+    PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo();
+
+    Libp2pModulePlugin nodeB({ nodeAPeerInfo });
 
     if (!nodeB.syncLibp2pStart()) {
         qFatal("Node B failed to start");
@@ -21,19 +23,12 @@ int main(int argc, char *argv[])
 
     qDebug() << "Nodes started";
 
-    /* ----------------------------------
-       Connect nodes (bootstrap style)
-       ---------------------------------- */
-
     // Obtain node B peer info from node B
     auto peersB = nodeB.syncKadGetRandomRecords();
 
     if (peersB.isEmpty()) {
         qDebug() << "Node B has no known peers yet";
     }
-
-    // Normally you would fetch multiaddrs from peerInfo(),
-    // but for demo we assume they already share bootstrap config.
 
     /* ----------------------------------
        Kademlia Put from A
