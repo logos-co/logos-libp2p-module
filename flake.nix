@@ -30,14 +30,6 @@
             mkdir -p $out/lib
             cp "${libp2pCbind system}/lib"/*.dylib $out/lib/ 2>/dev/null || true
             cp "${libp2pCbind system}/lib"/*.so $out/lib/ 2>/dev/null || true
-
-            # ---- Install examples from build tree ----
-            EXAMPLE_BIN=$(find $NIX_BUILD_TOP -name example_kademlia -type f | head -n 1 || true)
-
-            if [ -n "$EXAMPLE_BIN" ]; then
-              mkdir -p $out/examples
-              cp "$EXAMPLE_BIN" $out/examples/
-            fi
           '';
         };
 
