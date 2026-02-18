@@ -80,12 +80,12 @@ bool Libp2pModulePlugin::syncLibp2pStop()
  * Connectivity
  * --------------------------- */
 
-bool Libp2pModulePlugin::syncConnectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs)
+bool Libp2pModulePlugin::syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs)
 {
     return runSync(this, [&]() { return connectPeer(peerId, multiaddrs, timeoutMs); }).ok;
 }
 
-bool Libp2pModulePlugin::syncDisconnectPeer(const QString peerId)
+bool Libp2pModulePlugin::syncDisconnectPeer(const QString &peerId)
 {
     return runSync(this, [&]() { return disconnectPeer(peerId); }).ok;
 }
@@ -102,7 +102,7 @@ QList<QString> Libp2pModulePlugin::syncConnectedPeers(int direction)
     return res.ok ? res.data.value<QList<QString>>() : QList<QString>();
 }
 
-QVariant Libp2pModulePlugin::syncDial(const QString peerId, const QString proto)
+QVariant Libp2pModulePlugin::syncDial(const QString &peerId, const QString &proto)
 {
     auto res = runSync(this, [&]() { return dial(peerId, proto); });
     return res.ok ? res.data : QVariant();

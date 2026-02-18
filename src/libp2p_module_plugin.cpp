@@ -197,7 +197,7 @@ QString Libp2pModulePlugin::libp2pStop()
 
 /* --------------- Connectivity --------------- */
 QString Libp2pModulePlugin::connectPeer(
-    const QString peerId,
+    const QString &peerId,
     const QList<QString> multiaddrs,
     int64_t timeoutMs
 )
@@ -242,7 +242,7 @@ QString Libp2pModulePlugin::connectPeer(
     return uuid;
 }
 
-QString Libp2pModulePlugin::disconnectPeer(const QString peerId)
+QString Libp2pModulePlugin::disconnectPeer(const QString &peerId)
 {
     if (!ctx) return {};
 
@@ -321,7 +321,7 @@ QString Libp2pModulePlugin::connectedPeers(int direction)
     return uuid;
 }
 
-QString Libp2pModulePlugin::dial(const QString peerId, const QString proto)
+QString Libp2pModulePlugin::dial(const QString &peerId, const QString &proto)
 {
     if (!ctx) return {};
 
