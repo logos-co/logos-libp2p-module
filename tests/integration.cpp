@@ -37,7 +37,6 @@ private slots:
         // setup node B
         Libp2pModulePlugin nodeB({ nodeAPeerInfo });
         QVERIFY(nodeB.syncLibp2pStart());
-        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo();
 
         QByteArray key = "integration-key";
         QByteArray value = "hello";
