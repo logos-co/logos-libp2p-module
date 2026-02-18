@@ -4,6 +4,8 @@
 #include <QtCore/QVariant>
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
+#include <QtCore/QHash>
+#include <QtCore/QReadWriteLock>
 
 #include <logos_api.h>
 #include <logos_api_client.h>
@@ -46,13 +48,13 @@ public:
     Q_INVOKABLE QString dial(const QString &peerId, const QString &proto) override;
 
     /* ----------- Streams ----------- */
-    Q_INVOKABLE QString streamReadExactly(uint64_t connId, size_t len) override;
-    Q_INVOKABLE QString streamReadLp(uint64_t connId, int64_t maxSize) override;
-    Q_INVOKABLE QString streamWrite(uint64_t connId, const QByteArray &data) override;
-    Q_INVOKABLE QString streamWriteLp(uint64_t connId, const QByteArray &data) override;
-    Q_INVOKABLE QString streamClose(uint64_t connId) override;
-    Q_INVOKABLE QString streamCloseEOF(uint64_t connId) override;
-    Q_INVOKABLE QString streamRelease(uint64_t connId) override;
+    Q_INVOKABLE QString streamReadExactly(uint64_t streamId, size_t len) override;
+    Q_INVOKABLE QString streamReadLp(uint64_t streamId, size_t maxSize) override;
+    Q_INVOKABLE QString streamWrite(uint64_t streamId, const QByteArray &data) override;
+    Q_INVOKABLE QString streamWriteLp(uint64_t streamId, const QByteArray &data) override;
+    Q_INVOKABLE QString streamClose(uint64_t streamId) override;
+    Q_INVOKABLE QString streamCloseEOF(uint64_t streamId) override;
+    Q_INVOKABLE QString streamRelease(uint64_t streamId) override;
 
     /* ----------- Sync Connectivity ----------- */
     Q_INVOKABLE bool            syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
@@ -116,7 +118,16 @@ private:
 
     libp2p_ctx_t *ctx = nullptr;
     libp2p_config_t config = {};
-    QString lastCaller; // for logging
+
+    QHash<uint64_t, libp2p_stream_t*> m_streams;
+    mutable QReadWriteLock m_streamsLock;
+    std::atomic<uint64_t> m_nextStreamId {1};
+
+    /* ----------- Stream Registry ----------- */
+    uint64_t addStream(libp2p_stream_t *stream);
+    libp2p_stream_t* getStream(uint64_t id) const;
+    libp2p_stream_t* removeStream(uint64_t id);
+    bool hasStream(uint64_t id) const;
 
     static void libp2pCallback(
         int callerRet,
@@ -171,7 +182,7 @@ private:
 
     static void connectionCallback(
         int callerRet,
-        libp2p_stream_t *conn,
+        libp2p_stream_t *stream,
         const char *msg,
         size_t len,
         void *userData

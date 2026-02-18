@@ -250,8 +250,8 @@ private slots:
         // cannot dial fake peer
         QVERIFY(!res.ok);
 
-        quintptr conn = res.data.value<uint64_t>();
-        QCOMPARE(conn, 0);
+        uint64_t streamId = res.data.value<uint64_t>();
+        QCOMPARE(streamId, 0);
 
         stopPlugin(plugin, *spy);
     }
@@ -267,11 +267,11 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        uint64_t fakeConnId = 1234;
-        QString uuid = plugin.streamClose(fakeConnId);
+        uint64_t fakeStreamId = 1234;
+        QString uuid = plugin.streamClose(fakeStreamId);
         auto res = waitForUuid(plugin, *spy, uuid, "streamClose");
 
-        // cannot close inexistent connection
+        // cannot close inexistent stream
         QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
@@ -284,11 +284,11 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        uint64_t fakeConnId = 1234;
-        QString uuid = plugin.streamCloseEOF(fakeConnId);
+        uint64_t fakeStreamId = 1234;
+        QString uuid = plugin.streamCloseEOF(fakeStreamId);
         auto res = waitForUuid(plugin, *spy, uuid, "streamCloseEOF");
 
-        // cannot closeEOF inexistent connection
+        // cannot closeEOF inexistent stream
         QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
@@ -301,11 +301,11 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        uint64_t fakeConnId = 1234;
-        QString uuid = plugin.streamRelease(fakeConnId);
+        uint64_t fakeStreamId = 1234;
+        QString uuid = plugin.streamRelease(fakeStreamId);
         auto res = waitForUuid(plugin, *spy, uuid, "streamRelease");
 
-        // cannot release inexistent connection
+        // cannot release inexistent stream
         QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
@@ -318,12 +318,12 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        uint64_t fakeConnId = 1234;
+        uint64_t fakeStreamId = 1234;
         size_t len = 16;
-        QString uuid = plugin.streamReadExactly(fakeConnId, len);
+        QString uuid = plugin.streamReadExactly(fakeStreamId, len);
         auto res = waitForUuid(plugin, *spy, uuid, "streamReadExactly");
 
-        // cannot readExactly from inexistent connection
+        // cannot readExactly from inexistent stream
         QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
@@ -336,12 +336,12 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        uint64_t fakeConnId = 1234;
+        uint64_t fakeStreamId = 1234;
         size_t maxSize = 4096;
-        QString uuid = plugin.streamReadLp(fakeConnId, maxSize);
+        QString uuid = plugin.streamReadLp(fakeStreamId, maxSize);
         auto res = waitForUuid(plugin, *spy, uuid, "streamReadLp");
 
-        // cannot readLp from inexistent connection
+        // cannot readLp from inexistent stream
         QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
@@ -354,12 +354,12 @@ private slots:
 
         startPlugin(plugin, *spy);
 
-        uint64_t fakeConnId = 1234;
+        uint64_t fakeStreamId = 1234;
         QByteArray data = "hello-stream";
-        QString uuid = plugin.streamWrite(fakeConnId, data);
+        QString uuid = plugin.streamWrite(fakeStreamId, data);
         auto res = waitForUuid(plugin, *spy, uuid, "streamWrite");
 
-        // cannot write to inexistent connection
+        // cannot write to inexistent stream
         QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
@@ -370,12 +370,12 @@ private slots:
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
 
-        uint64_t fakeConnId = 1234;
+        uint64_t fakeStreamId = 1234;
         QByteArray data = "hello-stream-lp";
-        QString uuid = plugin.streamWriteLp(fakeConnId, data);
+        QString uuid = plugin.streamWriteLp(fakeStreamId, data);
         auto res = waitForUuid(plugin, *spy, uuid, "streamWriteLp");
 
-        // cannot writeLp to inexistent connection
+        // cannot writeLp to inexistent stream
         QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
