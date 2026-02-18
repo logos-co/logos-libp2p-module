@@ -28,70 +28,117 @@ logos_module(
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+if(LOGOS_CPP_SDK_IS_SOURCE)
+    target_include_directories(libp2p_module_module_plugin PUBLIC
+        ${LOGOS_CPP_SDK_ROOT}/cpp
+        ${LOGOS_CPP_SDK_ROOT}/cpp/generated
+    )
+else()
+    target_include_directories(libp2p_module_module_plugin PUBLIC
+        ${LOGOS_CPP_SDK_ROOT}/include
+        ${LOGOS_CPP_SDK_ROOT}/include/cpp
+        ${LOGOS_CPP_SDK_ROOT}/include/core
+    )
+endif()
+
+target_include_directories(libp2p_module_module_plugin PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 enable_testing()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Test)
 
 logos_find_dependencies()
 
-add_executable(test_libp2p_module
-    tests/test_libp2p_module.cpp
+add_executable(async
+    tests/async.cpp
 )
 
-target_include_directories(test_libp2p_module PRIVATE
+target_include_directories(async PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # ---- Logos SDK includes ----
 if(LOGOS_CPP_SDK_IS_SOURCE)
-    target_include_directories(test_libp2p_module PRIVATE
+    target_include_directories(async PRIVATE
         ${LOGOS_CPP_SDK_ROOT}/cpp
         ${LOGOS_CPP_SDK_ROOT}/cpp/generated
     )
 else()
-    target_include_directories(test_libp2p_module PRIVATE
+    target_include_directories(async PRIVATE
         ${LOGOS_CPP_SDK_ROOT}/include
         ${LOGOS_CPP_SDK_ROOT}/include/cpp
         ${LOGOS_CPP_SDK_ROOT}/include/core
     )
 endif()
 
-target_link_libraries(test_libp2p_module PRIVATE
+target_link_libraries(async PRIVATE
     libp2p_module_module_plugin
     Qt6::Core
     Qt6::Test
 )
 
-add_test(NAME test_libp2p_module COMMAND test_libp2p_module)
+add_test(NAME async COMMAND async)
 
 # sync test
-add_executable(test_libp2p_module_sync
-    tests/test_libp2p_module_sync.cpp
+add_executable(sync
+    tests/sync.cpp
 )
 
-target_include_directories(test_libp2p_module_sync PRIVATE
+target_include_directories(sync PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 if(LOGOS_CPP_SDK_IS_SOURCE)
-    target_include_directories(test_libp2p_module_sync PRIVATE
+    target_include_directories(sync PRIVATE
         ${LOGOS_CPP_SDK_ROOT}/cpp
         ${LOGOS_CPP_SDK_ROOT}/cpp/generated
     )
 else()
-    target_include_directories(test_libp2p_module_sync PRIVATE
+    target_include_directories(sync PRIVATE
         ${LOGOS_CPP_SDK_ROOT}/include
         ${LOGOS_CPP_SDK_ROOT}/include/cpp
         ${LOGOS_CPP_SDK_ROOT}/include/core
     )
 endif()
 
-target_link_libraries(test_libp2p_module_sync PRIVATE
+target_link_libraries(sync PRIVATE
     libp2p_module_module_plugin
     Qt6::Core
     Qt6::Test
 )
 
-add_test(NAME test_libp2p_module_sync COMMAND test_libp2p_module_sync)
+add_test(NAME sync COMMAND sync)
+
+
+
+add_executable(integration
+    tests/integration.cpp
+)
+
+target_include_directories(integration PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_include_directories(integration PRIVATE
+    ${LOGOS_CPP_SDK_ROOT}/include
+    ${LOGOS_CPP_SDK_ROOT}/include/cpp
+    ${LOGOS_CPP_SDK_ROOT}/include/core
+)
+
+target_link_libraries(integration PRIVATE
+    libp2p_module_module_plugin
+    Qt6::Core
+    Qt6::Test
+)
+
+add_test(NAME integration COMMAND integration)
+
+
+# for examples
+add_subdirectory(examples)

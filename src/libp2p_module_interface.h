@@ -4,7 +4,6 @@
 #include <QtCore/QVariant>
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
-#include <QtCore/QStringList>
 
 #include "interface.h"
 
@@ -12,11 +11,15 @@ struct PeerInfo {
     QString peerId;
     QList<QString> addrs;
 };
+Q_DECLARE_METATYPE(PeerInfo);
+Q_DECLARE_METATYPE(QList<PeerInfo>);
 
 struct ServiceInfo {
     QString id;
     QByteArray data;
 };
+Q_DECLARE_METATYPE(ServiceInfo);
+Q_DECLARE_METATYPE(QList<ServiceInfo>);
 
 struct ExtendedPeerRecord {
     QString peerId;
@@ -24,6 +27,9 @@ struct ExtendedPeerRecord {
     QList<QString> addrs;
     QList<ServiceInfo> services;
 };
+Q_DECLARE_METATYPE(ExtendedPeerRecord);
+Q_DECLARE_METATYPE(QList<ExtendedPeerRecord>);
+
 
 class Libp2pModuleInterface : public PluginInterface
 {
@@ -35,11 +41,18 @@ public:
     Q_INVOKABLE virtual QString libp2pStop() = 0;
 
     /* ----------- Connectivity ----------- */
-    Q_INVOKABLE virtual bool connectPeer(const QString peerId, const QStringList multiaddrs, int64_t timeoutMs = -1) = 0;
-    Q_INVOKABLE virtual bool disconnectPeer(const QString peerId) = 0;
-    Q_INVOKABLE virtual bool peerInfo() = 0;
-    Q_INVOKABLE virtual bool connectedPeers(int direction = 0) = 0;
-    Q_INVOKABLE virtual bool dial(const QString peerId, const QString proto) = 0;
+    Q_INVOKABLE virtual QString connectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) = 0;
+    Q_INVOKABLE virtual QString disconnectPeer(const QString &peerId) = 0;
+    Q_INVOKABLE virtual QString peerInfo() = 0;
+    Q_INVOKABLE virtual QString connectedPeers(int direction = 0) = 0;
+    Q_INVOKABLE virtual QString dial(const QString &peerId, const QString &proto) = 0;
+
+    /* ----------- Sync Connectivity ----------- */
+    Q_INVOKABLE virtual bool            syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) = 0;
+    Q_INVOKABLE virtual bool            syncDisconnectPeer(const QString &peerId) = 0;
+    Q_INVOKABLE virtual PeerInfo        syncPeerInfo() = 0;
+    Q_INVOKABLE virtual QList<QString>  syncConnectedPeers(int direction = 0) = 0;
+    Q_INVOKABLE virtual QVariant        syncDial(const QString &peerId, const QString &proto) = 0;
 
     /* ----------- Streams ----------- */
     // Q_INVOKABLE virtual bool streamClose(quintptr stream) = 0;

@@ -6,16 +6,17 @@
 #include <QDebug>
 
 
-Libp2pModulePlugin::Libp2pModulePlugin()
-    : ctx(nullptr)
+Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
+    : ctx(nullptr),
+      m_bootstrapNodes(bootstrapNodes)
 {
     qRegisterMetaType<PeerInfo>("PeerInfo");
-    qRegisterMetaType<ServiceInfo>("ServiceInfo");
-    qRegisterMetaType<ExtendedPeerRecord>("ExtendedPeerRecord");
-
-    /* ---- QList containers ---- */
     qRegisterMetaType<QList<PeerInfo>>("QList<PeerInfo>");
+
+    qRegisterMetaType<ServiceInfo>("ServiceInfo");
     qRegisterMetaType<QList<ServiceInfo>>("QList<ServiceInfo>");
+
+    qRegisterMetaType<ExtendedPeerRecord>("ExtendedPeerRecord");
     qRegisterMetaType<QList<ExtendedPeerRecord>>("QList<ExtendedPeerRecord>");
 
     std::memset(&config, 0, sizeof(config));
@@ -26,8 +27,51 @@ Libp2pModulePlugin::Libp2pModulePlugin()
     config.flags |= LIBP2P_CFG_GOSSIPSUB_TRIGGER_SELF;
     config.gossipsub_trigger_self = 1;
 
+    // kad bootstrap nodes
+    if (!m_bootstrapNodes.isEmpty()) {
+        m_bootstrapCNodes.reserve(m_bootstrapNodes.size());
+        m_addrUtf8Storage.reserve(m_bootstrapNodes.size());
+        m_addrPtrStorage.reserve(m_bootstrapNodes.size());
+        m_peerIdStorage.reserve(m_bootstrapNodes.size());
+        for (const PeerInfo &p : m_bootstrapNodes) {
+            QVector<QByteArray> utf8List;
+            QVector<char*> ptrList;
+
+            utf8List.reserve(p.addrs.size());
+            ptrList.reserve(p.addrs.size());
+
+            for (const QString &addr : p.addrs) {
+                utf8List.push_back(addr.toUtf8());
+                ptrList.push_back(utf8List.back().data());
+            }
+
+            m_addrUtf8Storage.push_back(std::move(utf8List));
+            m_addrPtrStorage.push_back(std::move(ptrList));
+
+            // ---- peerId storage ----
+            m_peerIdStorage.push_back(p.peerId.toUtf8());
+
+            libp2p_bootstrap_node_t node{};
+            node.peerId = m_peerIdStorage.back().constData();
+
+            node.multiaddrs =
+                const_cast<const char**>(m_addrPtrStorage.back().data());
+
+            node.multiaddrsLen = m_addrPtrStorage.back().size();
+
+            m_bootstrapCNodes.push_back(node);
+        }
+
+        config.flags |= LIBP2P_CFG_KAD_BOOTSTRAP_NODES;
+        config.kad_bootstrap_nodes = m_bootstrapCNodes.data();
+        config.kad_bootstrap_nodes_len = m_bootstrapCNodes.size();
+    }
+
     config.flags |= LIBP2P_CFG_KAD;
     config.mount_kad = 1;
+
+    config.flags |= LIBP2P_CFG_KAD_DISCOVERY;
+    config.mount_kad_discovery = 1;
 
     auto *callbackCtx = new CallbackContext{ "libp2pNew", QUuid::createUuid().toString(), this };
 
@@ -152,13 +196,13 @@ QString Libp2pModulePlugin::libp2pStop()
 }
 
 /* --------------- Connectivity --------------- */
-bool Libp2pModulePlugin::connectPeer(
-    const QString peerId,
+QString Libp2pModulePlugin::connectPeer(
+    const QString &peerId,
     const QList<QString> multiaddrs,
     int64_t timeoutMs
 )
 {
-    if (!ctx) return false;
+    if (!ctx) return {};
 
     QByteArray peerIdUtf8 = peerId.toUtf8();
 
@@ -173,9 +217,10 @@ bool Libp2pModulePlugin::connectPeer(
         addrPtrs.append(addrBuffers.last().constData());
     }
 
+    QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "connectPeer",
-        QUuid::createUuid().toString(),
+        uuid,
         this
     };
 
@@ -189,21 +234,24 @@ bool Libp2pModulePlugin::connectPeer(
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
+    }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::disconnectPeer(const QString peerId)
+QString Libp2pModulePlugin::disconnectPeer(const QString &peerId)
 {
-    if (!ctx) return false;
+    if (!ctx) return {};
 
     QByteArray peerIdUtf8 = peerId.toUtf8();
 
+    QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "disconnectPeer",
-        QUuid::createUuid().toString(),
+        uuid,
         this
     };
 
@@ -214,19 +262,22 @@ bool Libp2pModulePlugin::disconnectPeer(const QString peerId)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
+    }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::peerInfo()
+QString Libp2pModulePlugin::peerInfo()
 {
-    if (!ctx) return false;
+    if (!ctx) return {};
 
+    QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "peerInfo",
-        QUuid::createUuid().toString(),
+        uuid,
         this
     };
 
@@ -236,19 +287,22 @@ bool Libp2pModulePlugin::peerInfo()
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
+    }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::connectedPeers(int direction)
+QString Libp2pModulePlugin::connectedPeers(int direction)
 {
-    if (!ctx) return false;
+    if (!ctx) return {};
 
+    QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "connectedPeers",
-        QUuid::createUuid().toString(),
+        uuid,
         this
     };
 
@@ -259,22 +313,25 @@ bool Libp2pModulePlugin::connectedPeers(int direction)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
+    }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
-bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
+QString Libp2pModulePlugin::dial(const QString &peerId, const QString &proto)
 {
-    if (!ctx) return false;
+    if (!ctx) return {};
 
     QByteArray peerIdUtf8 = peerId.toUtf8();
     QByteArray protoUtf8 = proto.toUtf8();
 
+    QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "dial",
-        QUuid::createUuid().toString(),
+        uuid,
         this
     };
 
@@ -286,10 +343,12 @@ bool Libp2pModulePlugin::dial(const QString peerId, const QString proto)
         callbackCtx
     );
 
-    if (ret != RET_OK)
+    if (ret != RET_OK) {
         delete callbackCtx;
+        return {};
+    }
 
-    return ret == RET_OK;
+    return uuid;
 }
 
 // bool Libp2pModulePlugin::streamClose(libp2p_stream_t *conn)
