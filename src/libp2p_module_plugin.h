@@ -4,7 +4,6 @@
 #include <QtCore/QVariant>
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
-#include <QtCore/QStringList>
 
 #include <logos_api.h>
 #include <logos_api_client.h>
@@ -24,7 +23,7 @@ class Libp2pModulePlugin : public QObject, public Libp2pModuleInterface
     Q_INTERFACES(Libp2pModuleInterface PluginInterface)
 
 public:
-    explicit Libp2pModulePlugin();
+    explicit Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes = {});
     ~Libp2pModulePlugin() override;
 
     QString name() const override { return "libp2p_module"; }
@@ -40,11 +39,18 @@ public:
     Q_INVOKABLE bool syncLibp2pStop();
 
     /* ----------- Connectivity ----------- */
-    Q_INVOKABLE bool connectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
-    Q_INVOKABLE bool disconnectPeer(const QString peerId) override;
-    Q_INVOKABLE bool peerInfo() override;
-    Q_INVOKABLE bool connectedPeers(int direction = 0) override;
-    Q_INVOKABLE bool dial(const QString peerId, const QString proto) override;
+    Q_INVOKABLE QString connectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
+    Q_INVOKABLE QString disconnectPeer(const QString &peerId) override;
+    Q_INVOKABLE QString peerInfo() override;
+    Q_INVOKABLE QString connectedPeers(int direction = 0) override;
+    Q_INVOKABLE QString dial(const QString &peerId, const QString &proto) override;
+
+    /* ----------- Sync Connectivity ----------- */
+    Q_INVOKABLE bool            syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
+    Q_INVOKABLE bool            syncDisconnectPeer(const QString &peerId) override;
+    Q_INVOKABLE PeerInfo        syncPeerInfo() override;
+    Q_INVOKABLE QList<QString>  syncConnectedPeers(int direction = 0) override;
+    Q_INVOKABLE QVariant        syncDial(const QString &peerId, const QString &proto) override;
 
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE QString toCid(const QByteArray &key) override;
@@ -91,11 +97,17 @@ private slots:
     );
 
 private:
+    QList<PeerInfo> m_bootstrapNodes;
+    QVector<libp2p_bootstrap_node_t> m_bootstrapCNodes;
+    // keeps UTF8 buffers alive
+    QVector<QVector<QByteArray>> m_addrUtf8Storage;
+    // keeps char** arrays alive
+    QVector<QVector<char*>> m_addrPtrStorage;
+    QVector<QByteArray> m_peerIdStorage;
+
     libp2p_ctx_t *ctx = nullptr;
     libp2p_config_t config = {};
     QString lastCaller; // for logging
-
-    WaitResult waitForUuid(const QString &uuid, const QString &caller);
 
     static void libp2pCallback(
         int callerRet,

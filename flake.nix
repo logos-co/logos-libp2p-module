@@ -26,7 +26,6 @@
             mkdir -p include
             cp -r "${libp2pCbind system}/include"/* include/
           '';
-
           postInstall = ''
             mkdir -p $out/lib
             cp "${libp2pCbind system}/lib"/*.dylib $out/lib/ 2>/dev/null || true
