@@ -419,7 +419,7 @@ void Libp2pModulePlugin::peerInfoCallback(
 
 void Libp2pModulePlugin::connectionCallback(
     int callerRet,
-    libp2p_stream_t *conn,
+    libp2p_stream_t *stream,
     const char *msg,
     size_t len,
     void *userData
@@ -434,7 +434,14 @@ void Libp2pModulePlugin::connectionCallback(
     QString caller = callbackCtx->caller;
     QString reqId = callbackCtx->reqId;
 
-    QVariant connVariant = QVariant::fromValue(reinterpret_cast<quintptr>(conn));
+    QVariant streamIdVariant;
+    if (callerRet == RET_OK && stream) {
+        uint64_t streamId = self->addStream(stream);
+        streamIdVariant = QVariant::fromValue<qulonglong>(streamId);
+    } else {
+        // For consistency with syncDial and tests, use 0 on error/null stream
+        streamIdVariant = QVariant::fromValue<qulonglong>(0);
+    }
 
     QString message;
     if (msg && len > 0)
@@ -443,7 +450,7 @@ void Libp2pModulePlugin::connectionCallback(
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
         safeSelf,
-        [safeSelf, callerRet, reqId, caller, message, connVariant]() {
+        [safeSelf, callerRet, reqId, caller, message, streamIdVariant]() {
             if (!safeSelf) return;
 
             emit safeSelf->libp2pEvent(
@@ -451,7 +458,7 @@ void Libp2pModulePlugin::connectionCallback(
                 reqId,
                 caller,
                 message,
-                connVariant
+                streamIdVariant
             );
         },
         Qt::QueuedConnection
@@ -459,6 +466,4 @@ void Libp2pModulePlugin::connectionCallback(
 
     delete callbackCtx;
 }
-
-
 
