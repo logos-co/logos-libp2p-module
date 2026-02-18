@@ -146,7 +146,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
         stopPlugin(plugin, *spy);
     }
@@ -159,7 +158,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString fakePeer =
@@ -171,6 +169,7 @@ private slots:
 
         QString uuid = plugin.connectPeer(fakePeer, fakeAddrs);
         auto res = waitForUuid(plugin, *spy, uuid, "connectPeer");
+
         // should return false, peer is fake
         QVERIFY(!res.ok);
 
@@ -181,7 +180,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString fakePeer =
@@ -189,6 +187,7 @@ private slots:
 
         QString uuid = plugin.disconnectPeer(fakePeer);
         auto res = waitForUuid(plugin, *spy, uuid, "disconnectPeer");
+
         // should return false, peer is fake
         QVERIFY(!res.ok);
 
@@ -199,12 +198,13 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString uuid = plugin.peerInfo();
         auto res = waitForUuid(plugin, *spy, uuid, "peerInfo");
+
         QVERIFY(res.ok);
+
         PeerInfo peerInfo = res.data.value<PeerInfo>();
         QVERIFY(!peerInfo.peerId.isEmpty());
 
@@ -215,12 +215,13 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString uuid = plugin.connectedPeers();
         auto res = waitForUuid(plugin, *spy, uuid, "connectedPeers");
+
         QVERIFY(res.ok);
+
         QCOMPARE(res.data.value<QList<QString>>().size(), 0);
 
         stopPlugin(plugin, *spy);
@@ -230,7 +231,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString fakePeer =
@@ -240,10 +240,132 @@ private slots:
 
         QString uuid = plugin.dial(fakePeer, proto);
         auto res = waitForUuid(plugin, *spy, uuid, "dial");
+
         // cannot dial fake peer
         QVERIFY(!res.ok);
-        quintptr conn = res.data.value<quintptr>();
-        QCOMPARE(conn, 0);
+
+        uint64_t streamId = res.data.value<uint64_t>();
+        QCOMPARE(streamId, 0);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    /* ---------------------------
+     * Stream tests
+     * --------------------------- */
+
+    void testStreamClose()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeStreamId = 1234;
+        QString uuid = plugin.streamClose(fakeStreamId);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamClose");
+
+        // cannot close inexistent stream
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamCloseEOF()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeStreamId = 1234;
+        QString uuid = plugin.streamCloseEOF(fakeStreamId);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamCloseEOF");
+
+        // cannot closeEOF inexistent stream
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamRelease()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeStreamId = 1234;
+        QString uuid = plugin.streamRelease(fakeStreamId);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamRelease");
+
+        // cannot release inexistent stream
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamReadExactly()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeStreamId = 1234;
+        size_t len = 16;
+        QString uuid = plugin.streamReadExactly(fakeStreamId, len);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamReadExactly");
+
+        // cannot readExactly from inexistent stream
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamReadLp()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeStreamId = 1234;
+        size_t maxSize = 4096;
+        QString uuid = plugin.streamReadLp(fakeStreamId, maxSize);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamReadLp");
+
+        // cannot readLp from inexistent stream
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamWrite()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeStreamId = 1234;
+        QByteArray data = "hello-stream";
+        QString uuid = plugin.streamWrite(fakeStreamId, data);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamWrite");
+
+        // cannot write to inexistent stream
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamWriteLp()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeStreamId = 1234;
+        QByteArray data = "hello-stream-lp";
+        QString uuid = plugin.streamWriteLp(fakeStreamId, data);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamWriteLp");
+
+        // cannot writeLp to inexistent stream
+        QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
     }
@@ -255,9 +377,7 @@ private slots:
     void testKadGetPutValue()
     {
         Libp2pModulePlugin plugin;
-
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QByteArray key = "test-key";
@@ -297,9 +417,7 @@ private slots:
     void testKadGetProviders()
     {
         Libp2pModulePlugin plugin;
-
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QByteArray key = "provider-test-key";
@@ -345,15 +463,15 @@ private slots:
     void testKadGetRandomRecords()
     {
         Libp2pModulePlugin plugin;
-
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString uuid = plugin.kadGetRandomRecords();
         auto res = waitForUuid(plugin, *spy, uuid, "kadGetRandomRecords");
+
         // should fail: kademlia discovery is not mounted
         QVERIFY(!res.ok);
+
         // QVERIFY(res.data.isValid());
         // QVariantList randomRecords = res.data.toList();
 
