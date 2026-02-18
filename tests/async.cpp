@@ -171,6 +171,7 @@ private slots:
 
         QString uuid = plugin.connectPeer(fakePeer, fakeAddrs);
         auto res = waitForUuid(plugin, *spy, uuid, "connectPeer");
+
         // should return false, peer is fake
         QVERIFY(!res.ok);
 
@@ -189,6 +190,7 @@ private slots:
 
         QString uuid = plugin.disconnectPeer(fakePeer);
         auto res = waitForUuid(plugin, *spy, uuid, "disconnectPeer");
+
         // should return false, peer is fake
         QVERIFY(!res.ok);
 
@@ -204,7 +206,9 @@ private slots:
 
         QString uuid = plugin.peerInfo();
         auto res = waitForUuid(plugin, *spy, uuid, "peerInfo");
+
         QVERIFY(res.ok);
+
         PeerInfo peerInfo = res.data.value<PeerInfo>();
         QVERIFY(!peerInfo.peerId.isEmpty());
 
@@ -220,7 +224,9 @@ private slots:
 
         QString uuid = plugin.connectedPeers();
         auto res = waitForUuid(plugin, *spy, uuid, "connectedPeers");
+
         QVERIFY(res.ok);
+
         QCOMPARE(res.data.value<QList<QString>>().size(), 0);
 
         stopPlugin(plugin, *spy);
@@ -240,10 +246,137 @@ private slots:
 
         QString uuid = plugin.dial(fakePeer, proto);
         auto res = waitForUuid(plugin, *spy, uuid, "dial");
+
         // cannot dial fake peer
         QVERIFY(!res.ok);
+
         quintptr conn = res.data.value<quintptr>();
         QCOMPARE(conn, 0);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    /* ---------------------------
+     * Stream tests
+     * --------------------------- */
+
+    void testStreamClose()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeConnId = 1234;
+        QString uuid = plugin.streamClose(fakeConnId);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamClose");
+
+        // cannot close inexistent connection
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamCloseEOF()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeConnId = 1234;
+        QString uuid = plugin.streamCloseEOF(fakeConnId);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamCloseEOF");
+
+        // cannot closeEOF inexistent connection
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamRelease()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeConnId = 1234;
+        QString uuid = plugin.streamRelease(fakeConnId);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamRelease");
+
+        // cannot release inexistent connection
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamReadExactly()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeConnId = 1234;
+        size_t len = 16;
+        QString uuid = plugin.streamReadExactly(fakeConnId, len);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamReadExactly");
+
+        // cannot readExactly from inexistent connection
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamReadLp()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeConnId = 1234;
+        size_t maxSize = 4096;
+        QString uuid = plugin.streamReadLp(fakeConnId, maxSize);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamReadLp");
+
+        // cannot readLp from inexistent connection
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamWrite()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        uint64_t fakeConnId = 1234;
+        QByteArray data = "hello-stream";
+        QString uuid = plugin.streamWrite(fakeConnId, data);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamWrite");
+
+        // cannot write to inexistent connection
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testStreamWriteLp()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        uint64_t fakeConnId = 1234;
+        QByteArray data = "hello-stream-lp";
+        QString uuid = plugin.streamWriteLp(fakeConnId, data);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamWriteLp");
+
+        // cannot writeLp to inexistent connection
+        QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
     }
@@ -352,8 +485,10 @@ private slots:
 
         QString uuid = plugin.kadGetRandomRecords();
         auto res = waitForUuid(plugin, *spy, uuid, "kadGetRandomRecords");
+
         // should fail: kademlia discovery is not mounted
         QVERIFY(!res.ok);
+
         // QVERIFY(res.data.isValid());
         // QVariantList randomRecords = res.data.toList();
 

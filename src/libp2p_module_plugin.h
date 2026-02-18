@@ -45,6 +45,15 @@ public:
     Q_INVOKABLE QString connectedPeers(int direction = 0) override;
     Q_INVOKABLE QString dial(const QString &peerId, const QString &proto) override;
 
+    /* ----------- Streams ----------- */
+    Q_INVOKABLE QString streamReadExactly(uint64_t connId, size_t len) override;
+    Q_INVOKABLE QString streamReadLp(uint64_t connId, int64_t maxSize) override;
+    Q_INVOKABLE QString streamWrite(uint64_t connId, const QByteArray &data) override;
+    Q_INVOKABLE QString streamWriteLp(uint64_t connId, const QByteArray &data) override;
+    Q_INVOKABLE QString streamClose(uint64_t connId) override;
+    Q_INVOKABLE QString streamCloseEOF(uint64_t connId) override;
+    Q_INVOKABLE QString streamRelease(uint64_t connId) override;
+
     /* ----------- Sync Connectivity ----------- */
     Q_INVOKABLE bool            syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
     Q_INVOKABLE bool            syncDisconnectPeer(const QString &peerId) override;

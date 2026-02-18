@@ -55,13 +55,13 @@ public:
     Q_INVOKABLE virtual QVariant        syncDial(const QString &peerId, const QString &proto) = 0;
 
     /* ----------- Streams ----------- */
-    // Q_INVOKABLE virtual bool streamClose(quintptr stream) = 0;
-    // Q_INVOKABLE virtual bool streamCloseWithEOF(quintptr stream) = 0;
-    // Q_INVOKABLE virtual bool streamRelease(quintptr stream) = 0;
-    // Q_INVOKABLE virtual bool streamReadExactly(quintptr stream, qsizetype dataLen) = 0;
-    // Q_INVOKABLE virtual bool streamReadLp(quintptr stream, qint64 maxSize) = 0;
-    // Q_INVOKABLE virtual bool streamWrite(quintptr stream, const QByteArray &data) = 0;
-    // Q_INVOKABLE virtual bool streamWriteLp(quintptr stream, const QByteArray &data) = 0;
+    Q_INVOKABLE virtual QString streamReadExactly(uint64_t connId, size_t len) = 0;
+    Q_INVOKABLE virtual QString streamReadLp(uint64_t connId, int64_t maxSize) = 0;
+    Q_INVOKABLE virtual QString streamWrite(uint64_t connId, const QByteArray &data) = 0;
+    Q_INVOKABLE virtual QString streamWriteLp(uint64_t connId, const QByteArray &data) = 0;
+    Q_INVOKABLE virtual QString streamClose(uint64_t connId) = 0;
+    Q_INVOKABLE virtual QString streamCloseEOF(uint64_t connId) = 0;
+    Q_INVOKABLE virtual QString streamRelease(uint64_t connId) = 0;
 
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE virtual QString toCid(const QByteArray &key) = 0;
