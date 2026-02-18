@@ -221,7 +221,7 @@ private slots:
         QString uuid = plugin.connectedPeers();
         auto res = waitForUuid(plugin, *spy, uuid, "connectedPeers");
         QVERIFY(res.ok);
-        QVERIFY(res.data.value<int>() == 0);
+        QCOMPARE(res.data.value<QList<QString>>().size(), 0);
 
         stopPlugin(plugin, *spy);
     }
@@ -243,7 +243,7 @@ private slots:
         // cannot dial fake peer
         QVERIFY(!res.ok);
         quintptr conn = res.data.value<quintptr>();
-        QVERIFY(conn == 0);
+        QCOMPARE(conn, 0);
 
         stopPlugin(plugin, *spy);
     }
@@ -270,7 +270,7 @@ private slots:
         uuid = plugin.kadGetValue(key, 1);
         res = waitForUuid(plugin, *spy, uuid, "kadGetValue");
         QVERIFY(res.ok);
-        QVERIFY(res.data == value);
+        QCOMPARE(res.data, value);
 
         stopPlugin(plugin, *spy);
     }
@@ -378,7 +378,7 @@ private slots:
         QByteArray value = "sync-hello-world";
 
         QVERIFY(plugin.syncKadPutValue(key, value));
-        QVERIFY(plugin.syncKadGetValue(key, 1) == value);
+        QCOMPARE(plugin.syncKadGetValue(key, 1), value);
 
         QVERIFY(plugin.syncLibp2pStop());
     }

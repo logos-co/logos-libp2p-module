@@ -40,7 +40,7 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         QVERIFY(plugin.syncLibp2pStart());
-        QVERIFY(plugin.syncConnectedPeers().size() == 0);
+        QCOMPARE(plugin.syncConnectedPeers().size(), 0);
         QVERIFY(plugin.syncLibp2pStop());
     }
 
@@ -54,7 +54,7 @@ private slots:
 
         QString proto = "/test/1.0.0";
 
-        QVERIFY(plugin.syncDial(fakePeer, proto) == QVariant{});
+        QCOMPARE(plugin.syncDial(fakePeer, proto), QVariant{});
 
         QVERIFY(plugin.syncLibp2pStop());
     }
@@ -73,7 +73,7 @@ private slots:
         QByteArray value = "sync-hello-world";
 
         QVERIFY(plugin.syncKadPutValue(key, value));
-        QVERIFY(plugin.syncKadGetValue(key, 1) == value);
+        QCOMPARE(plugin.syncKadGetValue(key, 1), value);
 
         QVERIFY(plugin.syncLibp2pStop());
     }
@@ -93,7 +93,7 @@ private slots:
         QVERIFY(plugin.syncKadPutValue(key, value));
         QVERIFY(plugin.syncKadAddProvider(cid));
         // no providers are registered yet
-        QVERIFY(plugin.syncKadGetProviders(cid).size() == 0);
+        QCOMPARE(plugin.syncKadGetProviders(cid).size(), 0);
 
         QVERIFY(plugin.syncLibp2pStop());
     }
@@ -107,7 +107,7 @@ private slots:
         QString fakePeer = "12D3KooWInvalidPeerForSyncTest";
 
         // no nodes are registered yet
-        QVERIFY(plugin.syncKadFindNode(fakePeer).size() == 0);
+        QCOMPARE(plugin.syncKadFindNode(fakePeer).size(), 0);
 
         QVERIFY(plugin.syncLibp2pStop());
     }
@@ -136,7 +136,7 @@ private slots:
         QVERIFY(plugin.syncLibp2pStart());
 
         // no registered records yet
-        QVERIFY(plugin.syncKadGetRandomRecords().size() == 0);
+        QCOMPARE(plugin.syncKadGetRandomRecords().size(), 0);
 
         QVERIFY(plugin.syncLibp2pStop());
     }
