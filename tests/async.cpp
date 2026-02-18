@@ -250,7 +250,7 @@ private slots:
         // cannot dial fake peer
         QVERIFY(!res.ok);
 
-        quintptr conn = res.data.value<quintptr>();
+        quintptr conn = res.data.value<uint64_t>();
         QCOMPARE(conn, 0);
 
         stopPlugin(plugin, *spy);

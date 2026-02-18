@@ -59,7 +59,7 @@ public:
     Q_INVOKABLE bool            syncDisconnectPeer(const QString &peerId) override;
     Q_INVOKABLE PeerInfo        syncPeerInfo() override;
     Q_INVOKABLE QList<QString>  syncConnectedPeers(int direction = 0) override;
-    Q_INVOKABLE QVariant        syncDial(const QString &peerId, const QString &proto) override;
+    Q_INVOKABLE uint64_t        syncDial(const QString &peerId, const QString &proto) override;
 
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE QString toCid(const QByteArray &key) override;

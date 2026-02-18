@@ -434,6 +434,7 @@ void Libp2pModulePlugin::connectionCallback(
     QString caller = callbackCtx->caller;
     QString reqId = callbackCtx->reqId;
 
+    // TODO: save conn in plugin's map and return connectionId instead
     QVariant connVariant = QVariant::fromValue(reinterpret_cast<quintptr>(conn));
 
     QString message;

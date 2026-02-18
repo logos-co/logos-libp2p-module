@@ -52,7 +52,7 @@ public:
     Q_INVOKABLE virtual bool            syncDisconnectPeer(const QString &peerId) = 0;
     Q_INVOKABLE virtual PeerInfo        syncPeerInfo() = 0;
     Q_INVOKABLE virtual QList<QString>  syncConnectedPeers(int direction = 0) = 0;
-    Q_INVOKABLE virtual QVariant        syncDial(const QString &peerId, const QString &proto) = 0;
+    Q_INVOKABLE virtual uint64_t        syncDial(const QString &peerId, const QString &proto) = 0;
 
     /* ----------- Streams ----------- */
     Q_INVOKABLE virtual QString streamReadExactly(uint64_t connId, size_t len) = 0;

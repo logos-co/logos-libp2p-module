@@ -102,10 +102,10 @@ QList<QString> Libp2pModulePlugin::syncConnectedPeers(int direction)
     return res.ok ? res.data.value<QList<QString>>() : QList<QString>();
 }
 
-QVariant Libp2pModulePlugin::syncDial(const QString &peerId, const QString &proto)
+uint64_t Libp2pModulePlugin::syncDial(const QString &peerId, const QString &proto)
 {
     auto res = runSync(this, [&]() { return dial(peerId, proto); });
-    return res.ok ? res.data : QVariant();
+    return res.ok ? res.data : 0;
 }
 
 /* ---------------------------

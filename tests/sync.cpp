@@ -54,7 +54,7 @@ private slots:
 
         QString proto = "/test/1.0.0";
 
-        QCOMPARE(plugin.syncDial(fakePeer, proto), QVariant{});
+        QCOMPARE(plugin.syncDial(fakePeer, proto), 0);
 
         QVERIFY(plugin.syncLibp2pStop());
     }
