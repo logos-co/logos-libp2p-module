@@ -165,7 +165,7 @@ private slots:
         QString fakePeer =
             "12D3KooWInvalidPeerForTest";
 
-        QStringList fakeAddrs = {
+        QList<QString> fakeAddrs = {
             "/ip4/127.0.0.1/tcp/9999"
         };
 

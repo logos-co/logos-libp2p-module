@@ -4,7 +4,6 @@
 #include <QtCore/QVariant>
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
-#include <QtCore/QStringList>
 
 #include <logos_api.h>
 #include <logos_api_client.h>

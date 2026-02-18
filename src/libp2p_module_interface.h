@@ -4,7 +4,6 @@
 #include <QtCore/QVariant>
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
-#include <QtCore/QStringList>
 
 #include "interface.h"
 
@@ -42,14 +41,14 @@ public:
     Q_INVOKABLE virtual QString libp2pStop() = 0;
 
     /* ----------- Connectivity ----------- */
-    Q_INVOKABLE virtual QString connectPeer(const QString peerId, const QStringList multiaddrs, int64_t timeoutMs = -1) = 0;
+    Q_INVOKABLE virtual QString connectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) = 0;
     Q_INVOKABLE virtual QString disconnectPeer(const QString peerId) = 0;
     Q_INVOKABLE virtual QString peerInfo() = 0;
     Q_INVOKABLE virtual QString connectedPeers(int direction = 0) = 0;
     Q_INVOKABLE virtual QString dial(const QString peerId, const QString proto) = 0;
 
     /* ----------- Sync Connectivity ----------- */
-    Q_INVOKABLE virtual bool            syncConnectPeer(const QString peerId, const QStringList multiaddrs, int64_t timeoutMs = -1) = 0;
+    Q_INVOKABLE virtual bool            syncConnectPeer(const QString peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) = 0;
     Q_INVOKABLE virtual bool            syncDisconnectPeer(const QString peerId) = 0;
     Q_INVOKABLE virtual PeerInfo        syncPeerInfo() = 0;
     Q_INVOKABLE virtual QList<QString>  syncConnectedPeers(int direction = 0) = 0;
