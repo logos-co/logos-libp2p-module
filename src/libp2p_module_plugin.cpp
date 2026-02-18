@@ -88,6 +88,20 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
 
 Libp2pModulePlugin::~Libp2pModulePlugin()
 {
+    // Stream Registry cleanup
+    {
+        QList<uint64_t> streamIds;
+
+        {
+            QWriteLocker locker(&m_streamsLock);
+            streamIds = m_streams.keys();
+        }
+
+        for (uint64_t streamId : streamIds) {
+            syncStreamRelease(streamId);
+        }
+    }
+
     // Stop libp2p
     if (ctx) {
         auto *callbackCtx = new CallbackContext{
@@ -103,16 +117,6 @@ Libp2pModulePlugin::~Libp2pModulePlugin()
         ctx = nullptr;
     }
 
-    // Stream Registry cleanup
-    {
-        QWriteLocker locker(&m_streamsLock);
-        for (auto stream : m_streams) {
-            if (stream) {
-                libp2p_stream_release(stream);
-            }
-        }
-        m_streams.clear();
-    }
 
     // Logos cleanup
     if (logosAPI) {
@@ -410,16 +414,16 @@ QString Libp2pModulePlugin::streamClose(uint64_t streamId)
     if (!ctx || streamId == 0)
         return {};
 
+    auto *stream = removeStream(streamId);
+    if (!stream)
+        return {};
+
     QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "streamClose",
         uuid,
         this
     };
-
-    auto *stream = removeStream(streamId);
-    if (!stream)
-        return {};
 
     int ret = libp2p_stream_close(
         ctx,
@@ -441,16 +445,16 @@ QString Libp2pModulePlugin::streamCloseEOF(uint64_t streamId)
     if (!ctx || streamId == 0)
         return {};
 
+    auto *stream = removeStream(streamId);
+    if (!stream)
+        return {};
+
     QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "streamCloseEOF",
         uuid,
         this
     };
-
-    auto *stream = removeStream(streamId);
-    if (!stream)
-        return {};
 
     int ret = libp2p_stream_closeWithEOF(
         ctx,
@@ -472,17 +476,16 @@ QString Libp2pModulePlugin::streamRelease(uint64_t streamId)
     if (!ctx || streamId == 0)
         return {};
 
+    auto *stream = removeStream(streamId);
+    if (!stream)
+        return {};
+
     QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
         "streamRelease",
         uuid,
         this
     };
-
-    auto *stream = removeStream(streamId);
-    if (!stream)
-        return {};
-    removeStream(streamId);
 
     int ret = libp2p_stream_release(
         ctx,
