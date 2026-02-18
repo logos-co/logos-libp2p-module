@@ -32,6 +32,7 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
         m_bootstrapCNodes.reserve(m_bootstrapNodes.size());
         m_addrUtf8Storage.reserve(m_bootstrapNodes.size());
         m_addrPtrStorage.reserve(m_bootstrapNodes.size());
+        m_peerIdStorage.reserve(m_bootstrapNodes.size());
         for (const PeerInfo &p : m_bootstrapNodes) {
             QVector<QByteArray> utf8List;
             QVector<char*> ptrList;
