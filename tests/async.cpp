@@ -146,7 +146,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
         stopPlugin(plugin, *spy);
     }
@@ -159,7 +158,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString fakePeer =
@@ -182,7 +180,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString fakePeer =
@@ -201,7 +198,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString uuid = plugin.peerInfo();
@@ -219,7 +215,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString uuid = plugin.connectedPeers();
@@ -236,7 +231,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString fakePeer =
@@ -264,7 +258,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         uint64_t fakeStreamId = 1234;
@@ -281,7 +274,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         uint64_t fakeStreamId = 1234;
@@ -298,7 +290,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         uint64_t fakeStreamId = 1234;
@@ -315,7 +306,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         uint64_t fakeStreamId = 1234;
@@ -333,7 +323,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         uint64_t fakeStreamId = 1234;
@@ -351,7 +340,6 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         uint64_t fakeStreamId = 1234;
@@ -369,6 +357,7 @@ private slots:
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
 
         uint64_t fakeStreamId = 1234;
         QByteArray data = "hello-stream-lp";
@@ -388,9 +377,7 @@ private slots:
     void testKadGetPutValue()
     {
         Libp2pModulePlugin plugin;
-
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QByteArray key = "test-key";
@@ -430,9 +417,7 @@ private slots:
     void testKadGetProviders()
     {
         Libp2pModulePlugin plugin;
-
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QByteArray key = "provider-test-key";
@@ -478,9 +463,7 @@ private slots:
     void testKadGetRandomRecords()
     {
         Libp2pModulePlugin plugin;
-
         auto spy = createLibp2pEventSpy(&plugin);
-
         startPlugin(plugin, *spy);
 
         QString uuid = plugin.kadGetRandomRecords();

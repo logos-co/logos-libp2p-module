@@ -438,6 +438,9 @@ void Libp2pModulePlugin::connectionCallback(
     if (callerRet == RET_OK && stream) {
         uint64_t streamId = self->addStream(stream);
         streamIdVariant = QVariant::fromValue<qulonglong>(streamId);
+    } else {
+        // For consistency with syncDial and tests, use 0 on error/null stream
+        streamIdVariant = QVariant::fromValue<qulonglong>(0);
     }
 
     QString message;
