@@ -14,6 +14,8 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, AsyncCall asyncCall)
     QEventLoop loop;
     QMetaObject::Connection conn;
 
+    QString requestId;
+
     conn = QObject::connect(
         self,
         &Libp2pModulePlugin::libp2pEvent,
@@ -24,7 +26,7 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, AsyncCall asyncCall)
             const QString &message,
             const QVariant &data)
         {
-            if (reqId != result.data.toString())
+            if (reqId != requestId)
                 return;
 
             result.ok = (ret == RET_OK);
@@ -39,15 +41,12 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, AsyncCall asyncCall)
             loop.quit();
         });
 
-    QString uuid = asyncCall();
+    requestId = asyncCall();
 
-    if (uuid.isEmpty()) {
+    if (requestId.isEmpty()) {
         QObject::disconnect(conn);
         return result;
     }
-
-    // temporarily store UUID in result.data for matching
-    result.data = uuid;
 
     QTimer timer;
     timer.setSingleShot(true);
@@ -55,10 +54,6 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, AsyncCall asyncCall)
     timer.start(10000);
 
     loop.exec();
-
-    // if timeout, UUID is still stored
-    if (result.data.typeId() == QMetaType::QString && result.data.toString() == uuid)
-        result.data = QVariant{};
 
     QObject::disconnect(conn);
     return result;

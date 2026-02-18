@@ -10,21 +10,23 @@ int main(int argc, char *argv[])
 
     qDebug() << "Starting nodes...";
 
-    if (!nodeA.syncLibp2pStart()) {
+    if (!nodeA.syncLibp2pStart().ok) {
         qFatal("Node A failed to start");
     }
-    PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo();
+    auto res = nodeA.syncPeerInfo();
+    PeerInfo nodeAPeerInfo = res.data.value<PeerInfo>();
 
     Libp2pModulePlugin nodeB({ nodeAPeerInfo });
 
-    if (!nodeB.syncLibp2pStart()) {
+    if (!nodeB.syncLibp2pStart().ok) {
         qFatal("Node B failed to start");
     }
 
     qDebug() << "Nodes started";
 
     // Obtain node B peer info from node B
-    auto peersB = nodeB.syncKadGetRandomRecords();
+    res = nodeB.syncKadGetRandomRecords();
+    QList<ExtendedPeerRecord> peersB = res.data.value<QList<ExtendedPeerRecord>>();
 
     if (peersB.isEmpty()) {
         qDebug() << "Node B has no known peers yet";
@@ -39,7 +41,7 @@ int main(int argc, char *argv[])
 
     qDebug() << "Node A putting value into DHT";
 
-    if (!nodeA.syncKadPutValue(key, value)) {
+    if (!nodeA.syncKadPutValue(key, value).ok) {
         qFatal("PutValue failed");
     }
 
@@ -49,7 +51,8 @@ int main(int argc, char *argv[])
 
     qDebug() << "Node B fetching value from DHT";
 
-    QByteArray received = nodeB.syncKadGetValue(key, 1);
+    res = nodeB.syncKadGetValue(key, 1);
+    QByteArray received = res.data.value<QByteArray>();
 
     if (received.isEmpty()) {
         qWarning() << "Node B did not find value";
@@ -61,16 +64,16 @@ int main(int argc, char *argv[])
        Providers demo
        ---------------------------------- */
 
-    QString cid = nodeA.syncToCid(key);
+    res = nodeA.syncToCid(key);
+    QString cid = res.data.value<QString>();
 
     qDebug() << "CID:" << cid;
 
     nodeA.syncKadStartProviding(cid);
 
-    auto providers = nodeB.syncKadGetProviders(cid);
-
+    res = nodeB.syncKadGetProviders(cid);
+    QList<PeerInfo> providers = res.data.value<QList<PeerInfo>>();
     qDebug() << "Providers found by B:" << providers.size();
-
     for (const auto &p : providers) {
         qDebug() << "Provider:" << p.peerId;
     }

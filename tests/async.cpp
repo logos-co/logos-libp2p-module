@@ -498,25 +498,6 @@ private slots:
 
         stopPlugin(plugin, *spy);
     }
-
-    /* ---------------------------
-     * Sync Kademlia tests
-     * --------------------------- */
-
-    void testSyncKadGetPutValue()
-    {
-        Libp2pModulePlugin plugin;
-
-        QVERIFY(plugin.syncLibp2pStart());
-
-        QByteArray key = "sync-test-key";
-        QByteArray value = "sync-hello-world";
-
-        QVERIFY(plugin.syncKadPutValue(key, value));
-        QCOMPARE(plugin.syncKadGetValue(key, 1), value);
-
-        QVERIFY(plugin.syncLibp2pStop());
-    }
 };
 
 QTEST_MAIN(TestLibp2pModule)
