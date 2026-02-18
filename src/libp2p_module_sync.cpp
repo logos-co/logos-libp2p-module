@@ -109,6 +109,47 @@ uint64_t Libp2pModulePlugin::syncDial(const QString &peerId, const QString &prot
 }
 
 /* ---------------------------
+ * Stream
+ * --------------------------- */
+
+QByteArray Libp2pModulePlugin::syncStreamReadExactly(uint64_t streamId, size_t len)
+{
+    auto res = runSync(this, [&]() { return streamReadExactly(streamId, len); });
+    return res.ok ? res.data.value<QByteArray>() : QByteArray();
+}
+
+QByteArray Libp2pModulePlugin::syncStreamReadLp(uint64_t streamId, size_t maxSize)
+{
+    auto res = runSync(this, [&]() { return streamReadLp(streamId, maxSize); });
+    return res.ok ? res.data.value<QByteArray>() : QByteArray();
+}
+
+bool Libp2pModulePlugin::syncStreamWrite(uint64_t streamId, const QByteArray &data)
+{
+    return runSync(this, [&]() { return streamWrite(streamId, data); }).ok;
+}
+
+bool Libp2pModulePlugin::syncStreamWriteLp(uint64_t streamId, const QByteArray &data)
+{
+    return runSync(this, [&]() { return streamWriteLp(streamId, data); }).ok;
+}
+
+bool Libp2pModulePlugin::syncStreamClose(uint64_t streamId)
+{
+    return runSync(this, [&]() { return streamClose(streamId); }).ok;
+}
+
+bool Libp2pModulePlugin::syncStreamCloseEOF(uint64_t streamId)
+{
+    return runSync(this, [&]() { return streamCloseEOF(streamId); }).ok;
+}
+
+bool Libp2pModulePlugin::syncStreamRelease(uint64_t streamId)
+{
+    return runSync(this, [&]() { return streamRelease(streamId); }).ok;
+}
+
+/* ---------------------------
  * Kademlia
  * --------------------------- */
 

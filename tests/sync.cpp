@@ -6,9 +6,11 @@ class TestLibp2pModuleSync : public QObject
     Q_OBJECT
 
 private slots:
+
     /* ---------------------------
-     * Sync Connectivity tests
+     * Connectivity
      * --------------------------- */
+
     void testSyncConnectDisconnectPeer()
     {
         Libp2pModulePlugin plugin;
@@ -60,7 +62,107 @@ private slots:
     }
 
     /* ---------------------------
-     * Sync Kademlia tests
+     * Stream
+     * --------------------------- */
+
+    void testSyncStreamClose()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart());
+
+        uint64_t fakeStreamId = 1234;
+
+        // cannot close inexistent stream
+        QVERIFY(!plugin.syncStreamClose(fakeStreamId));
+
+        QVERIFY(plugin.syncLibp2pStop());
+    }
+
+    void testSyncStreamCloseEOF()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart());
+
+        uint64_t fakeStreamId = 1234;
+
+        // cannot closeEOF inexistent stream
+        QVERIFY(!plugin.syncStreamCloseEOF(fakeStreamId));
+
+        QVERIFY(plugin.syncLibp2pStop());
+    }
+
+    void testSyncStreamRelease()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart());
+
+        uint64_t fakeStreamId = 1234;
+
+        // cannot release inexistent stream
+        QVERIFY(!plugin.syncStreamRelease(fakeStreamId));
+
+        QVERIFY(plugin.syncLibp2pStop());
+    }
+
+    void testSyncStreamReadExactly()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart());
+
+        uint64_t fakeStreamId = 1234;
+        size_t len = 16;
+
+        // cannot readExactly from inexistent stream
+        QCOMPARE(plugin.syncStreamReadExactly(fakeStreamId, len).size(), 0);
+
+        QVERIFY(plugin.syncLibp2pStop());
+    }
+
+    void testSyncStreamReadLp()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart());
+
+        uint64_t fakeStreamId = 1234;
+        size_t maxSize = 4096;
+
+        // cannot readExactly from inexistent stream
+        QCOMPARE(plugin.syncStreamReadLp(fakeStreamId, maxSize).size(), 0);
+
+        QVERIFY(plugin.syncLibp2pStop());
+    }
+
+    void testSyncStreamWrite()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart());
+
+        uint64_t fakeStreamId = 1234;
+        QByteArray data = "hello-stream";
+
+        // cannot write to inexistent stream
+        QVERIFY(!plugin.syncStreamWrite(fakeStreamId, data));
+
+        QVERIFY(plugin.syncLibp2pStop());
+    }
+
+    void testSyncStreamWriteLp()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart());
+
+        uint64_t fakeStreamId = 1234;
+        QByteArray data = "hello-stream-lp";
+
+        // cannot writeLp to inexistent stream
+        QVERIFY(!plugin.syncStreamWriteLp(fakeStreamId, data));
+
+        QVERIFY(plugin.syncLibp2pStop());
+    }
+
+
+    /* ---------------------------
+     * Kademlia
      * --------------------------- */
 
     void testSyncKadGetPutValue()

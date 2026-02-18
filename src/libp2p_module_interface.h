@@ -63,6 +63,15 @@ public:
     Q_INVOKABLE virtual QString streamCloseEOF(uint64_t streamId) = 0;
     Q_INVOKABLE virtual QString streamRelease(uint64_t streamId) = 0;
 
+    /* ----------- Sync Streams ----------- */
+    Q_INVOKABLE virtual QByteArray syncStreamReadExactly(uint64_t streamId, size_t len) = 0;
+    Q_INVOKABLE virtual QByteArray syncStreamReadLp(uint64_t streamId, size_t maxSize) = 0;
+    Q_INVOKABLE virtual bool       syncStreamWrite(uint64_t streamId, const QByteArray &data) = 0;
+    Q_INVOKABLE virtual bool       syncStreamWriteLp(uint64_t streamId, const QByteArray &data) = 0;
+    Q_INVOKABLE virtual bool       syncStreamClose(uint64_t streamId) = 0;
+    Q_INVOKABLE virtual bool       syncStreamCloseEOF(uint64_t streamId) = 0;
+    Q_INVOKABLE virtual bool       syncStreamRelease(uint64_t streamId) = 0;
+
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE virtual QString toCid(const QByteArray &key) = 0;
     Q_INVOKABLE virtual QString kadFindNode(const QString &peerId) = 0;

@@ -412,7 +412,7 @@ QString Libp2pModulePlugin::streamClose(uint64_t streamId)
         this
     };
 
-    auto *stream = getStream(streamId);
+    auto *stream = removeStream(streamId);
     if (!stream)
         return {};
 
@@ -443,7 +443,7 @@ QString Libp2pModulePlugin::streamCloseEOF(uint64_t streamId)
         this
     };
 
-    auto *stream = getStream(streamId);
+    auto *stream = removeStream(streamId);
     if (!stream)
         return {};
 
@@ -474,9 +474,10 @@ QString Libp2pModulePlugin::streamRelease(uint64_t streamId)
         this
     };
 
-    auto *stream = getStream(streamId);
+    auto *stream = removeStream(streamId);
     if (!stream)
         return {};
+    removeStream(streamId);
 
     int ret = libp2p_stream_release(
         ctx,

@@ -464,6 +464,3 @@ void Libp2pModulePlugin::connectionCallback(
     delete callbackCtx;
 }
 
-
-
-

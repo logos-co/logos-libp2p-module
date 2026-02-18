@@ -56,6 +56,15 @@ public:
     Q_INVOKABLE QString streamCloseEOF(uint64_t streamId) override;
     Q_INVOKABLE QString streamRelease(uint64_t streamId) override;
 
+    /* ----------- Sync Streams ----------- */
+    Q_INVOKABLE QByteArray syncStreamReadExactly(uint64_t streamId, size_t len) override;
+    Q_INVOKABLE QByteArray syncStreamReadLp(uint64_t streamId, size_t maxSize) override;
+    Q_INVOKABLE bool       syncStreamWrite(uint64_t streamId, const QByteArray &data) override;
+    Q_INVOKABLE bool       syncStreamWriteLp(uint64_t streamId, const QByteArray &data) override;
+    Q_INVOKABLE bool       syncStreamClose(uint64_t streamId) override;
+    Q_INVOKABLE bool       syncStreamCloseEOF(uint64_t streamId) override;
+    Q_INVOKABLE bool       syncStreamRelease(uint64_t streamId) override;
+
     /* ----------- Sync Connectivity ----------- */
     Q_INVOKABLE bool            syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
     Q_INVOKABLE bool            syncDisconnectPeer(const QString &peerId) override;
