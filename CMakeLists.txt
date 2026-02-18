@@ -93,11 +93,18 @@ target_include_directories(sync PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_include_directories(sync PRIVATE
-    ${LOGOS_CPP_SDK_ROOT}/include
-    ${LOGOS_CPP_SDK_ROOT}/include/cpp
-    ${LOGOS_CPP_SDK_ROOT}/include/core
-)
+if(LOGOS_CPP_SDK_IS_SOURCE)
+    target_include_directories(sync PRIVATE
+        ${LOGOS_CPP_SDK_ROOT}/cpp
+        ${LOGOS_CPP_SDK_ROOT}/cpp/generated
+    )
+else()
+    target_include_directories(sync PRIVATE
+        ${LOGOS_CPP_SDK_ROOT}/include
+        ${LOGOS_CPP_SDK_ROOT}/include/cpp
+        ${LOGOS_CPP_SDK_ROOT}/include/core
+    )
+endif()
 
 target_link_libraries(sync PRIVATE
     libp2p_module_module_plugin
