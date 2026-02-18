@@ -106,6 +106,11 @@ Libp2pModulePlugin::~Libp2pModulePlugin()
     // Stream Registry cleanup
     {
         QWriteLocker locker(&m_streamsLock);
+        for (auto stream : m_streams) {
+            if (stream) {
+                libp2p_stream_release(stream);
+            }
+        }
         m_streams.clear();
     }
 
