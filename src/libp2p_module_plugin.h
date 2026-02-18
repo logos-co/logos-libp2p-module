@@ -37,8 +37,8 @@ public:
     Q_INVOKABLE QString libp2pStop() override;
 
     /* ----------- Sync Libp2p ----------- */
-    Q_INVOKABLE bool syncLibp2pStart();
-    Q_INVOKABLE bool syncLibp2pStop();
+    Q_INVOKABLE Libp2pResult syncLibp2pStart();
+    Q_INVOKABLE Libp2pResult syncLibp2pStop();
 
     /* ----------- Connectivity ----------- */
     Q_INVOKABLE QString connectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
@@ -57,20 +57,20 @@ public:
     Q_INVOKABLE QString streamRelease(uint64_t streamId) override;
 
     /* ----------- Sync Streams ----------- */
-    Q_INVOKABLE QByteArray syncStreamReadExactly(uint64_t streamId, size_t len) override;
-    Q_INVOKABLE QByteArray syncStreamReadLp(uint64_t streamId, size_t maxSize) override;
-    Q_INVOKABLE bool       syncStreamWrite(uint64_t streamId, const QByteArray &data) override;
-    Q_INVOKABLE bool       syncStreamWriteLp(uint64_t streamId, const QByteArray &data) override;
-    Q_INVOKABLE bool       syncStreamClose(uint64_t streamId) override;
-    Q_INVOKABLE bool       syncStreamCloseEOF(uint64_t streamId) override;
-    Q_INVOKABLE bool       syncStreamRelease(uint64_t streamId) override;
+    Q_INVOKABLE Libp2pResult syncStreamReadExactly(uint64_t streamId, size_t len) override;
+    Q_INVOKABLE Libp2pResult syncStreamReadLp(uint64_t streamId, size_t maxSize) override;
+    Q_INVOKABLE Libp2pResult syncStreamWrite(uint64_t streamId, const QByteArray &data) override;
+    Q_INVOKABLE Libp2pResult syncStreamWriteLp(uint64_t streamId, const QByteArray &data) override;
+    Q_INVOKABLE Libp2pResult syncStreamClose(uint64_t streamId) override;
+    Q_INVOKABLE Libp2pResult syncStreamCloseEOF(uint64_t streamId) override;
+    Q_INVOKABLE Libp2pResult syncStreamRelease(uint64_t streamId) override;
 
     /* ----------- Sync Connectivity ----------- */
-    Q_INVOKABLE bool            syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
-    Q_INVOKABLE bool            syncDisconnectPeer(const QString &peerId) override;
-    Q_INVOKABLE PeerInfo        syncPeerInfo() override;
-    Q_INVOKABLE QList<QString>  syncConnectedPeers(int direction = 0) override;
-    Q_INVOKABLE uint64_t        syncDial(const QString &peerId, const QString &proto) override;
+    Q_INVOKABLE Libp2pResult syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
+    Q_INVOKABLE Libp2pResult syncDisconnectPeer(const QString &peerId) override;
+    Q_INVOKABLE Libp2pResult syncPeerInfo() override;
+    Q_INVOKABLE Libp2pResult syncConnectedPeers(int direction = 0) override;
+    Q_INVOKABLE Libp2pResult syncDial(const QString &peerId, const QString &proto) override;
 
     /* ----------- Kademlia ----------- */
     Q_INVOKABLE QString toCid(const QByteArray &key) override;
@@ -84,15 +84,15 @@ public:
     Q_INVOKABLE QString kadGetRandomRecords() override;
 
     /* ----------- Sync Kademlia ----------- */
-    Q_INVOKABLE QString                   syncToCid(const QByteArray &key) override;
-    Q_INVOKABLE QList<QString>            syncKadFindNode(const QString &peerId) override;
-    Q_INVOKABLE bool                      syncKadPutValue(const QByteArray &key, const QByteArray &value) override;
-    Q_INVOKABLE QByteArray                syncKadGetValue(const QByteArray &key, int quorum = -1) override;
-    Q_INVOKABLE bool                      syncKadAddProvider(const QString &cid) override;
-    Q_INVOKABLE QList<PeerInfo>           syncKadGetProviders(const QString &cid) override;
-    Q_INVOKABLE bool                      syncKadStartProviding(const QString &cid) override;
-    Q_INVOKABLE bool                      syncKadStopProviding(const QString &cid) override;
-    Q_INVOKABLE QList<ExtendedPeerRecord> syncKadGetRandomRecords() override;
+    Q_INVOKABLE Libp2pResult syncToCid(const QByteArray &key) override;
+    Q_INVOKABLE Libp2pResult syncKadFindNode(const QString &peerId) override;
+    Q_INVOKABLE Libp2pResult syncKadPutValue(const QByteArray &key, const QByteArray &value) override;
+    Q_INVOKABLE Libp2pResult syncKadGetValue(const QByteArray &key, int quorum = -1) override;
+    Q_INVOKABLE Libp2pResult syncKadAddProvider(const QString &cid) override;
+    Q_INVOKABLE Libp2pResult syncKadGetProviders(const QString &cid) override;
+    Q_INVOKABLE Libp2pResult syncKadStartProviding(const QString &cid) override;
+    Q_INVOKABLE Libp2pResult syncKadStopProviding(const QString &cid) override;
+    Q_INVOKABLE Libp2pResult syncKadGetRandomRecords() override;
 
     Q_INVOKABLE bool setEventCallback() override;
     Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);

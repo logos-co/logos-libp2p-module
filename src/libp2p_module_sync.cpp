@@ -7,9 +7,9 @@
 #include <QElapsedTimer>
 
 template<typename AsyncCall>
-static WaitResult runSync(Libp2pModulePlugin* self, AsyncCall asyncCall)
+static Libp2pResult runSync(Libp2pModulePlugin* self, AsyncCall asyncCall)
 {
-    WaitResult result{false, QVariant{}};
+    Libp2pResult result{false, QString{}, QVariant{}};
 
     QEventLoop loop;
     QMetaObject::Connection conn;
@@ -28,10 +28,12 @@ static WaitResult runSync(Libp2pModulePlugin* self, AsyncCall asyncCall)
                 return;
 
             result.ok = (ret == RET_OK);
-            if (caller == "toCid")
+            result.error = message;
+            result.data = data;
+
+            if (caller == "toCid") {
                 result.data = message;
-            else
-                result.data = data;
+            }
 
             QObject::disconnect(conn);
             loop.quit();
@@ -66,139 +68,129 @@ static WaitResult runSync(Libp2pModulePlugin* self, AsyncCall asyncCall)
  * Start / Stop
  * --------------------------- */
 
-bool Libp2pModulePlugin::syncLibp2pStart()
+Libp2pResult Libp2pModulePlugin::syncLibp2pStart()
 {
-    return runSync(this, [&]() { return libp2pStart(); }).ok;
+    return runSync(this, [&]() { return libp2pStart(); });
 }
 
-bool Libp2pModulePlugin::syncLibp2pStop()
+Libp2pResult Libp2pModulePlugin::syncLibp2pStop()
 {
-    return runSync(this, [&]() { return libp2pStop(); }).ok;
+    return runSync(this, [&]() { return libp2pStop(); });
 }
 
 /* ---------------------------
  * Connectivity
  * --------------------------- */
 
-bool Libp2pModulePlugin::syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs)
+Libp2pResult Libp2pModulePlugin::syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs)
 {
-    return runSync(this, [&]() { return connectPeer(peerId, multiaddrs, timeoutMs); }).ok;
+    return runSync(this, [&]() { return connectPeer(peerId, multiaddrs, timeoutMs); });
 }
 
-bool Libp2pModulePlugin::syncDisconnectPeer(const QString &peerId)
+Libp2pResult Libp2pModulePlugin::syncDisconnectPeer(const QString &peerId)
 {
-    return runSync(this, [&]() { return disconnectPeer(peerId); }).ok;
+    return runSync(this, [&]() { return disconnectPeer(peerId); });
 }
 
-PeerInfo Libp2pModulePlugin::syncPeerInfo()
+Libp2pResult Libp2pModulePlugin::syncPeerInfo()
 {
-    auto res = runSync(this, [&]() { return peerInfo(); });
-    return res.ok ? res.data.value<PeerInfo>() : PeerInfo();
+    return runSync(this, [&]() { return peerInfo(); });
 }
 
-QList<QString> Libp2pModulePlugin::syncConnectedPeers(int direction)
+Libp2pResult Libp2pModulePlugin::syncConnectedPeers(int direction)
 {
-    auto res = runSync(this, [&]() { return connectedPeers(direction); });
-    return res.ok ? res.data.value<QList<QString>>() : QList<QString>();
+    return runSync(this, [&]() { return connectedPeers(direction); });
 }
 
-uint64_t Libp2pModulePlugin::syncDial(const QString &peerId, const QString &proto)
+Libp2pResult Libp2pModulePlugin::syncDial(const QString &peerId, const QString &proto)
 {
-    auto res = runSync(this, [&]() { return dial(peerId, proto); });
-    return res.ok ? res.data.value<uint64_t>() : 0;
+    return runSync(this, [&]() { return dial(peerId, proto); });
 }
 
 /* ---------------------------
  * Stream
  * --------------------------- */
 
-QByteArray Libp2pModulePlugin::syncStreamReadExactly(uint64_t streamId, size_t len)
+Libp2pResult Libp2pModulePlugin::syncStreamReadExactly(uint64_t streamId, size_t len)
 {
-    auto res = runSync(this, [&]() { return streamReadExactly(streamId, len); });
-    return res.ok ? res.data.value<QByteArray>() : QByteArray();
+    return runSync(this, [&]() { return streamReadExactly(streamId, len); });
 }
 
-QByteArray Libp2pModulePlugin::syncStreamReadLp(uint64_t streamId, size_t maxSize)
+Libp2pResult Libp2pModulePlugin::syncStreamReadLp(uint64_t streamId, size_t maxSize)
 {
-    auto res = runSync(this, [&]() { return streamReadLp(streamId, maxSize); });
-    return res.ok ? res.data.value<QByteArray>() : QByteArray();
+    return runSync(this, [&]() { return streamReadLp(streamId, maxSize); });
 }
 
-bool Libp2pModulePlugin::syncStreamWrite(uint64_t streamId, const QByteArray &data)
+Libp2pResult Libp2pModulePlugin::syncStreamWrite(uint64_t streamId, const QByteArray &data)
 {
-    return runSync(this, [&]() { return streamWrite(streamId, data); }).ok;
+    return runSync(this, [&]() { return streamWrite(streamId, data); });
 }
 
-bool Libp2pModulePlugin::syncStreamWriteLp(uint64_t streamId, const QByteArray &data)
+Libp2pResult Libp2pModulePlugin::syncStreamWriteLp(uint64_t streamId, const QByteArray &data)
 {
-    return runSync(this, [&]() { return streamWriteLp(streamId, data); }).ok;
+    return runSync(this, [&]() { return streamWriteLp(streamId, data); });
 }
 
-bool Libp2pModulePlugin::syncStreamClose(uint64_t streamId)
+Libp2pResult Libp2pModulePlugin::syncStreamClose(uint64_t streamId)
 {
-    return runSync(this, [&]() { return streamClose(streamId); }).ok;
+    return runSync(this, [&]() { return streamClose(streamId); });
 }
 
-bool Libp2pModulePlugin::syncStreamCloseEOF(uint64_t streamId)
+Libp2pResult Libp2pModulePlugin::syncStreamCloseEOF(uint64_t streamId)
 {
-    return runSync(this, [&]() { return streamCloseEOF(streamId); }).ok;
+    return runSync(this, [&]() { return streamCloseEOF(streamId); });
 }
 
-bool Libp2pModulePlugin::syncStreamRelease(uint64_t streamId)
+Libp2pResult Libp2pModulePlugin::syncStreamRelease(uint64_t streamId)
 {
-    return runSync(this, [&]() { return streamRelease(streamId); }).ok;
+    return runSync(this, [&]() { return streamRelease(streamId); });
 }
 
 /* ---------------------------
  * Kademlia
  * --------------------------- */
 
-QList<QString> Libp2pModulePlugin::syncKadFindNode(const QString &peerId)
+Libp2pResult Libp2pModulePlugin::syncKadFindNode(const QString &peerId)
 {
-    auto res = runSync(this, [&]() { return kadFindNode(peerId); });
-    return res.ok ? res.data.value<QList<QString>>() : QList<QString>();
+    return runSync(this, [&]() { return kadFindNode(peerId); });
 }
 
-bool Libp2pModulePlugin::syncKadPutValue(const QByteArray &key, const QByteArray &value)
+Libp2pResult Libp2pModulePlugin::syncKadPutValue(const QByteArray &key, const QByteArray &value)
 {
-    return runSync(this, [&]() { return kadPutValue(key, value); }).ok;
+    return runSync(this, [&]() { return kadPutValue(key, value); });
 }
 
-QByteArray Libp2pModulePlugin::syncKadGetValue(const QByteArray &key, int quorum)
+Libp2pResult Libp2pModulePlugin::syncKadGetValue(const QByteArray &key, int quorum)
 {
-    auto res = runSync(this, [&]() { return kadGetValue(key, quorum); });
-    return res.ok ? res.data.toByteArray() : QByteArray{};
+    return runSync(this, [&]() { return kadGetValue(key, quorum); });
 }
 
-bool Libp2pModulePlugin::syncKadAddProvider(const QString &cid)
+Libp2pResult Libp2pModulePlugin::syncKadAddProvider(const QString &cid)
 {
-    return runSync(this, [&]() { return kadAddProvider(cid); }).ok;
+    return runSync(this, [&]() { return kadAddProvider(cid); });
 }
 
-QList<PeerInfo> Libp2pModulePlugin::syncKadGetProviders(const QString &cid)
+Libp2pResult Libp2pModulePlugin::syncKadGetProviders(const QString &cid)
 {
-    auto res = runSync(this, [&]() { return kadGetProviders(cid); });
-    return res.ok ? res.data.value<QList<PeerInfo>>() : QList<PeerInfo>();
+    return runSync(this, [&]() { return kadGetProviders(cid); });
 }
 
-bool Libp2pModulePlugin::syncKadStartProviding(const QString &cid)
+Libp2pResult Libp2pModulePlugin::syncKadStartProviding(const QString &cid)
 {
-    return runSync(this, [&]() { return kadStartProviding(cid); }).ok;
+    return runSync(this, [&]() { return kadStartProviding(cid); });
 }
 
-bool Libp2pModulePlugin::syncKadStopProviding(const QString &cid)
+Libp2pResult Libp2pModulePlugin::syncKadStopProviding(const QString &cid)
 {
-    return runSync(this, [&]() { return kadStopProviding(cid); }).ok;
+    return runSync(this, [&]() { return kadStopProviding(cid); });
 }
 
-QList<ExtendedPeerRecord> Libp2pModulePlugin::syncKadGetRandomRecords()
+Libp2pResult Libp2pModulePlugin::syncKadGetRandomRecords()
 {
-    auto res = runSync(this, [&]() { return kadGetRandomRecords(); });
-    return res.ok ? res.data.value<QList<ExtendedPeerRecord>>() : QList<ExtendedPeerRecord>();
+    return runSync(this, [&]() { return kadGetRandomRecords(); });
 }
 
-QString Libp2pModulePlugin::syncToCid(const QByteArray &key)
+Libp2pResult Libp2pModulePlugin::syncToCid(const QByteArray &key)
 {
-    auto res = runSync(this, [&]() { return toCid(key); });
-    return res.ok ? res.data.toString() : QString{};
+    return runSync(this, [&]() { return toCid(key); });
 }

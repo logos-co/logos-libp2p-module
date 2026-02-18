@@ -18,6 +18,8 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
     qRegisterMetaType<ExtendedPeerRecord>("ExtendedPeerRecord");
     qRegisterMetaType<QList<ExtendedPeerRecord>>("QList<ExtendedPeerRecord>");
 
+    qRegisterMetaType<Libp2pResult>("Libp2pResult");
+
     std::memset(&config, 0, sizeof(config));
 
     config.flags |= LIBP2P_CFG_GOSSIPSUB;
