@@ -19,7 +19,7 @@ nix develop
 cmake -B build -S .
 ```
 
-Build module and examples
+Build the module and all examples:
 ```bash
 cmake --build build -j
 ```
@@ -30,3 +30,4 @@ After building, run the executable from the build directory:
 ```bash
 ./build/examples/example_kademlia
 ```
+
