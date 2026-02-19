@@ -43,6 +43,13 @@ void Libp2pModulePlugin::libp2pCallback(
     if (msg && len > 0)
         message = QString::fromUtf8(msg, int(len));
 
+    if (caller == "libp2pDestroy") {
+        self->m_destroyDone.store(true, std::memory_order_release);
+    }
+    if (caller == "libp2pNew") {
+        self->m_newDone.store(true, std::memory_order_release);
+    }
+
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
         safeSelf,

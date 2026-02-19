@@ -252,9 +252,14 @@ private:
 
     // libp2p node's private key
     libp2p_private_key_t m_privKey {};
+    bool m_privKeyReady = false;
 
     /// libp2p configuration.
     libp2p_config_t config = {};
+
+    /// Helper for destructor to wait for libp2p_destroy and libp2p_new to be done
+    std::atomic<bool> m_destroyDone{false};
+    std::atomic<bool> m_newDone{false};
 
     /// Active streams indexed by internal ID.
     QHash<uint64_t, libp2p_stream_t*> m_streams;
