@@ -12,15 +12,14 @@ use cases using the `logos-libp2p-module`.
   - `StartProviding`
 
 ## Building
-
-Enter the development environment and configure the project:
+Enter the development shell and configure cmake
 
 ```bash
 nix develop
 cmake -B build -S .
 ```
 
-Build the module and all examples:
+Build module and examples
 ```bash
 cmake --build build -j
 ```
@@ -31,4 +30,3 @@ After building, run the executable from the build directory:
 ```bash
 ./build/examples/example_kademlia
 ```
-
