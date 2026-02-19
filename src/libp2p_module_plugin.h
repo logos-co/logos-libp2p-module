@@ -121,6 +121,83 @@ public:
     Q_INVOKABLE Libp2pResult syncKadStopProviding(const QString &cid) override;
     Q_INVOKABLE Libp2pResult syncKadGetRandomRecords() override;
 
+    /* ----------- Mix Network ----------- */
+
+    /// Generates a new Curve25519 private key for mix networking.
+    Q_INVOKABLE QString mixGeneratePrivKey() override;
+
+    /// Derives the public key from a given Curve25519 private key.
+    Q_INVOKABLE QString mixPublicKey(const QByteArray &privKey) override;
+
+    /// Establishes a mix connection to a peer through a multiaddr and protocol.
+    Q_INVOKABLE QString mixDial(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto
+    ) override;
+
+    /// Establishes a mix connection expecting a reply with SURBs.
+    Q_INVOKABLE QString mixDialWithReply(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto,
+        int expectReply,
+        uint8_t numSurbs
+    ) override;
+
+    /// Registers how payloads should be read for a protocol at the mix destination.
+    Q_INVOKABLE QString mixRegisterDestReadBehavior(
+        const QString &proto,
+        int behavior,
+        uint32_t sizeParam
+    ) override;
+
+    /// Sets node information used by the mix layer.
+    Q_INVOKABLE QString mixSetNodeInfo(
+        const QString &multiaddr,
+        const QByteArray &mixPrivKey
+    ) override;
+
+    /// Adds a node to the mix node pool.
+    Q_INVOKABLE QString mixNodepoolAdd(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QByteArray &mixPubKey,
+        const QByteArray &libp2pPubKey
+    ) override;
+
+    /* ----------- Sync Mix Network ----------- */
+
+    Q_INVOKABLE Libp2pResult syncMixGeneratePrivKey() override;
+    Q_INVOKABLE Libp2pResult syncMixPublicKey(const QByteArray &privKey) override;
+    Q_INVOKABLE Libp2pResult syncMixDial(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto
+    ) override;
+    Q_INVOKABLE Libp2pResult syncMixDialWithReply(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto,
+        int expectReply,
+        uint8_t numSurbs
+    ) override;
+    Q_INVOKABLE Libp2pResult syncMixRegisterDestReadBehavior(
+        const QString &proto,
+        int behavior,
+        uint32_t sizeParam
+    ) override;
+    Q_INVOKABLE Libp2pResult syncMixSetNodeInfo(
+        const QString &multiaddr,
+        const QByteArray &mixPrivKey
+    ) override;
+    Q_INVOKABLE Libp2pResult syncMixNodepoolAdd(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QByteArray &mixPubKey,
+        const QByteArray &libp2pPubKey
+    ) override;
+
     /// Registers the event callback bridge with libp2p.
     Q_INVOKABLE bool setEventCallback() override;
 

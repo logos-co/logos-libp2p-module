@@ -255,6 +255,83 @@ public:
     Q_INVOKABLE virtual Libp2pResult syncKadStopProviding(const QString &cid) = 0;
     Q_INVOKABLE virtual Libp2pResult syncKadGetRandomRecords() = 0;
 
+    /* ----------- Mix Network ----------- */
+
+    /// Generates a new Curve25519 private key for mix networking.
+    Q_INVOKABLE virtual QString mixGeneratePrivKey() = 0;
+
+    /// Derives the public key from a given Curve25519 private key.
+    Q_INVOKABLE virtual QString mixPublicKey(const QByteArray &privKey) = 0;
+
+    /// Establishes a mix connection to a peer through a multiaddr and protocol.
+    Q_INVOKABLE virtual QString mixDial(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto
+    ) = 0;
+
+    /// Establishes a mix connection expecting a reply with SURBs.
+    Q_INVOKABLE virtual QString mixDialWithReply(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto,
+        int expectReply,
+        uint8_t numSurbs
+    ) = 0;
+
+    /// Registers how payloads should be read for a protocol at the mix destination.
+    Q_INVOKABLE virtual QString mixRegisterDestReadBehavior(
+        const QString &proto,
+        int behavior,
+        uint32_t sizeParam
+    ) = 0;
+
+    /// Sets node information used by the mix layer.
+    Q_INVOKABLE virtual QString mixSetNodeInfo(
+        const QString &multiaddr,
+        const QByteArray &mixPrivKey
+    ) = 0;
+
+    /// Adds a node to the mix node pool.
+    Q_INVOKABLE virtual QString mixNodepoolAdd(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QByteArray &mixPubKey,
+        const QByteArray &libp2pPubKey
+    ) = 0;
+
+    /* ----------- Sync Mix Network ----------- */
+
+    Q_INVOKABLE virtual Libp2pResult syncMixGeneratePrivKey() = 0;
+    Q_INVOKABLE virtual Libp2pResult syncMixPublicKey(const QByteArray &privKey) = 0;
+    Q_INVOKABLE virtual Libp2pResult syncMixDial(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto
+    ) = 0;
+    Q_INVOKABLE virtual Libp2pResult syncMixDialWithReply(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto,
+        int expectReply,
+        uint8_t numSurbs
+    ) = 0;
+    Q_INVOKABLE virtual Libp2pResult syncMixRegisterDestReadBehavior(
+        const QString &proto,
+        int behavior,
+        uint32_t sizeParam
+    ) = 0;
+    Q_INVOKABLE virtual Libp2pResult syncMixSetNodeInfo(
+        const QString &multiaddr,
+        const QByteArray &mixPrivKey
+    ) = 0;
+    Q_INVOKABLE virtual Libp2pResult syncMixNodepoolAdd(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QByteArray &mixPubKey,
+        const QByteArray &libp2pPubKey
+    ) = 0;
+
     /// Registers the event callback used for async responses.
     Q_INVOKABLE virtual bool setEventCallback() = 0;
 
