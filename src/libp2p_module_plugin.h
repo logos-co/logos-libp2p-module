@@ -13,11 +13,22 @@
 
 #include "libp2p_module_interface.h"
 
+/**
+ * Result used internally when waiting for async callbacks.
+ */
 struct WaitResult {
     bool ok;
     QVariant data;
 };
 
+/**
+ * Implementation of the libp2p Logos module plugin.
+ *
+ * This class bridges:
+ * - Logos plugin system
+ * - libp2p C bindings
+ * - Qt async/signal infrastructure
+ */
 class Libp2pModulePlugin : public QObject, public Libp2pModuleInterface
 {
     Q_OBJECT
@@ -25,22 +36,35 @@ class Libp2pModulePlugin : public QObject, public Libp2pModuleInterface
     Q_INTERFACES(Libp2pModuleInterface PluginInterface)
 
 public:
+    /**
+     * Creates the plugin instance.
+     *
+     * bootstrapNodes are used to initially connect to the network.
+     */
     explicit Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes = {});
     ~Libp2pModulePlugin() override;
 
+    /// Plugin name exposed to Logos.
     QString name() const override { return "libp2p_module"; }
+
+    /// Plugin version.
     QString version() const override { return "1.0.0"; }
 
     Q_INVOKABLE bool foo(const QString &bar) override;
 
+    /// Starts the libp2p node.
     Q_INVOKABLE QString libp2pStart() override;
+
+    /// Stops the libp2p node.
     Q_INVOKABLE QString libp2pStop() override;
 
     /* ----------- Sync Libp2p ----------- */
+
     Q_INVOKABLE Libp2pResult syncLibp2pStart();
     Q_INVOKABLE Libp2pResult syncLibp2pStop();
 
     /* ----------- Connectivity ----------- */
+
     Q_INVOKABLE QString connectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
     Q_INVOKABLE QString disconnectPeer(const QString &peerId) override;
     Q_INVOKABLE QString peerInfo() override;
@@ -48,6 +72,7 @@ public:
     Q_INVOKABLE QString dial(const QString &peerId, const QString &proto) override;
 
     /* ----------- Streams ----------- */
+
     Q_INVOKABLE QString streamReadExactly(uint64_t streamId, size_t len) override;
     Q_INVOKABLE QString streamReadLp(uint64_t streamId, size_t maxSize) override;
     Q_INVOKABLE QString streamWrite(uint64_t streamId, const QByteArray &data) override;
@@ -57,6 +82,7 @@ public:
     Q_INVOKABLE QString streamRelease(uint64_t streamId) override;
 
     /* ----------- Sync Streams ----------- */
+
     Q_INVOKABLE Libp2pResult syncStreamReadExactly(uint64_t streamId, size_t len) override;
     Q_INVOKABLE Libp2pResult syncStreamReadLp(uint64_t streamId, size_t maxSize) override;
     Q_INVOKABLE Libp2pResult syncStreamWrite(uint64_t streamId, const QByteArray &data) override;
@@ -66,6 +92,7 @@ public:
     Q_INVOKABLE Libp2pResult syncStreamRelease(uint64_t streamId) override;
 
     /* ----------- Sync Connectivity ----------- */
+
     Q_INVOKABLE Libp2pResult syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
     Q_INVOKABLE Libp2pResult syncDisconnectPeer(const QString &peerId) override;
     Q_INVOKABLE Libp2pResult syncPeerInfo() override;
@@ -73,6 +100,7 @@ public:
     Q_INVOKABLE Libp2pResult syncDial(const QString &peerId, const QString &proto) override;
 
     /* ----------- Kademlia ----------- */
+
     Q_INVOKABLE QString toCid(const QByteArray &key) override;
     Q_INVOKABLE QString kadFindNode(const QString &peerId) override;
     Q_INVOKABLE QString kadPutValue(const QByteArray &key, const QByteArray &value) override;
@@ -84,6 +112,7 @@ public:
     Q_INVOKABLE QString kadGetRandomRecords() override;
 
     /* ----------- Sync Kademlia ----------- */
+
     Q_INVOKABLE Libp2pResult syncToCid(const QByteArray &key) override;
     Q_INVOKABLE Libp2pResult syncKadFindNode(const QString &peerId) override;
     Q_INVOKABLE Libp2pResult syncKadPutValue(const QByteArray &key, const QByteArray &value) override;
@@ -94,10 +123,16 @@ public:
     Q_INVOKABLE Libp2pResult syncKadStopProviding(const QString &cid) override;
     Q_INVOKABLE Libp2pResult syncKadGetRandomRecords() override;
 
+    /// Registers the event callback bridge with libp2p.
     Q_INVOKABLE bool setEventCallback() override;
+
+    /// Initializes the Logos API instance used by the plugin.
     Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);
 
 signals:
+    /**
+     * Low-level libp2p event emitted by the underlying library.
+     */
     void libp2pEvent(
         int result,
         QString reqId,
@@ -105,9 +140,16 @@ signals:
         QString message,
         QVariant data
     );
+
+    /**
+     * High-level event forwarded to Logos.
+     */
     void eventResponse(const QString& eventName, const QVariantList& data);
 
 private slots:
+    /**
+     * Default handler for libp2p events.
+     */
     void onLibp2pEventDefault(
         int result,
         const QString &reqId,
@@ -117,26 +159,51 @@ private slots:
     );
 
 private:
+    /// Bootstrap peers used during node startup.
     QList<PeerInfo> m_bootstrapNodes;
+
+    /// C-compatible bootstrap node structures.
     QVector<libp2p_bootstrap_node_t> m_bootstrapCNodes;
-    // keeps UTF8 buffers alive
+
+    /// Keeps UTF-8 address buffers alive.
     QVector<QVector<QByteArray>> m_addrUtf8Storage;
-    // keeps char** arrays alive
+
+    /// Keeps char** arrays alive.
     QVector<QVector<char*>> m_addrPtrStorage;
+
+    /// Storage for peer IDs.
     QVector<QByteArray> m_peerIdStorage;
 
+    /// libp2p context.
     libp2p_ctx_t *ctx = nullptr;
+
+    /// libp2p configuration.
     libp2p_config_t config = {};
 
+    /// Active streams indexed by internal ID.
     QHash<uint64_t, libp2p_stream_t*> m_streams;
+
+    /// Lock protecting the stream registry.
     mutable QReadWriteLock m_streamsLock;
+
+    /// Monotonic stream ID generator.
     std::atomic<uint64_t> m_nextStreamId {1};
 
     /* ----------- Stream Registry ----------- */
+
+    /// Registers a new stream and returns its ID.
     uint64_t addStream(libp2p_stream_t *stream);
+
+    /// Returns a stream by ID.
     libp2p_stream_t* getStream(uint64_t id) const;
+
+    /// Removes a stream from the registry.
     libp2p_stream_t* removeStream(uint64_t id);
+
+    /// Checks if a stream exists.
     bool hasStream(uint64_t id) const;
+
+    /* ----------- libp2p Callbacks ----------- */
 
     static void libp2pCallback(
         int callerRet,
@@ -198,6 +265,10 @@ private:
     );
 };
 
+/**
+ * Context passed to async callbacks to map responses back
+ * to the originating request.
+ */
 struct CallbackContext {
     QString caller;
     QString reqId;
