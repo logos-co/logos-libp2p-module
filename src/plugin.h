@@ -250,6 +250,9 @@ private:
     /// libp2p context.
     libp2p_ctx_t *ctx = nullptr;
 
+    // libp2p node's private key
+    libp2p_private_key_t m_privKey {};
+
     /// libp2p configuration.
     libp2p_config_t config = {};
 

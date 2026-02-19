@@ -4,6 +4,40 @@
 #include <QtCore/QJsonObject>
 #include <cstring>
 #include <QDebug>
+#include <QCoreApplication>
+#include <QEventLoop>
+
+struct KeyCtx {
+    libp2p_private_key_t *out;
+    bool *done;
+};
+
+static void private_key_handler(
+    int callerRet,
+    const uint8_t *keyData,
+    size_t keyDataLen,
+    const char *msg,
+    size_t len,
+    void *userData)
+{
+    if (callerRet != RET_OK || keyDataLen == 0 || keyData == nullptr) {
+        qCritical() << "Private key error:" << callerRet
+                    << QByteArray(msg, len);
+        return;
+    }
+
+    auto *privKey =
+        static_cast<libp2p_private_key_t *>(userData);
+
+    uint8_t *buf =
+        static_cast<uint8_t *>(malloc(keyDataLen));
+
+    memcpy(buf, keyData, keyDataLen);
+
+    privKey->data = buf;
+    privKey->dataLen = keyDataLen;
+}
+
 
 Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
     : ctx(nullptr),
@@ -75,11 +109,33 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
     config.flags |= LIBP2P_CFG_PRIVATE_KEY;
     config.mount_mix = 1;
 
+    /* -------------------------
+     * Generate secp256k1 key
+     * ------------------------- */
+
+    libp2p_new_private_key(
+        LIBP2P_PK_SECP256K1,
+        private_key_handler,
+        &m_privKey
+    );
+
+    /* wait for async callback */
+    while (m_privKey.data == nullptr) {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+    }
+
+    config.priv_key = m_privKey;
+
+
     auto *callbackCtx = new CallbackContext{
         "libp2pNew",
         QUuid::createUuid().toString(),
         this
     };
+
+    /* -------------------------
+     * Call libp2p_new
+     * ------------------------- */
 
     ctx = libp2p_new(&config,
                      &Libp2pModulePlugin::libp2pCallback,

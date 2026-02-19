@@ -334,10 +334,9 @@ private slots:
         QVERIFY(plugin.syncLibp2pStart().ok);
 
         QString addr = "/ip4/127.0.0.1/tcp/4001";
+        PeerInfo peerInfo = plugin.syncPeerInfo().data.value<PeerInfo>();
 
-        auto res = plugin.syncMixSetNodeInfo(addr, plugin.mixGeneratePrivKey());
-
-        QVERIFY(res.data.isValid());
+        QVERIFY(plugin.syncMixSetNodeInfo(peerInfo.addrs[0], plugin.mixGeneratePrivKey()).ok);
 
         QVERIFY(plugin.syncLibp2pStop().ok);
     }

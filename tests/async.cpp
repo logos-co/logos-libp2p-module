@@ -246,12 +246,15 @@ private slots:
 
         QByteArray key = plugin.mixGeneratePrivKey();
 
-        QString addr = "/ip4/127.0.0.1/tcp/4001";
+        // get peerInfo
+        QString uuid = plugin.peerInfo();
+        auto res = waitForUuid(plugin, *spy, uuid, "peerInfo");
+        PeerInfo peerInfo = res.data.value<PeerInfo>();
 
-        QString uuid = plugin.mixSetNodeInfo(addr, key);
-        auto res = waitForUuid(plugin, *spy, uuid, "mixSetNodeInfo");
-
-        QVERIFY(res.data.isValid());
+        // set mix node info
+        uuid = plugin.mixSetNodeInfo(peerInfo.addrs[0], key);
+        res = waitForUuid(plugin, *spy, uuid, "mixSetNodeInfo");
+        QVERIFY(res.ok);
 
         stopPlugin(plugin, *spy);
     }
