@@ -62,7 +62,7 @@ private slots:
         QVERIFY(nodeB.syncLibp2pStop().ok);
     }
 
-    void mixBetweenTwoNodes()
+    void mixBasicDial()
     {
         Libp2pModulePlugin nodeA;
         Libp2pModulePlugin nodeB;
@@ -70,38 +70,49 @@ private slots:
         QVERIFY(nodeA.syncLibp2pStart().ok);
         QVERIFY(nodeB.syncLibp2pStart().ok);
 
-        auto privA = nodeA.syncMixGeneratePrivKey();
-        auto privB = nodeB.syncMixGeneratePrivKey();
+        PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
+        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
 
-        QVERIFY(privA.ok);
-        QVERIFY(privB.ok);
+        QByteArray mixPrivA = nodeA.mixGeneratePrivKey();
+        QByteArray mixPrivB = nodeB.mixGeneratePrivKey();
 
-        QByteArray privKeyA = privA.data.value<QByteArray>();
-        QByteArray privKeyB = privB.data.value<QByteArray>();
+        QVERIFY(nodeA.syncMixSetNodeInfo(nodeAPeerInfo.addrs.first(), mixPrivA).ok);
+        QVERIFY(nodeB.syncMixSetNodeInfo(nodeBPeerInfo.addrs.first(), mixPrivB).ok);
 
-        auto pubA = nodeA.syncMixPublicFromPrivate(privKeyA);
-        auto pubB = nodeB.syncMixPublicFromPrivate(privKeyB);
+        QByteArray mixPubA = nodeA.mixPublicKey(mixPrivA);
+        QByteArray mixPubB = nodeA.mixPublicKey(mixPrivB);
 
-        QVERIFY(pubA.ok);
-        QVERIFY(pubB.ok);
+        QVERIFY(!mixPubA.isEmpty());
+        QVERIFY(!mixPubB.isEmpty());
 
-        QByteArray pubKeyA = pubA.data.value<QByteArray>();
-        QByteArray pubKeyB = pubB.data.value<QByteArray>();
+        QByteArray dummyLibp2pKey;
 
-        QVERIFY(!pubKeyA.isEmpty());
-        QVERIFY(!pubKeyB.isEmpty());
+        QVERIFY(nodeA.syncMixNodepoolAdd(
+            nodeBPeerInfo.peerId,
+            nodeBPeerInfo.addrs.first(),
+            mixPubB,
+            dummyLibp2pKey
+        ).ok);
 
-        // optional: derive shared secrets if you exposed helper
-        auto secretA = nodeA.syncMixSharedSecret(privKeyA, pubKeyB);
-        auto secretB = nodeB.syncMixSharedSecret(privKeyB, pubKeyA);
+        QVERIFY(nodeB.syncMixNodepoolAdd(
+            nodeAPeerInfo.peerId,
+            nodeAPeerInfo.addrs.first(),
+            mixPubA,
+            dummyLibp2pKey
+        ).ok);
 
-        QVERIFY(secretA.ok);
-        QVERIFY(secretB.ok);
+        QString proto = "/mix/test/1.0.0";
 
-        QByteArray sA = secretA.data.value<QByteArray>();
-        QByteArray sB = secretB.data.value<QByteArray>();
+        QVERIFY(nodeA.syncMixRegisterDestReadBehavior(proto, 0, 0).ok);
+        QVERIFY(nodeB.syncMixRegisterDestReadBehavior(proto, 0, 0).ok);
 
-        QCOMPARE(sA, sB);
+        QThread::msleep(300);
+
+        QVERIFY(nodeA.syncMixDial(
+            nodeBPeerInfo.peerId,
+            nodeBPeerInfo.addrs.first(),
+            proto
+        ).ok);
 
         QVERIFY(nodeA.syncLibp2pStop().ok);
         QVERIFY(nodeB.syncLibp2pStop().ok);
