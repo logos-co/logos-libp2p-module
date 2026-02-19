@@ -14,12 +14,17 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
     QEventLoop loop;
     QMetaObject::Connection conn;
 
-    QString requestId;
+    QString requestId = asyncCall();
+
+    if (requestId.isEmpty()) {
+        qCritical() << functionName << "failed to start async request";
+        return result;
+    }
 
     conn = QObject::connect(
         self,
         &Libp2pModulePlugin::libp2pEvent,
-        self,
+        &loop,
         [&](int ret,
             const QString &reqId,
             const QString &caller,
@@ -39,15 +44,8 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
 
             QObject::disconnect(conn);
             loop.quit();
-        });
-
-    requestId = asyncCall();
-
-    if (requestId.isEmpty()) {
-        qCritical() << functionName << "failed to start async request";
-        QObject::disconnect(conn);
-        return result;
-    }
+        }
+    );
 
     QTimer timer;
     timer.setSingleShot(true);
@@ -194,20 +192,6 @@ Libp2pResult Libp2pModulePlugin::syncToCid(const QByteArray &key)
 /* ---------------------------
  * Mix
  * --------------------------- */
-
-Libp2pResult Libp2pModulePlugin::syncMixGeneratePrivKey()
-{
-    return runSync(this, __func__, [&]() {
-        return mixGeneratePrivKey();
-    });
-}
-
-Libp2pResult Libp2pModulePlugin::syncMixPublicKey(const QByteArray &privKey)
-{
-    return runSync(this, __func__, [&]() {
-        return mixPublicKey(privKey);
-    });
-}
 
 Libp2pResult Libp2pModulePlugin::syncMixDial(
     const QString &peerId,

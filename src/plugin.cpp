@@ -71,6 +71,10 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
     config.flags |= LIBP2P_CFG_KAD_DISCOVERY;
     config.mount_kad_discovery = 1;
 
+    config.flags |= LIBP2P_CFG_MIX;
+    config.flags |= LIBP2P_CFG_PRIVATE_KEY;
+    config.mount_mix = 1;
+
     auto *callbackCtx = new CallbackContext{
         "libp2pNew",
         QUuid::createUuid().toString(),

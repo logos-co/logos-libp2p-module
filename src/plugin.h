@@ -124,10 +124,10 @@ public:
     /* ----------- Mix Network ----------- */
 
     /// Generates a new Curve25519 private key for mix networking.
-    Q_INVOKABLE QString mixGeneratePrivKey() override;
+    Q_INVOKABLE QByteArray mixGeneratePrivKey() override;
 
     /// Derives the public key from a given Curve25519 private key.
-    Q_INVOKABLE QString mixPublicKey(const QByteArray &privKey) override;
+    Q_INVOKABLE QByteArray mixPublicKey(const QByteArray &privKey) override;
 
     /// Establishes a mix connection to a peer through a multiaddr and protocol.
     Q_INVOKABLE QString mixDial(
@@ -168,8 +168,6 @@ public:
 
     /* ----------- Sync Mix Network ----------- */
 
-    Q_INVOKABLE Libp2pResult syncMixGeneratePrivKey() override;
-    Q_INVOKABLE Libp2pResult syncMixPublicKey(const QByteArray &privKey) override;
     Q_INVOKABLE Libp2pResult syncMixDial(
         const QString &peerId,
         const QString &multiaddr,

@@ -4,7 +4,7 @@
 #include <QtCore/QJsonObject>
 #include <cstring>
 
-QString Libp2pModulePlugin::mixGeneratePrivKey()
+QByteArray Libp2pModulePlugin::mixGeneratePrivKey()
 {
     if (!ctx)
         return {};
@@ -14,54 +14,35 @@ QString Libp2pModulePlugin::mixGeneratePrivKey()
     libp2p_curve25519_key_t key {};
     libp2p_mix_generate_priv_key(&key);
 
-    QVariant data = QByteArray(
+    return QByteArray(
         reinterpret_cast<const char*>(&key),
         sizeof(key)
     );
-
-    emit libp2pEvent(
-        RET_OK,
-        uuid,
-        "mixGeneratePrivKey",
-        "",
-        data
-    );
-
-    return uuid;
 }
 
-QString Libp2pModulePlugin::mixPublicKey(const QByteArray &privKey)
+QByteArray Libp2pModulePlugin::mixPublicKey(const QByteArray &privKey)
 {
     if (!ctx)
         return {};
+
+    if (privKey.size() != sizeof(libp2p_curve25519_key_t)) {
+        qCritical() << "mixPublicKey invalid private key size:" << privKey.size();
+        return {};
+    }
 
     QString uuid = QUuid::createUuid().toString();
 
     libp2p_curve25519_key_t inKey {};
     libp2p_curve25519_key_t outKey {};
 
-    memcpy(
-        &inKey,
-        privKey.constData(),
-        std::min<size_t>(privKey.size(), sizeof(inKey))
-    );
+    memcpy(&inKey, privKey.constData(), sizeof(inKey));
 
     libp2p_mix_public_key(inKey, &outKey);
 
-    QVariant data = QByteArray(
+    return QByteArray(
         reinterpret_cast<const char*>(&outKey),
         sizeof(outKey)
     );
-
-    emit libp2pEvent(
-        RET_OK,
-        uuid,
-        "mixPublicKey",
-        "",
-        data
-    );
-
-    return uuid;
 }
 
 QString Libp2pModulePlugin::mixDial(
@@ -176,6 +157,11 @@ QString Libp2pModulePlugin::mixSetNodeInfo(
     if (!ctx)
         return {};
 
+    if (mixPrivKey.size() != sizeof(libp2p_curve25519_key_t)) {
+        qCritical() << "mixSetNodeInfo invalid key size:" << mixPrivKey.size();
+        return {};
+    }
+
     QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx =
         new CallbackContext{ "mixSetNodeInfo", uuid, this };
@@ -183,11 +169,7 @@ QString Libp2pModulePlugin::mixSetNodeInfo(
     QByteArray addrUtf8 = multiaddr.toUtf8();
 
     libp2p_curve25519_key_t key {};
-    memcpy(
-        &key,
-        mixPrivKey.constData(),
-        std::min<size_t>(mixPrivKey.size(), sizeof(key))
-    );
+    memcpy(&key, mixPrivKey.constData(), sizeof(key));
 
     int ret = libp2p_mix_set_node_info(
         ctx,
@@ -225,16 +207,14 @@ QString Libp2pModulePlugin::mixNodepoolAdd(
     libp2p_curve25519_key_t mixKey {};
     libp2p_secp256k1_pubkey_t lpKey {};
 
-    memcpy(
-        &mixKey,
-        mixPubKey.constData(),
-        std::min<size_t>(mixPubKey.size(), sizeof(mixKey))
-    );
-    memcpy(
-        &lpKey,
-        libp2pPubKey.constData(),
-        std::min<size_t>(libp2pPubKey.size(), sizeof(lpKey))
-    );
+    if (mixPubKey.size() != sizeof(libp2p_curve25519_key_t) ||
+        libp2pPubKey.size() != sizeof(libp2p_secp256k1_pubkey_t)) {
+        qCritical() << "mixNodepoolAdd invalid key sizes";
+        return {};
+    }
+
+    memcpy(&mixKey, mixPubKey.constData(), sizeof(mixKey));
+    memcpy(&lpKey, libp2pPubKey.constData(), sizeof(lpKey));
 
     int ret = libp2p_mix_nodepool_add(
         ctx,
