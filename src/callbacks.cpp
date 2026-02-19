@@ -1,4 +1,4 @@
-#include "libp2p_module_plugin.h"
+#include "plugin.h"
 
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>

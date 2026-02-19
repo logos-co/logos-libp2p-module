@@ -1,4 +1,4 @@
-#include "libp2p_module_plugin.h"
+#include "plugin.h"
 
 #include <QEventLoop>
 #include <QTimer>
@@ -190,3 +190,74 @@ Libp2pResult Libp2pModulePlugin::syncToCid(const QByteArray &key)
 {
     return runSync(this, __func__, [&]() { return toCid(key); });
 }
+
+/* ---------------------------
+ * Mix
+ * --------------------------- */
+
+Libp2pResult Libp2pModulePlugin::syncMixGeneratePrivKey()
+{
+    return runSync(this, __func__, [&]() {
+        return mixGeneratePrivKey();
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncMixPublicKey(const QByteArray &privKey)
+{
+    return runSync(this, __func__, [&]() {
+        return mixPublicKey(privKey);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncMixDial(
+    const QString &peerId,
+    const QString &multiaddr,
+    const QString &proto)
+{
+    return runSync(this, __func__, [&]() {
+        return mixDial(peerId, multiaddr, proto);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncMixDialWithReply(
+    const QString &peerId,
+    const QString &multiaddr,
+    const QString &proto,
+    int expectReply,
+    uint8_t numSurbs)
+{
+    return runSync(this, __func__, [&]() {
+        return mixDialWithReply(peerId, multiaddr, proto, expectReply, numSurbs);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncMixRegisterDestReadBehavior(
+    const QString &proto,
+    int behavior,
+    uint32_t sizeParam)
+{
+    return runSync(this, __func__, [&]() {
+        return mixRegisterDestReadBehavior(proto, behavior, sizeParam);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncMixSetNodeInfo(
+    const QString &multiaddr,
+    const QByteArray &mixPrivKey)
+{
+    return runSync(this, __func__, [&]() {
+        return mixSetNodeInfo(multiaddr, mixPrivKey);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncMixNodepoolAdd(
+    const QString &peerId,
+    const QString &multiaddr,
+    const QByteArray &mixPubKey,
+    const QByteArray &libp2pPubKey)
+{
+    return runSync(this, __func__, [&]() {
+        return mixNodepoolAdd(peerId, multiaddr, mixPubKey, libp2pPubKey);
+    });
+}
+

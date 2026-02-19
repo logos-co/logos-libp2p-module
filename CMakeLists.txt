@@ -18,10 +18,14 @@ logos_module(
     NAME libp2p_module
     SOURCES
         src/libp2p_module_interface.h
-        src/libp2p_module_plugin.h
-        src/libp2p_module_plugin.cpp
-        src/libp2p_module_callbacks.cpp
-        src/libp2p_module_sync.cpp
+        src/plugin.h
+
+        src/plugin.cpp
+        src/callbacks.cpp
+        src/sync.cpp
+        src/kademlia.cpp
+        src/stream.cpp
+        src/mix.cpp
     EXTERNAL_LIBS
         libp2p
     INCLUDE_DIRS

@@ -1,5 +1,5 @@
 #include <QtTest>
-#include <libp2p_module_plugin.h>
+#include <plugin.h>
 
 class TestLibp2pModule : public QObject
 {
