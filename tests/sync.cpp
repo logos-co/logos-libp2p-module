@@ -11,264 +11,264 @@ private slots:
      * Connectivity
      * --------------------------- */
 
-    // void testSyncConnectDisconnectPeer()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncConnectDisconnectPeer()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     QString fakePeer =
-    //         "12D3KooWInvalidPeerForTest";
+        QString fakePeer =
+            "12D3KooWInvalidPeerForTest";
 
-    //     QList<QString> fakeAddrs = {
-    //         "/ip4/127.0.0.1/tcp/9999"
-    //     };
+        QList<QString> fakeAddrs = {
+            "/ip4/127.0.0.1/tcp/9999"
+        };
 
-    //     // connect and disconnect should fail
-    //     QVERIFY(!plugin.syncConnectPeer(fakePeer, fakeAddrs).ok);
-    //     QVERIFY(!plugin.syncDisconnectPeer(fakePeer).ok);
+        // connect and disconnect should fail
+        QVERIFY(!plugin.syncConnectPeer(fakePeer, fakeAddrs).ok);
+        QVERIFY(!plugin.syncDisconnectPeer(fakePeer).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncPeerInfo()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncPeerInfo()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     auto res = plugin.syncPeerInfo();
-    //     QVERIFY(res.ok);
+        auto res = plugin.syncPeerInfo();
+        QVERIFY(res.ok);
 
-    //     PeerInfo peerInfo = res.data.value<PeerInfo>();
-    //     QVERIFY(!peerInfo.peerId.isEmpty());
+        PeerInfo peerInfo = res.data.value<PeerInfo>();
+        QVERIFY(!peerInfo.peerId.isEmpty());
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncConnectedPeers()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncConnectedPeers()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     auto res = plugin.syncConnectedPeers();
-    //     QVERIFY(res.ok);
+        auto res = plugin.syncConnectedPeers();
+        QVERIFY(res.ok);
 
-    //     QList<QString> connectedPeers = res.data.value<QList<QString>>();
-    //     QCOMPARE(connectedPeers.size(), 0);
+        QList<QString> connectedPeers = res.data.value<QList<QString>>();
+        QCOMPARE(connectedPeers.size(), 0);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncDial()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncDial()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     QString fakePeer =
-    //         "12D3KooWInvalidPeerForTest";
+        QString fakePeer =
+            "12D3KooWInvalidPeerForTest";
 
-    //     QString proto = "/test/1.0.0";
+        QString proto = "/test/1.0.0";
 
-    //     QVERIFY(!plugin.syncDial(fakePeer, proto).ok);
+        QVERIFY(!plugin.syncDial(fakePeer, proto).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // /* ---------------------------
-    //  * Stream
-    //  * --------------------------- */
+    /* ---------------------------
+     * Stream
+     * --------------------------- */
 
-    // void testSyncStreamClose()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncStreamClose()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     uint64_t fakeStreamId = 1234;
+        uint64_t fakeStreamId = 1234;
 
-    //     // cannot close inexistent stream
-    //     QVERIFY(!plugin.syncStreamClose(fakeStreamId).ok);
+        // cannot close inexistent stream
+        QVERIFY(!plugin.syncStreamClose(fakeStreamId).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncStreamCloseEOF()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncStreamCloseEOF()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     uint64_t fakeStreamId = 1234;
+        uint64_t fakeStreamId = 1234;
 
-    //     // cannot closeEOF inexistent stream
-    //     QVERIFY(!plugin.syncStreamCloseEOF(fakeStreamId).ok);
+        // cannot closeEOF inexistent stream
+        QVERIFY(!plugin.syncStreamCloseEOF(fakeStreamId).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncStreamRelease()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncStreamRelease()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     uint64_t fakeStreamId = 1234;
+        uint64_t fakeStreamId = 1234;
 
-    //     // cannot release inexistent stream
-    //     QVERIFY(!plugin.syncStreamRelease(fakeStreamId).ok);
+        // cannot release inexistent stream
+        QVERIFY(!plugin.syncStreamRelease(fakeStreamId).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncStreamReadExactly()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncStreamReadExactly()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     uint64_t fakeStreamId = 1234;
-    //     size_t len = 16;
+        uint64_t fakeStreamId = 1234;
+        size_t len = 16;
 
-    //     // cannot readExactly from inexistent stream
-    //     QVERIFY(!plugin.syncStreamReadExactly(fakeStreamId, len).ok);
+        // cannot readExactly from inexistent stream
+        QVERIFY(!plugin.syncStreamReadExactly(fakeStreamId, len).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncStreamReadLp()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncStreamReadLp()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     uint64_t fakeStreamId = 1234;
-    //     size_t maxSize = 4096;
+        uint64_t fakeStreamId = 1234;
+        size_t maxSize = 4096;
 
-    //     // cannot readLp from inexistent stream
-    //     QVERIFY(!plugin.syncStreamReadLp(fakeStreamId, maxSize).ok);
+        // cannot readLp from inexistent stream
+        QVERIFY(!plugin.syncStreamReadLp(fakeStreamId, maxSize).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncStreamWrite()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncStreamWrite()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     uint64_t fakeStreamId = 1234;
-    //     QByteArray data = "hello-stream";
+        uint64_t fakeStreamId = 1234;
+        QByteArray data = "hello-stream";
 
-    //     // cannot write to inexistent stream
-    //     QVERIFY(!plugin.syncStreamWrite(fakeStreamId, data).ok);
+        // cannot write to inexistent stream
+        QVERIFY(!plugin.syncStreamWrite(fakeStreamId, data).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncStreamWriteLp()
-    // {
-    //     Libp2pModulePlugin plugin;
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+    void testSyncStreamWriteLp()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     uint64_t fakeStreamId = 1234;
-    //     QByteArray data = "hello-stream-lp";
+        uint64_t fakeStreamId = 1234;
+        QByteArray data = "hello-stream-lp";
 
-    //     // cannot writeLp to inexistent stream
-    //     QVERIFY(!plugin.syncStreamWriteLp(fakeStreamId, data).ok);
+        // cannot writeLp to inexistent stream
+        QVERIFY(!plugin.syncStreamWriteLp(fakeStreamId, data).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
 
-    // /* ---------------------------
-    //  * Kademlia
-    //  * --------------------------- */
+    /* ---------------------------
+     * Kademlia
+     * --------------------------- */
 
-    // void testSyncKadGetPutValue()
-    // {
-    //     Libp2pModulePlugin plugin;
+    void testSyncKadGetPutValue()
+    {
+        Libp2pModulePlugin plugin;
 
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     QByteArray key = "sync-test-key";
-    //     QByteArray value = "sync-hello-world";
+        QByteArray key = "sync-test-key";
+        QByteArray value = "sync-hello-world";
 
-    //     QVERIFY(plugin.syncKadPutValue(key, value).ok);
+        QVERIFY(plugin.syncKadPutValue(key, value).ok);
 
-    //     auto res = plugin.syncKadGetValue(key, 1);
-    //     QVERIFY(res.ok);
-    //     QByteArray actual = res.data.value<QByteArray>();
-    //     QCOMPARE(actual, value);
+        auto res = plugin.syncKadGetValue(key, 1);
+        QVERIFY(res.ok);
+        QByteArray actual = res.data.value<QByteArray>();
+        QCOMPARE(actual, value);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncKeyToCidAndProviders()
-    // {
-    //     Libp2pModulePlugin plugin;
+    void testSyncKeyToCidAndProviders()
+    {
+        Libp2pModulePlugin plugin;
 
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     QByteArray key = "sync-provider-test-key";
-    //     QByteArray value = "sync-provider-test-value";
+        QByteArray key = "sync-provider-test-key";
+        QByteArray value = "sync-provider-test-value";
 
-    //     auto res = plugin.syncToCid(key);
-    //     QVERIFY(res.ok);
+        auto res = plugin.syncToCid(key);
+        QVERIFY(res.ok);
 
-    //     QString cid = res.data.value<QString>();
-    //     QVERIFY(!cid.isEmpty());
+        QString cid = res.data.value<QString>();
+        QVERIFY(!cid.isEmpty());
 
-    //     QVERIFY(plugin.syncKadPutValue(key, value).ok);
-    //     QVERIFY(plugin.syncKadAddProvider(cid).ok);
+        QVERIFY(plugin.syncKadPutValue(key, value).ok);
+        QVERIFY(plugin.syncKadAddProvider(cid).ok);
 
-    //     // no providers are registered yet
-    //     res = plugin.syncKadGetProviders(cid);
-    //     QVERIFY(res.ok);
+        // no providers are registered yet
+        res = plugin.syncKadGetProviders(cid);
+        QVERIFY(res.ok);
 
-    //     QList<PeerInfo> providers = res.data.value<QList<PeerInfo>>();
-    //     QCOMPARE(providers.size(), 0);
+        QList<PeerInfo> providers = res.data.value<QList<PeerInfo>>();
+        QCOMPARE(providers.size(), 0);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncKadFindNode()
-    // {
-    //     Libp2pModulePlugin plugin;
+    void testSyncKadFindNode()
+    {
+        Libp2pModulePlugin plugin;
 
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     QString fakePeer = "12D3KooWInvalidPeerForSyncTest";
+        QString fakePeer = "12D3KooWInvalidPeerForSyncTest";
 
-    //     // no nodes are registered yet
-    //     QVERIFY(!plugin.syncKadFindNode(fakePeer).ok);
+        // no nodes are registered yet
+        QVERIFY(!plugin.syncKadFindNode(fakePeer).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncKadProvideLifecycle()
-    // {
-    //     Libp2pModulePlugin plugin;
+    void testSyncKadProvideLifecycle()
+    {
+        Libp2pModulePlugin plugin;
 
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     QByteArray key = "sync-providing-key";
+        QByteArray key = "sync-providing-key";
 
-    //     auto res = plugin.syncToCid(key);
-    //     QVERIFY(res.ok);
+        auto res = plugin.syncToCid(key);
+        QVERIFY(res.ok);
 
-    //     QString cid = res.data.value<QString>();
-    //     QVERIFY(!cid.isEmpty());
+        QString cid = res.data.value<QString>();
+        QVERIFY(!cid.isEmpty());
 
-    //     QVERIFY(plugin.syncKadStartProviding(cid).ok);
-    //     QVERIFY(plugin.syncKadStopProviding(cid).ok);
+        QVERIFY(plugin.syncKadStartProviding(cid).ok);
+        QVERIFY(plugin.syncKadStopProviding(cid).ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
-    // void testSyncKadRandomRecords()
-    // {
-    //     Libp2pModulePlugin plugin;
+    void testSyncKadRandomRecords()
+    {
+        Libp2pModulePlugin plugin;
 
-    //     QVERIFY(plugin.syncLibp2pStart().ok);
+        QVERIFY(plugin.syncLibp2pStart().ok);
 
-    //     // no registered records yet
-    //     QVERIFY(!plugin.syncKadGetRandomRecords().ok);
+        // no registered records yet
+        QVERIFY(!plugin.syncKadGetRandomRecords().ok);
 
-    //     QVERIFY(plugin.syncLibp2pStop().ok);
-    // }
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
      /* ---------------------------
      * Mix
