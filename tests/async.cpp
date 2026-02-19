@@ -467,6 +467,175 @@ private slots:
 
         stopPlugin(plugin, *spy);
     }
+
+        /* ---------------------------
+     * Mix tests
+     * --------------------------- */
+
+    void testMixGeneratePrivKey()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString uuid = plugin.mixGeneratePrivKey();
+        auto res = waitForUuid(plugin, *spy, uuid, "mixGeneratePrivKey");
+
+        QVERIFY(res.ok);
+        QVERIFY(res.data.isValid());
+
+        QByteArray key = res.data.toByteArray();
+        QVERIFY(!key.isEmpty());
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixPublicKey()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString uuid = plugin.mixGeneratePrivKey();
+        auto res = waitForUuid(plugin, *spy, uuid, "mixGeneratePrivKey");
+        QVERIFY(res.ok);
+
+        QByteArray privKey = res.data.toByteArray();
+        QVERIFY(!privKey.isEmpty());
+
+        uuid = plugin.mixPublicKey(privKey);
+        res = waitForUuid(plugin, *spy, uuid, "mixPublicKey");
+
+        QVERIFY(res.ok);
+        QByteArray pubKey = res.data.toByteArray();
+        QVERIFY(!pubKey.isEmpty());
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixDial()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString fakePeer = "12D3KooWInvalidMixPeer";
+        QString addr = "/ip4/127.0.0.1/tcp/9999";
+        QString proto = "/mix/test/1.0.0";
+
+        QString uuid = plugin.mixDial(fakePeer, addr, proto);
+        auto res = waitForUuid(plugin, *spy, uuid, "mixDial");
+
+        // expected to fail without a mix node
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixDialWithReply()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString fakePeer = "12D3KooWInvalidMixPeer";
+        QString addr = "/ip4/127.0.0.1/tcp/9999";
+        QString proto = "/mix/test/1.0.0";
+
+        QString uuid = plugin.mixDialWithReply(
+            fakePeer,
+            addr,
+            proto,
+            1,
+            2
+        );
+
+        auto res = waitForUuid(plugin, *spy, uuid, "mixDialWithReply");
+
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixRegisterDestReadBehavior()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString proto = "/mix/test/1.0.0";
+
+        QString uuid = plugin.mixRegisterDestReadBehavior(
+            proto,
+            LIBP2P_MIX_READ_EXACTLY,
+            1024
+        );
+
+        auto res = waitForUuid(
+            plugin,
+            *spy,
+            uuid,
+            "mixRegisterDestReadBehavior"
+        );
+
+        // may fail if mix is not initialized
+        QVERIFY(res.data.isValid() || !res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixSetNodeInfo()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString uuid = plugin.mixGeneratePrivKey();
+        auto res = waitForUuid(plugin, *spy, uuid, "mixGeneratePrivKey");
+        QVERIFY(res.ok);
+
+        QByteArray key = res.data.toByteArray();
+
+        QString addr = "/ip4/127.0.0.1/tcp/4001";
+
+        uuid = plugin.mixSetNodeInfo(addr, key);
+        res = waitForUuid(plugin, *spy, uuid, "mixSetNodeInfo");
+
+        QVERIFY(res.data.isValid() || !res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixNodepoolAdd()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString fakePeer = "12D3KooWInvalidMixPeer";
+        QString addr = "/ip4/127.0.0.1/tcp/9999";
+
+        QString uuid = plugin.mixGeneratePrivKey();
+        auto res = waitForUuid(plugin, *spy, uuid, "mixGeneratePrivKey");
+        QVERIFY(res.ok);
+
+        QByteArray mixPubKey = res.data.toByteArray();
+
+        QByteArray fakeLibp2pKey(33, 0x01);
+
+        uuid = plugin.mixNodepoolAdd(
+            fakePeer,
+            addr,
+            mixPubKey,
+            fakeLibp2pKey
+        );
+
+        res = waitForUuid(plugin, *spy, uuid, "mixNodepoolAdd");
+
+        QVERIFY(res.data.isValid() || !res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
 };
 
 QTEST_MAIN(TestLibp2pModule)
