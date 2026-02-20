@@ -163,25 +163,6 @@ QString Libp2pModulePlugin::toCid(const QByteArray &key)
     return uuid;
 }
 
-bool Libp2pModulePlugin::foo(const QString &bar)
-{
-    qDebug() << "Libp2pModulePlugin::foo called with:" << bar;
-
-    QVariantList eventData;
-    eventData << bar;
-    eventData << QDateTime::currentDateTime().toString(Qt::ISODate);
-
-    if (logosAPI) {
-        qDebug() << "Libp2pModulePlugin: Triggering event 'fooTriggered' with data:" << eventData;
-        logosAPI->getClient("core_manager")->onEventResponse(this, "fooTriggered", eventData);
-        qDebug() << "Libp2pModulePlugin: Event 'fooTriggered' triggered with data:" << eventData;
-    } else {
-        qWarning() << "Libp2pModulePlugin: LogosAPI not available, cannot trigger event";
-    }
-
-    return true;
-}
-
 // ------------------- Stream registry helpers ------------------- /
 uint64_t Libp2pModulePlugin::addStream(libp2p_stream_t *stream)
 {

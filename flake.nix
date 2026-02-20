@@ -40,8 +40,26 @@
       );
 
       devShells = forAllSystems (system:
-        (buildModule system).devShells.${system}
+        let
+          builderShell = (buildModule system).devShells.${system}.default;
+          cbind = libp2pCbind system;
+        in {
+          default = builderShell.overrideAttrs (old: {
+            shellHook = (old.shellHook or "") + ''
+              export CMAKE_MODULE_PATH=${logos-module-builder}/cmake
+              export LOGOS_MODULE_BUILDER_ROOT=${logos-module-builder}
+
+              # replicate preConfigure from build
+              mkdir -p lib
+              cp -r ${cbind}/lib/* lib/ 2>/dev/null || true
+
+              mkdir -p include
+              cp -r ${cbind}/include/* include/ 2>/dev/null || true
+            '';
+          });
+        }
       );
+
 
       checks = forAllSystems (system:
         let

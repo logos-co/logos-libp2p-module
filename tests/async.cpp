@@ -119,27 +119,13 @@ private:
 private slots:
 
     /* ---------------------------
-     * Construction + destruction + foo
+     * Construction + destruction
      * --------------------------- */
 
     void testConstruction()
     {
         Libp2pModulePlugin plugin;
         QVERIFY(true);
-    }
-
-    void testFooSignal()
-    {
-        Libp2pModulePlugin plugin;
-
-        QSignalSpy spy(
-            &plugin,
-            SIGNAL(libp2pEvent(int,QString,QString,QString,QVariant))
-        );
-
-        plugin.foo("hello");
-
-        QVERIFY(spy.count() >= 0);
     }
 
     void testStartStop()
