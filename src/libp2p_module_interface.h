@@ -133,35 +133,36 @@ public:
 
     /// Opens a stream using a protocol.
     /// Returns a UUID string identifying this request.
+    /// Upon finishing, dial calls connectionCallback which returns a streamId.
     Q_INVOKABLE virtual QString dial(const QString &peerId, const QString &proto) = 0;
 
     /* ----------- Streams ----------- */
 
-    /// Read exactly len bytes from a stream.
+    /// Read exactly len bytes from a stream identified by a streamId.
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamReadExactly(uint64_t streamId, size_t len) = 0;
 
-    /// Read length-prefixed data from a stream.
+    /// Read length-prefixed data from a stream identified by a streamId.
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamReadLp(uint64_t streamId, size_t maxSize) = 0;
 
-    /// Write raw data to a stream.
+    /// Write raw data to a stream identified by a streamId.
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamWrite(uint64_t streamId, const QByteArray &data) = 0;
 
-    /// Write length-prefixed data to a stream.
+    /// Write length-prefixed data to a stream identified by a streamId.
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamWriteLp(uint64_t streamId, const QByteArray &data) = 0;
 
-    /// Close the stream.
+    /// Close the stream identified by a streamId.
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamClose(uint64_t streamId) = 0;
 
-    /// Close the stream with EOF.
+    /// Close the stream identified by a streamId with EOF.
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamCloseEOF(uint64_t streamId) = 0;
 
-    /// Release the stream from the registry.
+    /// Release the stream identified by a streamId from the registry.
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamRelease(uint64_t streamId) = 0;
 
