@@ -90,15 +90,15 @@ private slots:
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
 
-    void testSyncStreamCloseEOF()
+    void testSyncStreamCloseWithEOF()
     {
         Libp2pModulePlugin plugin;
         QVERIFY(plugin.syncLibp2pStart().ok);
 
         uint64_t fakeStreamId = 1234;
 
-        // cannot closeEOF inexistent stream
-        QVERIFY(!plugin.syncStreamCloseEOF(fakeStreamId).ok);
+        // cannot closeWithEOF inexistent stream
+        QVERIFY(!plugin.syncStreamCloseWithEOF(fakeStreamId).ok);
 
         QVERIFY(plugin.syncLibp2pStop().ok);
     }

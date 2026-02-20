@@ -160,7 +160,7 @@ public:
 
     /// Close the stream identified by a streamId with EOF.
     /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString streamCloseEOF(uint64_t streamId) = 0;
+    Q_INVOKABLE virtual QString streamCloseWithEOF(uint64_t streamId) = 0;
 
     /// Release the stream identified by a streamId from the registry.
     /// Returns a UUID string identifying this request.
@@ -211,7 +211,7 @@ public:
     Q_INVOKABLE virtual Libp2pResult syncStreamWrite(uint64_t streamId, const QByteArray &data) = 0;
     Q_INVOKABLE virtual Libp2pResult syncStreamWriteLp(uint64_t streamId, const QByteArray &data) = 0;
     Q_INVOKABLE virtual Libp2pResult syncStreamClose(uint64_t streamId) = 0;
-    Q_INVOKABLE virtual Libp2pResult syncStreamCloseEOF(uint64_t streamId) = 0;
+    Q_INVOKABLE virtual Libp2pResult syncStreamCloseWithEOF(uint64_t streamId) = 0;
     Q_INVOKABLE virtual Libp2pResult syncStreamRelease(uint64_t streamId) = 0;
 
     /* ----------- Kademlia ----------- */

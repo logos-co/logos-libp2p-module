@@ -130,9 +130,9 @@ Libp2pResult Libp2pModulePlugin::syncStreamClose(uint64_t streamId)
     return runSync(this, __func__, [&]() { return streamClose(streamId); });
 }
 
-Libp2pResult Libp2pModulePlugin::syncStreamCloseEOF(uint64_t streamId)
+Libp2pResult Libp2pModulePlugin::syncStreamCloseWithEOF(uint64_t streamId)
 {
-    return runSync(this, __func__, [&]() { return streamCloseEOF(streamId); });
+    return runSync(this, __func__, [&]() { return streamCloseWithEOF(streamId); });
 }
 
 Libp2pResult Libp2pModulePlugin::syncStreamRelease(uint64_t streamId)

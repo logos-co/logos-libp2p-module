@@ -34,11 +34,10 @@ bool Libp2pModulePlugin::hasStream(uint64_t id) const
 /* --------------- Streams --------------- */
 QString Libp2pModulePlugin::streamClose(uint64_t streamId)
 {
-
-    if (!ctx || streamId == 0)
+    if (!ctx || streamId == 0 || !hasStream(streamId))
         return {};
 
-    auto *stream = removeStream(streamId);
+    auto *stream = getStream(streamId);
     if (!stream)
         return {};
 
@@ -61,21 +60,23 @@ QString Libp2pModulePlugin::streamClose(uint64_t streamId)
         return {};
     }
 
+    removeStream(streamId);
+
     return uuid;
 }
 
-QString Libp2pModulePlugin::streamCloseEOF(uint64_t streamId)
+QString Libp2pModulePlugin::streamCloseWithEOF(uint64_t streamId)
 {
-    if (!ctx || streamId == 0)
+    if (!ctx || streamId == 0 || !hasStream(streamId))
         return {};
 
-    auto *stream = removeStream(streamId);
+    auto *stream = getStream(streamId);
     if (!stream)
         return {};
 
     QString uuid = QUuid::createUuid().toString();
     auto *callbackCtx = new CallbackContext{
-        "streamCloseEOF",
+        "streamCloseWithEOF",
         uuid,
         this
     };
@@ -92,15 +93,17 @@ QString Libp2pModulePlugin::streamCloseEOF(uint64_t streamId)
         return {};
     }
 
+    removeStream(streamId);
+
     return uuid;
 }
 
 QString Libp2pModulePlugin::streamRelease(uint64_t streamId)
 {
-    if (!ctx || streamId == 0)
+    if (!ctx || streamId == 0 || !hasStream(streamId))
         return {};
 
-    auto *stream = removeStream(streamId);
+    auto *stream = getStream(streamId);
     if (!stream)
         return {};
 
@@ -122,6 +125,8 @@ QString Libp2pModulePlugin::streamRelease(uint64_t streamId)
         delete callbackCtx;
         return {};
     }
+
+    removeStream(streamId);
 
     return uuid;
 }

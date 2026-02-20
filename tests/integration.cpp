@@ -62,61 +62,61 @@ private slots:
         QVERIFY(nodeB.syncLibp2pStop().ok);
     }
 
-    // void mixBasicDial()
-    // {
-    //     Libp2pModulePlugin nodeA;
-    //     Libp2pModulePlugin nodeB;
+    void mixBasicDial()
+    {
+        Libp2pModulePlugin nodeA;
+        Libp2pModulePlugin nodeB;
 
-    //     QVERIFY(nodeA.syncLibp2pStart().ok);
-    //     QVERIFY(nodeB.syncLibp2pStart().ok);
+        QVERIFY(nodeA.syncLibp2pStart().ok);
+        QVERIFY(nodeB.syncLibp2pStart().ok);
 
-    //     PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
-    //     PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
+        PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
+        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
 
-    //     QByteArray mixPrivA = nodeA.mixGeneratePrivKey();
-    //     QByteArray mixPrivB = nodeB.mixGeneratePrivKey();
+        QByteArray mixPrivA = nodeA.mixGeneratePrivKey();
+        QByteArray mixPrivB = nodeB.mixGeneratePrivKey();
 
-    //     QVERIFY(nodeA.syncMixSetNodeInfo(nodeAPeerInfo.addrs.first(), mixPrivA).ok);
-    //     QVERIFY(nodeB.syncMixSetNodeInfo(nodeBPeerInfo.addrs.first(), mixPrivB).ok);
+        QVERIFY(nodeA.syncMixSetNodeInfo(nodeAPeerInfo.addrs.first(), mixPrivA).ok);
+        QVERIFY(nodeB.syncMixSetNodeInfo(nodeBPeerInfo.addrs.first(), mixPrivB).ok);
 
-    //     QByteArray mixPubA = nodeA.mixPublicKey(mixPrivA);
-    //     QByteArray mixPubB = nodeA.mixPublicKey(mixPrivB);
+        QByteArray mixPubA = nodeA.mixPublicKey(mixPrivA);
+        QByteArray mixPubB = nodeA.mixPublicKey(mixPrivB);
 
-    //     QVERIFY(!mixPubA.isEmpty());
-    //     QVERIFY(!mixPubB.isEmpty());
+        QVERIFY(!mixPubA.isEmpty());
+        QVERIFY(!mixPubB.isEmpty());
 
-    //     QByteArray dummyLibp2pKey;
+        QByteArray dummyLibp2pKey;
 
-    //     QVERIFY(nodeA.syncMixNodepoolAdd(
-    //         nodeBPeerInfo.peerId,
-    //         nodeBPeerInfo.addrs.first(),
-    //         mixPubB,
-    //         dummyLibp2pKey
-    //     ).ok);
+        QVERIFY(nodeA.syncMixNodepoolAdd(
+            nodeBPeerInfo.peerId,
+            nodeBPeerInfo.addrs.first(),
+            mixPubB,
+            dummyLibp2pKey
+        ).ok);
 
-    //     QVERIFY(nodeB.syncMixNodepoolAdd(
-    //         nodeAPeerInfo.peerId,
-    //         nodeAPeerInfo.addrs.first(),
-    //         mixPubA,
-    //         dummyLibp2pKey
-    //     ).ok);
+        QVERIFY(nodeB.syncMixNodepoolAdd(
+            nodeAPeerInfo.peerId,
+            nodeAPeerInfo.addrs.first(),
+            mixPubA,
+            dummyLibp2pKey
+        ).ok);
 
-    //     QString proto = "/mix/test/1.0.0";
+        QString proto = "/mix/test/1.0.0";
 
-    //     QVERIFY(nodeA.syncMixRegisterDestReadBehavior(proto, 0, 0).ok);
-    //     QVERIFY(nodeB.syncMixRegisterDestReadBehavior(proto, 0, 0).ok);
+        QVERIFY(nodeA.syncMixRegisterDestReadBehavior(proto, 0, 0).ok);
+        QVERIFY(nodeB.syncMixRegisterDestReadBehavior(proto, 0, 0).ok);
 
-    //     QThread::msleep(300);
+        QThread::msleep(300);
 
-    //     QVERIFY(nodeA.syncMixDial(
-    //         nodeBPeerInfo.peerId,
-    //         nodeBPeerInfo.addrs.first(),
-    //         proto
-    //     ).ok);
+        QVERIFY(nodeA.syncMixDial(
+            nodeBPeerInfo.peerId,
+            nodeBPeerInfo.addrs.first(),
+            proto
+        ).ok);
 
-    //     QVERIFY(nodeA.syncLibp2pStop().ok);
-    //     QVERIFY(nodeB.syncLibp2pStop().ok);
-    // }
+        QVERIFY(nodeA.syncLibp2pStop().ok);
+        QVERIFY(nodeB.syncLibp2pStop().ok);
+    }
 };
 
 QTEST_MAIN(TestKadIntegration)

@@ -76,7 +76,7 @@ public:
     Q_INVOKABLE QString streamWrite(uint64_t streamId, const QByteArray &data) override;
     Q_INVOKABLE QString streamWriteLp(uint64_t streamId, const QByteArray &data) override;
     Q_INVOKABLE QString streamClose(uint64_t streamId) override;
-    Q_INVOKABLE QString streamCloseEOF(uint64_t streamId) override;
+    Q_INVOKABLE QString streamCloseWithEOF(uint64_t streamId) override;
     Q_INVOKABLE QString streamRelease(uint64_t streamId) override;
 
     /* ----------- Sync Streams ----------- */
@@ -86,7 +86,7 @@ public:
     Q_INVOKABLE Libp2pResult syncStreamWrite(uint64_t streamId, const QByteArray &data) override;
     Q_INVOKABLE Libp2pResult syncStreamWriteLp(uint64_t streamId, const QByteArray &data) override;
     Q_INVOKABLE Libp2pResult syncStreamClose(uint64_t streamId) override;
-    Q_INVOKABLE Libp2pResult syncStreamCloseEOF(uint64_t streamId) override;
+    Q_INVOKABLE Libp2pResult syncStreamCloseWithEOF(uint64_t streamId) override;
     Q_INVOKABLE Libp2pResult syncStreamRelease(uint64_t streamId) override;
 
     /* ----------- Sync Connectivity ----------- */

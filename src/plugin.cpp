@@ -126,10 +126,6 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
     auto *keyCtx = new KeyCtx();
     keyCtx->out = &m_privKey;
 
-    // Make sure m_privKey.data is initially null
-    m_privKey.data = nullptr;
-    m_privKey.dataLen = 0;
-
     libp2p_new_private_key(
         LIBP2P_PK_SECP256K1,
         private_key_handler,
@@ -140,19 +136,17 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
     while (!keyCtx->done.load(std::memory_order_acquire)) {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
     }
+    delete keyCtx;
 
     // Check result
     if (!m_privKey.data || m_privKey.dataLen == 0) {
-        delete keyCtx;
         qFatal("Failed to generate private key, cannot continue");
     }
-    delete keyCtx;
 
     config.priv_key = m_privKey;
 
     qDebug() << "privKey len:" << config.priv_key.dataLen
              << "ptr:" << config.priv_key.data;
-
 
     /* -------------------------
      * Call libp2p_new
@@ -174,8 +168,6 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
         QThread::msleep(1);
     }
 
-    qDebug() << "libp2p_new done";
-
     connect(this,
             &Libp2pModulePlugin::libp2pEvent,
             this,
@@ -189,15 +181,20 @@ Libp2pModulePlugin::~Libp2pModulePlugin()
     {
         QList<uint64_t> streamIds;
 
-        {
-            QWriteLocker locker(&m_streamsLock);
-            streamIds = m_streams.keys();
-        }
+        QWriteLocker locker(&m_streamsLock);
+        streamIds = m_streams.keys();
 
         for (uint64_t streamId : streamIds) {
             syncStreamRelease(streamId);
         }
     }
+
+    // Free private key memory
+    if (m_privKey.data) {
+        free(m_privKey.data);
+    }
+    m_privKey.data = nullptr;
+    m_privKey.dataLen = 0;
 
     // Stop libp2p
     if (ctx) {
@@ -227,13 +224,6 @@ Libp2pModulePlugin::~Libp2pModulePlugin()
 
         ctx = nullptr;
 
-    }
-
-    // Free private key memory
-    if (m_privKey.data) {
-        free(m_privKey.data);
-        m_privKey.data = nullptr;
-        m_privKey.dataLen = 0;
     }
 
     // Logos cleanup

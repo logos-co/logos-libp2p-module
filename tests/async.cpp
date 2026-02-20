@@ -250,17 +250,17 @@ private slots:
         stopPlugin(plugin, *spy);
     }
 
-    void testStreamCloseEOF()
+    void testStreamCloseWithEOF()
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
         startPlugin(plugin, *spy);
 
         uint64_t fakeStreamId = 1234;
-        QString uuid = plugin.streamCloseEOF(fakeStreamId);
-        auto res = waitForUuid(plugin, *spy, uuid, "streamCloseEOF");
+        QString uuid = plugin.streamCloseWithEOF(fakeStreamId);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamCloseWithEOF");
 
-        // cannot closeEOF inexistent stream
+        // cannot closeWithEOF inexistent stream
         QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
