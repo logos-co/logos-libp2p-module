@@ -55,5 +55,7 @@ jobs:
 
       - name: Run flake checks
         shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_target }}
         run: |
           nix flake check --system ${{ matrix.system }}
