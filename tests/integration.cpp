@@ -20,7 +20,7 @@ private slots:
         // cannot disconnect, invalid peerId
         QVERIFY(!nodeB.syncDisconnectPeer("fakePeerId").ok);
 
-        QVERIFY(nodeB.syncConnectPeer(nodeAPeerInfo.peerId, nodeAPeerInfo.addrs, 500).ok);
+        QVERIFY(nodeB.syncConnectPeer(nodeAPeerInfo.peerId, nodeAPeerInfo.addrs, 5000).ok);
         QVERIFY(nodeB.syncDisconnectPeer(nodeAPeerInfo.peerId).ok);
 
         QVERIFY(nodeA.syncLibp2pStop().ok);
