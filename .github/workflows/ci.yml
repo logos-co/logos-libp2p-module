@@ -8,10 +8,15 @@ on:
   merge_group:
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   flake-check:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
@@ -21,18 +26,15 @@ jobs:
           - name: Linux (x86_64-linux)
             runner: ubuntu-latest
             system: x86_64-linux
-            qemu: false
 
           - name: Linux (aarch64-linux)
-            runner: ubuntu-latest
+            runner: ubuntu-24.04-arm
             system: aarch64-linux
-            qemu: true
 
           # macOS
           - name: macOS (aarch64-darwin)
             runner: macos-latest
             system: aarch64-darwin
-            qemu: false
             macos_target: 11.3
 
     steps:
@@ -48,10 +50,6 @@ jobs:
           mkdir -p ~/.config/nix
           echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
 
-      - name: Setup QEMU
-        if: matrix.qemu == true
-        uses: docker/setup-qemu-action@v3
-
       - name: Setup Cachix
         if: runner.os != 'Windows'
         uses: cachix/cachix-action@v15
@@ -62,6 +60,7 @@ jobs:
 
       - name: Run flake checks
         shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_target }}
         run: |
           nix flake check --system ${{ matrix.system }}
-
