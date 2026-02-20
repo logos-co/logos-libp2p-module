@@ -136,6 +136,14 @@ public:
     /// Upon finishing, dial calls connectionCallback which returns a streamId.
     Q_INVOKABLE virtual QString dial(const QString &peerId, const QString &proto) = 0;
 
+    /* ----------- Sync Connectivity ----------- */
+
+    Q_INVOKABLE virtual Libp2pResult syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) = 0;
+    Q_INVOKABLE virtual Libp2pResult syncDisconnectPeer(const QString &peerId) = 0;
+    Q_INVOKABLE virtual Libp2pResult syncPeerInfo() = 0;
+    Q_INVOKABLE virtual Libp2pResult syncConnectedPeers(int direction = 0) = 0;
+    Q_INVOKABLE virtual Libp2pResult syncDial(const QString &peerId, const QString &proto) = 0;
+
     /* ----------- Streams ----------- */
 
     /// Read exactly len bytes from a stream identified by a streamId.
@@ -146,7 +154,7 @@ public:
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamReadLp(uint64_t streamId, size_t maxSize) = 0;
 
-    /// Write raw data to a stream identified by a streamId.
+    /// Write length-prefixed data to a stream identified by a streamId.
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamWrite(uint64_t streamId, const QByteArray &data) = 0;
 
@@ -166,44 +174,6 @@ public:
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamRelease(uint64_t streamId) = 0;
 
-    /* ----------- Kademlia ----------- */
-
-    /// Converts a key to a CID.
-    /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString toCid(const QByteArray &key) = 0;
-
-    /// Finds a node in the DHT.
-    /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString kadFindNode(const QString &peerId) = 0;
-
-    /// Stores a value in the DHT.
-    /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString kadPutValue(const QByteArray &key, const QByteArray &value) = 0;
-
-    /// Retrieves a value from the DHT.
-    /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString kadGetValue(const QByteArray &key, int quorum = -1) = 0;
-
-    /// Announces a provider for a CID.
-    /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString kadAddProvider(const QString &cid) = 0;
-
-    /// Starts providing content for a CID.
-    /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString kadStartProviding(const QString &cid) = 0;
-
-    /// Stops providing content for a CID.
-    /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString kadStopProviding(const QString &cid) = 0;
-
-    /// Returns providers for a CID.
-    /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString kadGetProviders(const QString &cid) = 0;
-
-    /// Returns random DHT records.
-    /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString kadGetRandomRecords() = 0;
-
     /* ----------- Sync Streams ----------- */
 
     Q_INVOKABLE virtual Libp2pResult syncStreamReadExactly(uint64_t streamId, size_t len) = 0;
@@ -217,31 +187,41 @@ public:
     /* ----------- Kademlia ----------- */
 
     /// Converts a key to a CID.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString toCid(const QByteArray &key) = 0;
 
     /// Finds a node in the DHT.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString kadFindNode(const QString &peerId) = 0;
 
     /// Stores a value in the DHT.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString kadPutValue(const QByteArray &key, const QByteArray &value) = 0;
 
     /// Retrieves a value from the DHT.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString kadGetValue(const QByteArray &key, int quorum = -1) = 0;
 
     /// Announces a provider for a CID.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString kadAddProvider(const QString &cid) = 0;
 
     /// Starts providing content for a CID.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString kadStartProviding(const QString &cid) = 0;
 
     /// Stops providing content for a CID.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString kadStopProviding(const QString &cid) = 0;
 
     /// Returns providers for a CID.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString kadGetProviders(const QString &cid) = 0;
 
     /// Returns random DHT records.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString kadGetRandomRecords() = 0;
+
 
     /* ----------- Sync Kademlia ----------- */
 

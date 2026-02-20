@@ -461,7 +461,6 @@ private slots:
 
         stopPlugin(plugin, *spy);
     }
->>>>>>> bb13b71 (chore: add integration tests)
 
     /* ---------------------------
      * Mix tests
