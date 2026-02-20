@@ -46,6 +46,13 @@ target_include_directories(libp2p_module_module_plugin PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+if(APPLE)
+    set_target_properties(libp2p_module_module_plugin PROPERTIES
+        BUILD_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/lib"
+        INSTALL_RPATH "@loader_path;@loader_path/../lib"
+    )
+endif()
+
 enable_testing()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Test)
