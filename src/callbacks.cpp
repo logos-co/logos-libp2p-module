@@ -1,4 +1,4 @@
-#include "libp2p_module_plugin.h"
+#include "plugin.h"
 
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
@@ -42,6 +42,13 @@ void Libp2pModulePlugin::libp2pCallback(
     QString message;
     if (msg && len > 0)
         message = QString::fromUtf8(msg, int(len));
+
+    if (caller == "libp2pDestroy") {
+        self->m_destroyDone.store(true, std::memory_order_release);
+    }
+    if (caller == "libp2pNew") {
+        self->m_newDone.store(true, std::memory_order_release);
+    }
 
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
@@ -434,13 +441,10 @@ void Libp2pModulePlugin::connectionCallback(
     QString caller = callbackCtx->caller;
     QString reqId = callbackCtx->reqId;
 
-    QVariant streamIdVariant;
+    QVariant streamIdVariant = QVariant::fromValue<qulonglong>(0);
     if (callerRet == RET_OK && stream) {
         uint64_t streamId = self->addStream(stream);
         streamIdVariant = QVariant::fromValue<qulonglong>(streamId);
-    } else {
-        // For consistency with syncDial and tests, use 0 on error/null stream
-        streamIdVariant = QVariant::fromValue<qulonglong>(0);
     }
 
     QString message;

@@ -12,8 +12,7 @@ use cases using the `logos-libp2p-module`.
   - `StartProviding`
 
 ## Building
-
-Enter the development environment and configure the project:
+Enter the development shell and configure cmake
 
 ```bash
 nix develop
