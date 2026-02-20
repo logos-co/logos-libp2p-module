@@ -11,19 +11,30 @@
 struct KeyCtx {
     libp2p_private_key_t *out;
     std::atomic<bool> done{false};
+    int status = RET_OK;
+    QString errMsg;
 };
 
 static void private_key_handler(
     int callerRet,
     const uint8_t *keyData,
     size_t keyDataLen,
-    const char *,
-    size_t,
+    const char *msg,
+    size_t msgLen,
     void *userData)
 {
     auto *ctx = static_cast<KeyCtx*>(userData);
 
-    if (callerRet != RET_OK || keyData == nullptr || keyDataLen == 0) {
+    if (callerRet != RET_OK) {
+        qCritical() << "libp2p_new_private_key failed:"
+                    << QByteArray(msg, int(msgLen));
+        ctx->done.store(true, std::memory_order_release);
+        return;
+    }
+
+    if (!keyData || keyDataLen == 0) {
+        qCritical() << "libp2p_new_private_key returned empty key";
+        ctx->done.store(true, std::memory_order_release);
         return;
     }
 
@@ -115,21 +126,33 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
     auto *keyCtx = new KeyCtx();
     keyCtx->out = &m_privKey;
 
+    // Make sure m_privKey.data is initially null
+    m_privKey.data = nullptr;
+    m_privKey.dataLen = 0;
+
     libp2p_new_private_key(
         LIBP2P_PK_SECP256K1,
         private_key_handler,
-        &keyCtx
+        keyCtx
     );
 
+    // Wait for handler
     while (!keyCtx->done.load(std::memory_order_acquire)) {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+    }
+
+    // Check result
+    if (!m_privKey.data || m_privKey.dataLen == 0) {
+        delete keyCtx;
+        qFatal("Failed to generate private key, cannot continue");
     }
     delete keyCtx;
 
     config.priv_key = m_privKey;
 
     qDebug() << "privKey len:" << config.priv_key.dataLen
-         << "ptr:" << config.priv_key.data;
+             << "ptr:" << config.priv_key.data;
+
 
     /* -------------------------
      * Call libp2p_new
@@ -206,6 +229,12 @@ Libp2pModulePlugin::~Libp2pModulePlugin()
 
     }
 
+    // Free private key memory
+    if (m_privKey.data) {
+        free(m_privKey.data);
+        m_privKey.data = nullptr;
+        m_privKey.dataLen = 0;
+    }
 
     // Logos cleanup
     if (logosAPI) {
