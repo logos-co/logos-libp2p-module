@@ -79,9 +79,6 @@ class Libp2pModuleInterface : public PluginInterface
 public:
     virtual ~Libp2pModuleInterface() {}
 
-    /// Test / example method
-    Q_INVOKABLE virtual bool foo(const QString &bar) = 0;
-
     /* ----------- Start/stop ----------- */
 
     /// Starts the libp2p node asynchronously.

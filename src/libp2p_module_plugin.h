@@ -50,8 +50,6 @@ public:
     /// Plugin version.
     QString version() const override { return "1.0.0"; }
 
-    Q_INVOKABLE bool foo(const QString &bar) override;
-
     /// Starts the libp2p node.
     Q_INVOKABLE QString libp2pStart() override;
 
