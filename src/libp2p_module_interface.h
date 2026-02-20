@@ -79,78 +79,129 @@ class Libp2pModuleInterface : public PluginInterface
 public:
     virtual ~Libp2pModuleInterface() {}
 
+    /* ---------------- Async usage ----------------
+
+    All asynchronous methods return a UUID string representing the request.
+    To wait for completion:
+
+    1. Call the async method and store the returned UUID:
+           QString reqId = plugin->libp2pStart();
+
+    2. Connect to the `response` signal:
+           connect(plugin, &Libp2pModuleInterface::response,
+                   this, [reqId](const QString &op, int result, const QString &msg, const QVariant &data){
+                       if (op == reqId) {
+                           // operation completed, handle result
+                       }
+                   });
+
+    3. Optionally, implement a timeout or event loop if blocking behavior is desired.
+    */
+
     /* ----------- Start/stop ----------- */
 
-    /// Starts the libp2p node asynchronously.
+    /// Starts the libp2p node.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString libp2pStart() = 0;
 
-    /// Stops the libp2p node asynchronously.
+    /// Stops the libp2p node.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString libp2pStop() = 0;
-
-    /* ----------- Sync Start/stop ----------- */
-
-    /// Starts the libp2p node and blocks until completion.
-    Q_INVOKABLE virtual Libp2pResult syncLibp2pStart() = 0;
-
-    /// Stops the libp2p node and blocks until completion.
-    Q_INVOKABLE virtual Libp2pResult syncLibp2pStop() = 0;
 
     /* ----------- Connectivity ----------- */
 
     /// Connect to a peer using known multiaddresses.
-    Q_INVOKABLE virtual QString connectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) = 0;
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString connectPeer(
+        const QString &peerId,
+        const QList<QString> multiaddrs,
+        int64_t timeoutMs = -1
+    ) = 0;
 
     /// Disconnect from a peer.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString disconnectPeer(const QString &peerId) = 0;
 
     /// Returns information about the local peer.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString peerInfo() = 0;
 
     /// Returns currently connected peers.
+    /// Possible Direction values: Direction_In = 0, Direction_Out = 1.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString connectedPeers(int direction = 0) = 0;
 
     /// Opens a stream using a protocol.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString dial(const QString &peerId, const QString &proto) = 0;
-
-    /* ----------- Sync Connectivity ----------- */
-
-    /// Synchronous version of connectPeer.
-    Q_INVOKABLE virtual Libp2pResult syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) = 0;
-
-    /// Synchronous version of disconnectPeer.
-    Q_INVOKABLE virtual Libp2pResult syncDisconnectPeer(const QString &peerId) = 0;
-
-    /// Synchronous version of peerInfo.
-    Q_INVOKABLE virtual Libp2pResult syncPeerInfo() = 0;
-
-    /// Synchronous version of connectedPeers.
-    Q_INVOKABLE virtual Libp2pResult syncConnectedPeers(int direction = 0) = 0;
-
-    /// Synchronous version of dial.
-    Q_INVOKABLE virtual Libp2pResult syncDial(const QString &peerId, const QString &proto) = 0;
 
     /* ----------- Streams ----------- */
 
     /// Read exactly len bytes from a stream.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamReadExactly(uint64_t streamId, size_t len) = 0;
 
     /// Read length-prefixed data from a stream.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamReadLp(uint64_t streamId, size_t maxSize) = 0;
 
     /// Write raw data to a stream.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamWrite(uint64_t streamId, const QByteArray &data) = 0;
 
     /// Write length-prefixed data to a stream.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamWriteLp(uint64_t streamId, const QByteArray &data) = 0;
 
     /// Close the stream.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamClose(uint64_t streamId) = 0;
 
     /// Close the stream with EOF.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamCloseEOF(uint64_t streamId) = 0;
 
     /// Release the stream from the registry.
+    /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString streamRelease(uint64_t streamId) = 0;
+
+    /* ----------- Kademlia ----------- */
+
+    /// Converts a key to a CID.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString toCid(const QByteArray &key) = 0;
+
+    /// Finds a node in the DHT.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString kadFindNode(const QString &peerId) = 0;
+
+    /// Stores a value in the DHT.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString kadPutValue(const QByteArray &key, const QByteArray &value) = 0;
+
+    /// Retrieves a value from the DHT.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString kadGetValue(const QByteArray &key, int quorum = -1) = 0;
+
+    /// Announces a provider for a CID.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString kadAddProvider(const QString &cid) = 0;
+
+    /// Starts providing content for a CID.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString kadStartProviding(const QString &cid) = 0;
+
+    /// Stops providing content for a CID.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString kadStopProviding(const QString &cid) = 0;
+
+    /// Returns providers for a CID.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString kadGetProviders(const QString &cid) = 0;
+
+    /// Returns random DHT records.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString kadGetRandomRecords() = 0;
 
     /* ----------- Sync Streams ----------- */
 
