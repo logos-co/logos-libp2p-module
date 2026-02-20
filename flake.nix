@@ -25,11 +25,17 @@
             cp -r "${libp2pCbind system}/lib"/* lib/
             mkdir -p include
             cp -r "${libp2pCbind system}/include"/* include/
+          '' + lib.optionalString (lib.hasSuffix "darwin" system) ''
+            for f in lib/*.dylib; do
+              [ -f "$f" ] || continue
+              chmod +w "$f"
+              install_name_tool -id "@rpath/$(basename "$f")" "$f"
+            done
           '';
           postInstall = ''
             mkdir -p $out/lib
-            cp "${libp2pCbind system}/lib"/*.dylib $out/lib/ 2>/dev/null || true
-            cp "${libp2pCbind system}/lib"/*.so $out/lib/ 2>/dev/null || true
+            cp lib/*.dylib $out/lib/ 2>/dev/null || true
+            cp lib/*.so $out/lib/ 2>/dev/null || true
           '';
         };
 
@@ -82,4 +88,3 @@
       );
     };
 }
-
