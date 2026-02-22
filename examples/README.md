@@ -11,6 +11,12 @@ use cases using the `logos-libp2p-module`.
   - `GetProviders`
   - `StartProviding`
 
+- [Mix](mix.cpp) — Demonstrates usage of the [Mix](https://github.com/vacp2p/nim-libp2p/blob/master/docs/protocols_mix.md) protocol for private messaging:
+  - Generating private and public keys
+  - Setting node info
+  - Pupulating mix pools
+  - Dialing through mix
+
 ## Building
 Enter the development shell and configure cmake
 
@@ -29,5 +35,6 @@ After building, run the executable from the build directory:
 
 ```bash
 ./build/examples/example_kademlia
+./build/examples/example_mix
 ```
 
