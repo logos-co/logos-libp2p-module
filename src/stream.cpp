@@ -60,8 +60,6 @@ QString Libp2pModulePlugin::streamClose(uint64_t streamId)
         return {};
     }
 
-    removeStream(streamId);
-
     return uuid;
 }
 
@@ -92,8 +90,6 @@ QString Libp2pModulePlugin::streamCloseWithEOF(uint64_t streamId)
         delete callbackCtx;
         return {};
     }
-
-    removeStream(streamId);
 
     return uuid;
 }

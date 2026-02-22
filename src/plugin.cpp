@@ -269,7 +269,7 @@ QString Libp2pModulePlugin::toCid(const QByteArray &key)
     return uuid;
 }
 
-/* --------------- Start/stop --------------- */
+/* --------------- Core functions (libp2pStart, libp2pStop, libp2pPublicKey) --------------- */
 
 QString Libp2pModulePlugin::libp2pStart()
 {
@@ -304,6 +304,29 @@ QString Libp2pModulePlugin::libp2pStop()
     auto *callbackCtx = new CallbackContext{ "libp2pStop", uuid, this };
 
     int ret = libp2p_stop(ctx, &Libp2pModulePlugin::libp2pCallback, callbackCtx);
+
+    if (ret != RET_OK) {
+        delete callbackCtx;
+        return {};
+    }
+
+    return uuid;
+}
+
+QString Libp2pModulePlugin::libp2pPublicKey()
+{
+    if (!ctx)
+        return {};
+
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx =
+        new CallbackContext{ "libp2pPublicKey", uuid, this };
+
+    int ret = libp2p_public_key(
+        ctx,
+        &Libp2pModulePlugin::libp2pBufferCallback,
+        callbackCtx
+    );
 
     if (ret != RET_OK) {
         delete callbackCtx;
@@ -468,7 +491,6 @@ QString Libp2pModulePlugin::dial(const QString &peerId, const QString &proto)
 
     return uuid;
 }
-
 
 bool Libp2pModulePlugin::setEventCallback()
 {

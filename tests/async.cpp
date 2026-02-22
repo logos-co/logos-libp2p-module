@@ -119,7 +119,7 @@ private:
 private slots:
 
     /* ---------------------------
-     * Start/stop
+     * Core functions
      * --------------------------- */
 
     void testStartStop()
@@ -129,6 +129,22 @@ private slots:
         startPlugin(plugin, *spy);
         stopPlugin(plugin, *spy);
     }
+
+    void testPublicKey()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString uuid = plugin.libp2pPublicKey();
+        auto res = waitForUuid(plugin, *spy, uuid, "libp2pPublicKey");
+        QVERIFY(res.ok);
+        libp2p_secp256k1_pubkey_t pubKey = res.data.value<libp2p_secp256k1_pubkey_t>();
+
+        stopPlugin(plugin, *spy);
+    }
+
+
 
     /* ---------------------------
      * Connectivity tests

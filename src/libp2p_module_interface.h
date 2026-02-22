@@ -98,7 +98,7 @@ public:
     3. Optionally, implement a timeout or event loop if blocking behavior is desired.
     */
 
-    /* ----------- Start/stop ----------- */
+    /* ----------- Core functions (start, stop, publicKey) ----------- */
 
     /// Starts the libp2p node.
     /// Returns a UUID string identifying this request.
@@ -107,6 +107,15 @@ public:
     /// Stops the libp2p node.
     /// Returns a UUID string identifying this request.
     Q_INVOKABLE virtual QString libp2pStop() = 0;
+
+    /// Returns the public key for the libp2p node
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString libp2pPublicKey() = 0;
+
+    /* ----------- Sync core functions ----------- */
+    Q_INVOKABLE virtual Libp2pResult syncLibp2pStart() = 0;
+    Q_INVOKABLE virtual Libp2pResult syncLibp2pStop() = 0;
+    Q_INVOKABLE virtual Libp2pResult syncLibp2pPublicKey() = 0;
 
     /* ----------- Connectivity ----------- */
 
