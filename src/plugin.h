@@ -252,7 +252,6 @@ private:
 
     // libp2p node's private key
     libp2p_private_key_t m_privKey {};
-    bool m_privKeyReady = false;
 
     /// libp2p configuration.
     libp2p_config_t config = {};

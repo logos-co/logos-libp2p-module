@@ -133,8 +133,14 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
     );
 
     // Wait for handler
-    while (!keyCtx->done.load(std::memory_order_acquire)) {
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+    QElapsedTimer timer;
+    timer.start();
+
+    while (!keyCtx->done) {
+        if (timer.elapsed() > 5000) {
+            qFatal("libp2p_new_private_key timeout");
+        }
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
     }
     delete keyCtx;
 
@@ -164,8 +170,12 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
                      &Libp2pModulePlugin::libp2pCallback,
                      callbackCtx);
 
-    while (!m_newDone.load(std::memory_order_acquire)) {
-        QThread::msleep(1);
+    timer.restart();
+    while (!m_newDone) {
+        if (timer.elapsed() > 5000) {
+            qFatal("libp2p_new timeout");
+        }
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
     }
 
     connect(this,
@@ -178,15 +188,14 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
 Libp2pModulePlugin::~Libp2pModulePlugin()
 {
     // Stream Registry cleanup
+    QList<uint64_t> streamIds;
     {
-        QList<uint64_t> streamIds;
 
         QWriteLocker locker(&m_streamsLock);
         streamIds = m_streams.keys();
-
-        for (uint64_t streamId : streamIds) {
-            syncStreamRelease(streamId);
-        }
+    }
+    for (uint64_t streamId : streamIds) {
+        syncStreamRelease(streamId);
     }
 
     // Free private key memory

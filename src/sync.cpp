@@ -14,12 +14,7 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
     QEventLoop loop;
     QMetaObject::Connection conn;
 
-    QString requestId = asyncCall();
-
-    if (requestId.isEmpty()) {
-        qCritical() << functionName << "failed to start async request";
-        return result;
-    }
+    QString requestId;
 
     conn = QObject::connect(
         self,
@@ -31,6 +26,9 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
             const QString &message,
             const QVariant &data)
         {
+            if (requestId.isEmpty())
+                return;
+
             if (reqId != requestId)
                 return;
 
@@ -46,6 +44,14 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
             loop.quit();
         }
     );
+
+    requestId = asyncCall();
+
+    if (requestId.isEmpty()) {
+        QObject::disconnect(conn);
+        qCritical() << functionName << "failed to start async request";
+        return result;
+    }
 
     QTimer timer;
     timer.setSingleShot(true);
