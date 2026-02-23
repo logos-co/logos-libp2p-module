@@ -8,45 +8,6 @@
 #include <QEventLoop>
 #include <QThread>
 
-struct KeyCtx {
-    libp2p_private_key_t *out;
-    std::atomic<bool> done{false};
-    int status = RET_OK;
-    QString errMsg;
-};
-
-static void private_key_handler(
-    int callerRet,
-    const uint8_t *keyData,
-    size_t keyDataLen,
-    const char *msg,
-    size_t msgLen,
-    void *userData)
-{
-    auto *ctx = static_cast<KeyCtx*>(userData);
-
-    if (callerRet != RET_OK) {
-        qCritical() << "libp2p_new_private_key failed:"
-                    << QByteArray(msg, int(msgLen));
-        ctx->done.store(true, std::memory_order_release);
-        return;
-    }
-
-    if (!keyData || keyDataLen == 0) {
-        qCritical() << "libp2p_new_private_key returned empty key";
-        ctx->done.store(true, std::memory_order_release);
-        return;
-    }
-
-    uint8_t *buf = (uint8_t*)malloc(keyDataLen);
-    memcpy(buf, keyData, keyDataLen);
-
-    ctx->out->data = buf;
-    ctx->out->dataLen = keyDataLen;
-
-    ctx->done.store(true, std::memory_order_release);
-}
-
 Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
     : ctx(nullptr),
       m_bootstrapNodes(bootstrapNodes)
@@ -121,44 +82,23 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
      * Generate secp256k1 key
      * ------------------------- */
 
-    std::memset(&m_privKey, 0, sizeof(m_privKey));
-
-    auto *keyCtx = new KeyCtx();
-    keyCtx->out = &m_privKey;
-
-    libp2p_new_private_key(
-        LIBP2P_PK_SECP256K1,
-        private_key_handler,
-        keyCtx
-    );
-
-    // Wait for handler
-    QElapsedTimer timer;
-    timer.start();
-
-    while (!keyCtx->done) {
-        if (timer.elapsed() > 5000) {
-            qFatal("libp2p_new_private_key timeout");
-        }
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+    auto res = this->syncLibp2pNewPrivateKey();
+    if (!res.ok) {
+        qFatal("libp2p_new_private_key failed: %s", qPrintable(res.error));
     }
-    delete keyCtx;
+    QByteArray key = res.data.toByteArray();
 
-    // Check result
-    if (!m_privKey.data || m_privKey.dataLen == 0) {
-        qFatal("Failed to generate private key, cannot continue");
-    }
+    uint8_t *buf = (uint8_t*)malloc(key.size());
+    memcpy(buf, key.constData(), key.size());
 
-    config.priv_key = m_privKey;
-
-    qDebug() << "privKey len:" << config.priv_key.dataLen
-             << "ptr:" << config.priv_key.data;
+    config.priv_key.data = buf;
+    config.priv_key.dataLen = key.size();
 
     /* -------------------------
      * Call libp2p_new
      * ------------------------- */
 
-    auto *callbackCtx = new CallbackContext{
+    auto *newCallbackCtx = new CallbackContext{
         "libp2pNew",
         QUuid::createUuid().toString(),
         this
@@ -168,9 +108,10 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
 
     ctx = libp2p_new(&config,
                      &Libp2pModulePlugin::libp2pCallback,
-                     callbackCtx);
+                     newCallbackCtx);
 
-    timer.restart();
+    QElapsedTimer timer;
+    timer.start();
     while (!m_newDone) {
         if (timer.elapsed() > 5000) {
             qFatal("libp2p_new timeout");
@@ -197,13 +138,6 @@ Libp2pModulePlugin::~Libp2pModulePlugin()
     for (uint64_t streamId : streamIds) {
         syncStreamRelease(streamId);
     }
-
-    // Free private key memory
-    if (m_privKey.data) {
-        free(m_privKey.data);
-    }
-    m_privKey.data = nullptr;
-    m_privKey.dataLen = 0;
 
     // Stop libp2p
     if (ctx) {
@@ -278,7 +212,7 @@ QString Libp2pModulePlugin::toCid(const QByteArray &key)
     return uuid;
 }
 
-/* --------------- Start/stop --------------- */
+/* --------------- Libp2p Core --------------- */
 
 QString Libp2pModulePlugin::libp2pStart()
 {
@@ -313,6 +247,27 @@ QString Libp2pModulePlugin::libp2pStop()
     auto *callbackCtx = new CallbackContext{ "libp2pStop", uuid, this };
 
     int ret = libp2p_stop(ctx, &Libp2pModulePlugin::libp2pCallback, callbackCtx);
+
+    if (ret != RET_OK) {
+        delete callbackCtx;
+        return {};
+    }
+
+    return uuid;
+}
+
+QString Libp2pModulePlugin::libp2pNewPrivateKey()
+{
+    qDebug() << "Libp2pModulePlugin::libp2pNewPrivateKey called";
+
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{ "libp2pNewPrivateKey", uuid, this };
+
+    int ret = libp2p_new_private_key(
+        LIBP2P_PK_SECP256K1,
+        &Libp2pModulePlugin::libp2pBufferCallback,
+        callbackCtx
+    );
 
     if (ret != RET_OK) {
         delete callbackCtx;

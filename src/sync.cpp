@@ -65,7 +65,7 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
 }
 
 /* ---------------------------
- * Start / Stop
+ * Core Libp2p
  * --------------------------- */
 
 Libp2pResult Libp2pModulePlugin::syncLibp2pStart()
@@ -76,6 +76,11 @@ Libp2pResult Libp2pModulePlugin::syncLibp2pStart()
 Libp2pResult Libp2pModulePlugin::syncLibp2pStop()
 {
     return runSync(this, __func__, [&]() { return libp2pStop(); });
+}
+
+Libp2pResult Libp2pModulePlugin::syncLibp2pNewPrivateKey()
+{
+    return runSync(this, __func__, [&]() { return libp2pNewPrivateKey(); });
 }
 
 /* ---------------------------
