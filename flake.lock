@@ -58,6 +58,7 @@
       },
       "original": {
         "owner": "logos-co",
+        "ref": "fix/windows-linefeed",
         "repo": "logos-cpp-sdk",
         "type": "github"
       }
@@ -222,15 +223,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1770934129,
-        "narHash": "sha256-RjeB17MQh4HcS5vKtSrDM/J7fz3K8ZDNpswCGr5JF/k=",
+        "lastModified": 1771871839,
+        "narHash": "sha256-gRChj1Ok74cHZUZ4IOeKQ7vSI6+CZtlftoQd8VwdeKA=",
         "owner": "logos-co",
         "repo": "logos-module-builder",
-        "rev": "a86eea50450511f4474b35032e5fd218a0f17c3c",
+        "rev": "a4ef5d7de9a730bdaf4073d69096211d61cf27f0",
         "type": "github"
       },
       "original": {
         "owner": "logos-co",
+        "ref": "fix/windows-linefeed",
         "repo": "logos-module-builder",
         "type": "github"
       }
