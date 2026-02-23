@@ -9,8 +9,6 @@ QByteArray Libp2pModulePlugin::mixGeneratePrivKey()
     if (!ctx)
         return {};
 
-    QString uuid = QUuid::createUuid().toString();
-
     libp2p_curve25519_key_t key {};
     libp2p_mix_generate_priv_key(&key);
 
@@ -29,8 +27,6 @@ QByteArray Libp2pModulePlugin::mixPublicKey(const QByteArray &privKey)
         qCritical() << "mixPublicKey invalid private key size:" << privKey.size();
         return {};
     }
-
-    QString uuid = QUuid::createUuid().toString();
 
     libp2p_curve25519_key_t inKey {};
     libp2p_curve25519_key_t outKey {};
