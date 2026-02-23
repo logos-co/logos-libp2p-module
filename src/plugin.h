@@ -50,16 +50,26 @@ public:
     /// Plugin version.
     QString version() const override { return "1.0.0"; }
 
+    /* ----------- Libp2p Core ----------- */
+
     /// Starts the libp2p node.
     Q_INVOKABLE QString libp2pStart() override;
 
     /// Stops the libp2p node.
     Q_INVOKABLE QString libp2pStop() override;
+    
+    /// Generates a new libp2p private key
+    Q_INVOKABLE QString libp2pNewPrivateKey() override;
 
-    /* ----------- Sync Libp2p ----------- */
+    /// Returns the public key for the libp2p node
+    Q_INVOKABLE QString libp2pPublicKey() override;
 
-    Q_INVOKABLE Libp2pResult syncLibp2pStart();
-    Q_INVOKABLE Libp2pResult syncLibp2pStop();
+    /* ----------- Sync Libp2p Core ----------- */
+    
+    Q_INVOKABLE Libp2pResult syncLibp2pStart() override;
+    Q_INVOKABLE Libp2pResult syncLibp2pStop() override;
+    Q_INVOKABLE Libp2pResult syncLibp2pNewPrivateKey() override;
+    Q_INVOKABLE Libp2pResult syncLibp2pPublicKey() override;
 
     /* ----------- Connectivity ----------- */
 
@@ -76,7 +86,7 @@ public:
     Q_INVOKABLE QString streamWrite(uint64_t streamId, const QByteArray &data) override;
     Q_INVOKABLE QString streamWriteLp(uint64_t streamId, const QByteArray &data) override;
     Q_INVOKABLE QString streamClose(uint64_t streamId) override;
-    Q_INVOKABLE QString streamCloseEOF(uint64_t streamId) override;
+    Q_INVOKABLE QString streamCloseWithEOF(uint64_t streamId) override;
     Q_INVOKABLE QString streamRelease(uint64_t streamId) override;
 
     /* ----------- Sync Streams ----------- */
@@ -86,7 +96,7 @@ public:
     Q_INVOKABLE Libp2pResult syncStreamWrite(uint64_t streamId, const QByteArray &data) override;
     Q_INVOKABLE Libp2pResult syncStreamWriteLp(uint64_t streamId, const QByteArray &data) override;
     Q_INVOKABLE Libp2pResult syncStreamClose(uint64_t streamId) override;
-    Q_INVOKABLE Libp2pResult syncStreamCloseEOF(uint64_t streamId) override;
+    Q_INVOKABLE Libp2pResult syncStreamCloseWithEOF(uint64_t streamId) override;
     Q_INVOKABLE Libp2pResult syncStreamRelease(uint64_t streamId) override;
 
     /* ----------- Sync Connectivity ----------- */
@@ -120,6 +130,81 @@ public:
     Q_INVOKABLE Libp2pResult syncKadStartProviding(const QString &cid) override;
     Q_INVOKABLE Libp2pResult syncKadStopProviding(const QString &cid) override;
     Q_INVOKABLE Libp2pResult syncKadGetRandomRecords() override;
+
+    /* ----------- Mix Network ----------- */
+
+    /// Generates a new Curve25519 private key for mix networking.
+    Q_INVOKABLE QByteArray mixGeneratePrivKey() override;
+
+    /// Derives the public key from a given Curve25519 private key.
+    Q_INVOKABLE QByteArray mixPublicKey(const QByteArray &privKey) override;
+
+    /// Establishes a mix connection to a peer through a multiaddr and protocol.
+    Q_INVOKABLE QString mixDial(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto
+    ) override;
+
+    /// Establishes a mix connection expecting a reply with SURBs.
+    Q_INVOKABLE QString mixDialWithReply(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto,
+        int expectReply,
+        uint8_t numSurbs
+    ) override;
+
+    /// Registers how payloads should be read for a protocol at the mix destination.
+    Q_INVOKABLE QString mixRegisterDestReadBehavior(
+        const QString &proto,
+        int behavior,
+        uint32_t sizeParam
+    ) override;
+
+    /// Sets node information used by the mix layer.
+    Q_INVOKABLE QString mixSetNodeInfo(
+        const QString &multiaddr,
+        const QByteArray &mixPrivKey
+    ) override;
+
+    /// Adds a node to the mix node pool.
+    Q_INVOKABLE QString mixNodepoolAdd(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QByteArray &mixPubKey,
+        const QByteArray &libp2pPubKey
+    ) override;
+
+    /* ----------- Sync Mix Network ----------- */
+
+    Q_INVOKABLE Libp2pResult syncMixDial(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto
+    ) override;
+    Q_INVOKABLE Libp2pResult syncMixDialWithReply(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QString &proto,
+        int expectReply,
+        uint8_t numSurbs
+    ) override;
+    Q_INVOKABLE Libp2pResult syncMixRegisterDestReadBehavior(
+        const QString &proto,
+        int behavior,
+        uint32_t sizeParam
+    ) override;
+    Q_INVOKABLE Libp2pResult syncMixSetNodeInfo(
+        const QString &multiaddr,
+        const QByteArray &mixPrivKey
+    ) override;
+    Q_INVOKABLE Libp2pResult syncMixNodepoolAdd(
+        const QString &peerId,
+        const QString &multiaddr,
+        const QByteArray &mixPubKey,
+        const QByteArray &libp2pPubKey
+    ) override;
 
     /// Registers the event callback bridge with libp2p.
     Q_INVOKABLE bool setEventCallback() override;
@@ -177,6 +262,10 @@ private:
 
     /// libp2p configuration.
     libp2p_config_t config = {};
+
+    /// Helper for destructor to wait for libp2p_destroy and libp2p_new to be done
+    std::atomic<bool> m_destroyDone{false};
+    std::atomic<bool> m_newDone{false};
 
     /// Active streams indexed by internal ID.
     QHash<uint64_t, libp2p_stream_t*> m_streams;

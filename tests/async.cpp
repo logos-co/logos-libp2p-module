@@ -1,5 +1,5 @@
 #include <QtTest>
-#include <libp2p_module_plugin.h>
+#include <plugin.h>
 
 class TestLibp2pModule : public QObject
 {
@@ -119,14 +119,8 @@ private:
 private slots:
 
     /* ---------------------------
-     * Construction + destruction
+     * Libp2p Core
      * --------------------------- */
-
-    void testConstruction()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(true);
-    }
 
     void testStartStop()
     {
@@ -135,6 +129,22 @@ private slots:
         startPlugin(plugin, *spy);
         stopPlugin(plugin, *spy);
     }
+
+    void testPublicKey()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString uuid = plugin.libp2pPublicKey();
+        auto res = waitForUuid(plugin, *spy, uuid, "libp2pPublicKey");
+        QVERIFY(res.ok);
+        libp2p_secp256k1_pubkey_t pubKey = res.data.value<libp2p_secp256k1_pubkey_t>();
+
+        stopPlugin(plugin, *spy);
+    }
+
+
 
     /* ---------------------------
      * Connectivity tests
@@ -256,17 +266,17 @@ private slots:
         stopPlugin(plugin, *spy);
     }
 
-    void testStreamCloseEOF()
+    void testStreamCloseWithEOF()
     {
         Libp2pModulePlugin plugin;
         auto spy = createLibp2pEventSpy(&plugin);
         startPlugin(plugin, *spy);
 
         uint64_t fakeStreamId = 1234;
-        QString uuid = plugin.streamCloseEOF(fakeStreamId);
-        auto res = waitForUuid(plugin, *spy, uuid, "streamCloseEOF");
+        QString uuid = plugin.streamCloseWithEOF(fakeStreamId);
+        auto res = waitForUuid(plugin, *spy, uuid, "streamCloseWithEOF");
 
-        // cannot closeEOF inexistent stream
+        // cannot closeWithEOF inexistent stream
         QVERIFY(!res.ok);
 
         stopPlugin(plugin, *spy);
@@ -464,6 +474,158 @@ private slots:
         // We expect at least one record (ourselves)
         // TODO: this should not be empty, but for that we need more peers
         // TODO: QVERIFY(!randomRecords.isEmpty());
+
+        stopPlugin(plugin, *spy);
+    }
+
+    /* ---------------------------
+     * Mix tests
+     * --------------------------- */
+
+    void testMixGeneratePrivKey()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QByteArray data = plugin.mixGeneratePrivKey();
+        QCOMPARE(data.size(), sizeof(libp2p_curve25519_key_t));
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixPublicKey()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QByteArray privKey = plugin.mixGeneratePrivKey();
+        QCOMPARE(privKey.size(), sizeof(libp2p_curve25519_key_t));
+
+        QByteArray pubKey = plugin.mixPublicKey(privKey);
+        QCOMPARE(pubKey.size(), sizeof(libp2p_curve25519_key_t));
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixDial()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString fakePeer = "12D3KooWInvalidMixPeer";
+        QString addr = "/ip4/127.0.0.1/tcp/9999";
+        QString proto = "/mix/test/1.0.0";
+
+        QString uuid = plugin.mixDial(fakePeer, addr, proto);
+        auto res = waitForUuid(plugin, *spy, uuid, "mixDial");
+
+        // expected to fail without a mix node
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixDialWithReply()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString fakePeer = "12D3KooWInvalidMixPeer";
+        QString addr = "/ip4/127.0.0.1/tcp/9999";
+        QString proto = "/mix/test/1.0.0";
+
+        QString uuid = plugin.mixDialWithReply(
+            fakePeer,
+            addr,
+            proto,
+            1,
+            2
+        );
+
+        auto res = waitForUuid(plugin, *spy, uuid, "mixDialWithReply");
+
+        QVERIFY(!res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixRegisterDestReadBehavior()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString proto = "/mix/test/1.0.0";
+
+        QString uuid = plugin.mixRegisterDestReadBehavior(
+            proto,
+            LIBP2P_MIX_READ_EXACTLY,
+            1024
+        );
+
+        auto res = waitForUuid(
+            plugin,
+            *spy,
+            uuid,
+            "mixRegisterDestReadBehavior"
+        );
+
+        // data should not be valid (cant read)
+        QVERIFY(!res.data.isValid());
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixSetNodeInfo()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QByteArray key = plugin.mixGeneratePrivKey();
+
+        // get peerInfo
+        QString uuid = plugin.peerInfo();
+        auto res = waitForUuid(plugin, *spy, uuid, "peerInfo");
+        PeerInfo peerInfo = res.data.value<PeerInfo>();
+
+        // set mix node info
+        uuid = plugin.mixSetNodeInfo(peerInfo.addrs[0], key);
+        res = waitForUuid(plugin, *spy, uuid, "mixSetNodeInfo");
+        QVERIFY(res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testMixNodepoolAdd()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+        startPlugin(plugin, *spy);
+
+        QString fakePeer = "12D3KooWInvalidMixPeer";
+        QString addr = "/ip4/127.0.0.1/tcp/9999";
+
+        QByteArray privKey = plugin.mixGeneratePrivKey();
+        QByteArray pubKey = plugin.mixPublicKey(privKey);
+
+        QByteArray fakeLibp2pKey(33, 0x01);
+
+        QString uuid = plugin.mixNodepoolAdd(
+            fakePeer,
+            addr,
+            pubKey,
+            fakeLibp2pKey
+        );
+
+        auto res = waitForUuid(plugin, *spy, uuid, "mixNodepoolAdd");
+
+        // fake peer doesnt exist
+        QVERIFY(!res.data.isValid());
 
         stopPlugin(plugin, *spy);
     }

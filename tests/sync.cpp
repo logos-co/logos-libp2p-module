@@ -1,5 +1,5 @@
 #include <QtTest>
-#include <libp2p_module_plugin.h>
+#include <plugin.h>
 
 class TestLibp2pModuleSync : public QObject
 {
@@ -73,6 +73,14 @@ private slots:
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
 
+    void testPublicKey()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
+        QVERIFY(plugin.syncLibp2pPublicKey().ok);
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
+
     /* ---------------------------
      * Stream
      * --------------------------- */
@@ -90,15 +98,15 @@ private slots:
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
 
-    void testSyncStreamCloseEOF()
+    void testSyncStreamCloseWithEOF()
     {
         Libp2pModulePlugin plugin;
         QVERIFY(plugin.syncLibp2pStart().ok);
 
         uint64_t fakeStreamId = 1234;
 
-        // cannot closeEOF inexistent stream
-        QVERIFY(!plugin.syncStreamCloseEOF(fakeStreamId).ok);
+        // cannot closeWithEOF inexistent stream
+        QVERIFY(!plugin.syncStreamCloseWithEOF(fakeStreamId).ok);
 
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
@@ -266,6 +274,101 @@ private slots:
 
         // no registered records yet
         QVERIFY(!plugin.syncKadGetRandomRecords().ok);
+
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
+
+     /* ---------------------------
+     * Mix
+     * --------------------------- */
+
+    void testSyncMixDial()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        QString fakePeer = "12D3KooWInvalidMixPeer";
+        QString addr = "/ip4/127.0.0.1/tcp/9999";
+        QString proto = "/mix/test/1.0.0";
+
+        // expected to fail without a configured mix network
+        QVERIFY(!plugin.syncMixDial(fakePeer, addr, proto).ok);
+
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
+
+    void testSyncMixDialWithReply()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        QString fakePeer = "12D3KooWInvalidMixPeer";
+        QString addr = "/ip4/127.0.0.1/tcp/9999";
+        QString proto = "/mix/test/1.0.0";
+
+        QVERIFY(!plugin.syncMixDialWithReply(
+            fakePeer,
+            addr,
+            proto,
+            1,
+            2
+        ).ok);
+
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
+
+    void testSyncMixRegisterDestReadBehavior()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        QString proto = "/mix/test/1.0.0";
+
+        auto res = plugin.syncMixRegisterDestReadBehavior(
+            proto,
+            LIBP2P_MIX_READ_EXACTLY,
+            1024
+        );
+
+        // data should not be valid (cant read)
+        QVERIFY(!res.data.isValid());
+
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
+
+    void testSyncMixSetNodeInfo()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        QString addr = "/ip4/127.0.0.1/tcp/4001";
+        PeerInfo peerInfo = plugin.syncPeerInfo().data.value<PeerInfo>();
+
+        QVERIFY(plugin.syncMixSetNodeInfo(peerInfo.addrs[0], plugin.mixGeneratePrivKey()).ok);
+
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
+
+    void testSyncMixNodepoolAdd()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        QString fakePeer = "12D3KooWInvalidMixPeer";
+        QString addr = "/ip4/127.0.0.1/tcp/9999";
+
+        QByteArray mixPubKey = plugin.mixPublicKey(plugin.mixGeneratePrivKey());
+
+        QByteArray fakeLibp2pKey(33, 0x01);
+
+        auto res = plugin.syncMixNodepoolAdd(
+            fakePeer,
+            addr,
+            mixPubKey,
+            fakeLibp2pKey
+        );
+
+        QVERIFY(!res.data.isValid());
 
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
