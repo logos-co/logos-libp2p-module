@@ -367,6 +367,102 @@ private slots:
     }
 
     /* ---------------------------
+     * Gossipsub tests
+     * --------------------------- */
+
+    void testGossipsubSubscribePublish()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QString topic = "test-topic";
+
+        // subscribe
+        QString uuid = plugin.gossipsubSubscribe(topic);
+        auto res = waitForUuid(plugin, *spy, uuid, "gossipsubSubscribe");
+        QVERIFY(res.ok);
+
+        // publish
+        QByteArray msg = "hello-gossipsub";
+        uuid = plugin.gossipsubPublish(topic, msg);
+        res = waitForUuid(plugin, *spy, uuid, "gossipsubPublish");
+        QVERIFY(res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testGossipsubUnsubscribe()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QString topic = "test-topic";
+
+        QString uuid = plugin.gossipsubSubscribe(topic);
+        auto res = waitForUuid(plugin, *spy, uuid, "gossipsubSubscribe");
+        QVERIFY(res.ok);
+
+        uuid = plugin.gossipsubUnsubscribe(topic);
+        res = waitForUuid(plugin, *spy, uuid, "gossipsubUnsubscribe");
+        QVERIFY(res.ok);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    void testGossipsubReceiveMessageEvent()
+    {
+        Libp2pModulePlugin plugin;
+        auto spy = createLibp2pEventSpy(&plugin);
+
+        startPlugin(plugin, *spy);
+
+        QString topic = "test-topic";
+
+        QString uuid = plugin.gossipsubSubscribe(topic);
+        auto res = waitForUuid(plugin, *spy, uuid, "gossipsubSubscribe");
+        QVERIFY(res.ok);
+
+        QByteArray msg = "loopback-message";
+
+        uuid = plugin.gossipsubPublish(topic, msg);
+        res = waitForUuid(plugin, *spy, uuid, "gossipsubPublish");
+        QVERIFY(res.ok);
+
+        // wait for gossipsub message event
+        QElapsedTimer timer;
+        timer.start();
+
+        bool received = false;
+
+        while (timer.elapsed() < 5000) {
+            for (int i = 0; i < spy->count(); ++i) {
+                auto args = spy->at(i);
+                QString caller = args.at(2).toString();
+
+                if (caller == "gossipsubMessage") {
+                    QByteArray payload = args.at(4).toByteArray();
+                    QVERIFY(!payload.isEmpty());
+                    received = true;
+                    break;
+                }
+            }
+
+            if (received)
+                break;
+
+            spy->wait(50);
+        }
+
+        QVERIFY(received);
+
+        stopPlugin(plugin, *spy);
+    }
+
+    /* ---------------------------
      * Kademlia tests
      * --------------------------- */
 

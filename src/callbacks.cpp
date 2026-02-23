@@ -66,7 +66,10 @@ void Libp2pModulePlugin::libp2pCallback(
         Qt::QueuedConnection
     );
 
-    delete callbackCtx;
+    // topicHandler is called with context
+    // cannot free it here if that's the case
+    if (caller != "gossipsubSubscribe")
+        delete callbackCtx;
 }
 
 QList<ServiceInfo> copyServiceInfos(
@@ -471,3 +474,40 @@ void Libp2pModulePlugin::connectionCallback(
     delete callbackCtx;
 }
 
+
+void Libp2pModulePlugin::topicHandler(
+    const char *topic,
+    uint8_t *data,
+    size_t len,
+    void *userData
+)
+{
+
+    qDebug() << "topicHandler called";
+
+    auto *callbackCtx = static_cast<CallbackContext *>(userData);
+    if (!callbackCtx) return;
+
+    Libp2pModulePlugin *self = callbackCtx->instance;
+
+    if (!self) { delete callbackCtx; return; }
+
+    QString topicStr = QString::fromUtf8(topic);
+    QByteArray payload(reinterpret_cast<const char*>(data), static_cast<int>(len));
+
+    QPointer<Libp2pModulePlugin> safeSelf(self);
+    QMetaObject::invokeMethod(
+        safeSelf,
+        [safeSelf, topicStr, payload]() {
+            if (!safeSelf) return;
+            emit safeSelf->libp2pEvent(
+                RET_OK,
+                QString{},                // no request id (push event)
+                QString("gossipsubMessage"),
+                topicStr,
+                QVariant(payload)
+            );
+        },
+        Qt::QueuedConnection
+    );
+}

@@ -107,6 +107,18 @@ public:
     Q_INVOKABLE Libp2pResult syncConnectedPeers(int direction = 0) override;
     Q_INVOKABLE Libp2pResult syncDial(const QString &peerId, const QString &proto) override;
 
+    /* ----------- Gossipsub ----------- */
+
+    Q_INVOKABLE QString gossipsubPublish(const QString &topic, const QByteArray &data) override;
+    Q_INVOKABLE QString gossipsubSubscribe(const QString &topic) override;
+    Q_INVOKABLE QString gossipsubUnsubscribe(const QString &topic) override;
+
+    /* ----------- Sync Gossipsub ----------- */
+
+    Q_INVOKABLE Libp2pResult syncGossipsubPublish(const QString &topic,const QByteArray &data) override;
+    Q_INVOKABLE Libp2pResult syncGossipsubSubscribe(const QString &topic) override;
+    Q_INVOKABLE Libp2pResult syncGossipsubUnsubscribe(const QString &topic) override;
+
     /* ----------- Kademlia ----------- */
 
     Q_INVOKABLE QString toCid(const QByteArray &key) override;
@@ -291,6 +303,13 @@ private:
     bool hasStream(uint64_t id) const;
 
     /* ----------- libp2p Callbacks ----------- */
+
+    static void topicHandler(
+        const char *topic,
+        uint8_t *data,
+        size_t len,
+        void *userData
+    );
 
     static void libp2pCallback(
         int callerRet,

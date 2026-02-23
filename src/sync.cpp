@@ -26,10 +26,10 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
             const QString &message,
             const QVariant &data)
         {
-            if (requestId.isEmpty())
+            if (requestId.isEmpty() && caller != "gossipsubMessage")
                 return;
 
-            if (reqId != requestId)
+            if (reqId != requestId && caller != "gossipsubMessage")
                 return;
 
             result.ok = (ret == RET_OK);
@@ -154,6 +154,25 @@ Libp2pResult Libp2pModulePlugin::syncStreamCloseWithEOF(uint64_t streamId)
 Libp2pResult Libp2pModulePlugin::syncStreamRelease(uint64_t streamId)
 {
     return runSync(this, __func__, [&]() { return streamRelease(streamId); });
+}
+
+/* ---------------------------
+ * Gossipsub
+ * --------------------------- */
+
+Libp2pResult Libp2pModulePlugin::syncGossipsubPublish(const QString &topic, const QByteArray &data)
+{
+    return runSync(this, __func__, [&]() {return gossipsubPublish(topic, data); });
+}
+
+Libp2pResult Libp2pModulePlugin::syncGossipsubSubscribe(const QString &topic)
+{
+    return runSync(this, __func__, [&]() {return gossipsubSubscribe(topic); });
+}
+
+Libp2pResult Libp2pModulePlugin::syncGossipsubUnsubscribe(const QString &topic)
+{
+    return runSync(this, __func__, [&]() {return gossipsubUnsubscribe(topic); });
 }
 
 /* ---------------------------

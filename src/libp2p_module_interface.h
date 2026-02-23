@@ -214,6 +214,43 @@ public:
     /// data: none
     Q_INVOKABLE virtual Libp2pResult syncStreamRelease(uint64_t streamId) = 0;
 
+    /* ----------- Gossipsub ----------- */
+
+    /// Publish data to a topic
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString gossipsubPublish(
+        const QString &topic,
+        const QByteArray &data
+    ) = 0;
+
+    /// Subscribe to a topic
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString gossipsubSubscribe(
+        const QString &topic
+    ) = 0;
+
+    /// Unsubscribe from a topic
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString gossipsubUnsubscribe(
+        const QString &topic
+    ) = 0;
+
+    /* ----------- Sync Gossipsub ----------- */
+
+    /// data: none
+    Q_INVOKABLE virtual Libp2pResult syncGossipsubPublish(
+        const QString &topic,
+        const QByteArray &data
+    ) = 0;
+    /// data: none
+    Q_INVOKABLE virtual Libp2pResult syncGossipsubSubscribe(
+        const QString &topic
+    ) = 0;
+    /// data: none
+    Q_INVOKABLE virtual Libp2pResult syncGossipsubUnsubscribe(
+        const QString &topic
+    ) = 0;
+
     /* ----------- Kademlia ----------- */
 
     /// Converts a key to a CID.

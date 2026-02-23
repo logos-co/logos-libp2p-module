@@ -26,6 +26,7 @@ logos_module(
         src/kademlia.cpp
         src/stream.cpp
         src/mix.cpp
+        src/gossipsub.cpp
     EXTERNAL_LIBS
         libp2p
     INCLUDE_DIRS
