@@ -117,9 +117,13 @@ public:
     Q_INVOKABLE virtual QString libp2pNewPrivateKey() = 0;
 
     /* ----------- Sync core functions ----------- */
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncLibp2pStart() = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncLibp2pStop() = 0;
+    /// data: QByteArray (libp2p public key)
     Q_INVOKABLE virtual Libp2pResult syncLibp2pPublicKey() = 0;
+    /// data: QByteArray (libp2p private key)
     Q_INVOKABLE virtual Libp2pResult syncLibp2pNewPrivateKey() = 0;
 
     /* ----------- Connectivity ----------- */
@@ -152,10 +156,15 @@ public:
 
     /* ----------- Sync Connectivity ----------- */
 
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncDisconnectPeer(const QString &peerId) = 0;
+    /// data: PeerInfo
     Q_INVOKABLE virtual Libp2pResult syncPeerInfo() = 0;
+    /// data: QList<PeerInfo>
     Q_INVOKABLE virtual Libp2pResult syncConnectedPeers(int direction = 0) = 0;
+    /// data: uint64_t (streamId)
     Q_INVOKABLE virtual Libp2pResult syncDial(const QString &peerId, const QString &proto) = 0;
 
     /* ----------- Streams ----------- */
@@ -190,12 +199,19 @@ public:
 
     /* ----------- Sync Streams ----------- */
 
+    /// data: QByteArray
     Q_INVOKABLE virtual Libp2pResult syncStreamReadExactly(uint64_t streamId, size_t len) = 0;
+    /// data: QByteArray
     Q_INVOKABLE virtual Libp2pResult syncStreamReadLp(uint64_t streamId, size_t maxSize) = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncStreamWrite(uint64_t streamId, const QByteArray &data) = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncStreamWriteLp(uint64_t streamId, const QByteArray &data) = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncStreamClose(uint64_t streamId) = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncStreamCloseWithEOF(uint64_t streamId) = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncStreamRelease(uint64_t streamId) = 0;
 
     /* ----------- Kademlia ----------- */
@@ -239,15 +255,25 @@ public:
 
     /* ----------- Sync Kademlia ----------- */
 
+    /// data: QString (CID)
     Q_INVOKABLE virtual Libp2pResult syncToCid(const QByteArray &key) = 0;
+    /// data: QList<QString> (peer IDs)
     Q_INVOKABLE virtual Libp2pResult syncKadFindNode(const QString &peerId) = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncKadPutValue(const QByteArray &key, const QByteArray &value) = 0;
+    /// data: QByteArray
     Q_INVOKABLE virtual Libp2pResult syncKadGetValue(const QByteArray &key, int quorum = -1) = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncKadAddProvider(const QString &cid) = 0;
+    /// data: QList<PeerInfo>
     Q_INVOKABLE virtual Libp2pResult syncKadGetProviders(const QString &cid) = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncKadStartProviding(const QString &cid) = 0;
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncKadStopProviding(const QString &cid) = 0;
+    /// data: QList<ExtendedPeerRecord>
     Q_INVOKABLE virtual Libp2pResult syncKadGetRandomRecords() = 0;
+
 
     /* ----------- Mix Network ----------- */
 
@@ -296,11 +322,14 @@ public:
 
     /* ----------- Sync Mix Network ----------- */
 
+    /// data: uint64_t (streamId)
     Q_INVOKABLE virtual Libp2pResult syncMixDial(
         const QString &peerId,
         const QString &multiaddr,
         const QString &proto
     ) = 0;
+
+    /// data: uint64_t (streamId)
     Q_INVOKABLE virtual Libp2pResult syncMixDialWithReply(
         const QString &peerId,
         const QString &multiaddr,
@@ -308,15 +337,21 @@ public:
         int expectReply,
         uint8_t numSurbs
     ) = 0;
+
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncMixRegisterDestReadBehavior(
         const QString &proto,
         int behavior,
         uint32_t sizeParam
     ) = 0;
+
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncMixSetNodeInfo(
         const QString &multiaddr,
         const QByteArray &mixPrivKey
     ) = 0;
+
+    /// data: none
     Q_INVOKABLE virtual Libp2pResult syncMixNodepoolAdd(
         const QString &peerId,
         const QString &multiaddr,
