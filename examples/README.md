@@ -23,6 +23,12 @@ use cases using the `logos-libp2p-module`.
   - Populating mix pools
   - Dialing through mix
 
+- [Gossipsub](gossipsub.cpp) — Demonstrates usage of the [Gossipsub](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/README.md) protocol for messaging:
+  - Connecting to a peer
+  - Subscribing to a topic
+  - Publishing to that topic
+  - Receiving the message on the subscribed topic
+
 ## Building
 Enter the development shell and configure cmake
 
@@ -43,5 +49,6 @@ After building, run the executable from the build directory:
 ./build/examples/example_ping
 ./build/examples/example_kademlia
 ./build/examples/example_mix
+./build/examples/example_gossipsub
 ```
 
