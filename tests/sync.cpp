@@ -73,6 +73,14 @@ private slots:
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
 
+    void testPublicKey()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
+        QVERIFY(plugin.syncLibp2pPublicKey().ok);
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
+
     /* ---------------------------
      * Stream
      * --------------------------- */

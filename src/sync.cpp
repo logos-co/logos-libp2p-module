@@ -83,6 +83,11 @@ Libp2pResult Libp2pModulePlugin::syncLibp2pNewPrivateKey()
     return runSync(this, __func__, [&]() { return libp2pNewPrivateKey(); });
 }
 
+Libp2pResult Libp2pModulePlugin::syncLibp2pPublicKey()
+{
+    return runSync(this, __func__, [&]() { return libp2pPublicKey(); });
+}
+
 /* ---------------------------
  * Connectivity
  * --------------------------- */
