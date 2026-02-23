@@ -1,4 +1,4 @@
-#include "libp2p_module_plugin.h"
+#include "plugin.h"
 
 #include <QEventLoop>
 #include <QTimer>
@@ -19,13 +19,16 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
     conn = QObject::connect(
         self,
         &Libp2pModulePlugin::libp2pEvent,
-        self,
+        &loop,
         [&](int ret,
             const QString &reqId,
             const QString &caller,
             const QString &message,
             const QVariant &data)
         {
+            if (requestId.isEmpty())
+                return;
+
             if (reqId != requestId)
                 return;
 
@@ -39,13 +42,14 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
 
             QObject::disconnect(conn);
             loop.quit();
-        });
+        }
+    );
 
     requestId = asyncCall();
 
     if (requestId.isEmpty()) {
-        qCritical() << functionName << "failed to start async request";
         QObject::disconnect(conn);
+        qCritical() << functionName << "failed to start async request";
         return result;
     }
 
@@ -61,7 +65,7 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
 }
 
 /* ---------------------------
- * Start / Stop
+ * Core Libp2p
  * --------------------------- */
 
 Libp2pResult Libp2pModulePlugin::syncLibp2pStart()
@@ -72,6 +76,16 @@ Libp2pResult Libp2pModulePlugin::syncLibp2pStart()
 Libp2pResult Libp2pModulePlugin::syncLibp2pStop()
 {
     return runSync(this, __func__, [&]() { return libp2pStop(); });
+}
+
+Libp2pResult Libp2pModulePlugin::syncLibp2pNewPrivateKey()
+{
+    return runSync(this, __func__, [&]() { return libp2pNewPrivateKey(); });
+}
+
+Libp2pResult Libp2pModulePlugin::syncLibp2pPublicKey()
+{
+    return runSync(this, __func__, [&]() { return libp2pPublicKey(); });
 }
 
 /* ---------------------------
@@ -132,9 +146,9 @@ Libp2pResult Libp2pModulePlugin::syncStreamClose(uint64_t streamId)
     return runSync(this, __func__, [&]() { return streamClose(streamId); });
 }
 
-Libp2pResult Libp2pModulePlugin::syncStreamCloseEOF(uint64_t streamId)
+Libp2pResult Libp2pModulePlugin::syncStreamCloseWithEOF(uint64_t streamId)
 {
-    return runSync(this, __func__, [&]() { return streamCloseEOF(streamId); });
+    return runSync(this, __func__, [&]() { return streamCloseWithEOF(streamId); });
 }
 
 Libp2pResult Libp2pModulePlugin::syncStreamRelease(uint64_t streamId)
@@ -190,3 +204,60 @@ Libp2pResult Libp2pModulePlugin::syncToCid(const QByteArray &key)
 {
     return runSync(this, __func__, [&]() { return toCid(key); });
 }
+
+/* ---------------------------
+ * Mix
+ * --------------------------- */
+
+Libp2pResult Libp2pModulePlugin::syncMixDial(
+    const QString &peerId,
+    const QString &multiaddr,
+    const QString &proto)
+{
+    return runSync(this, __func__, [&]() {
+        return mixDial(peerId, multiaddr, proto);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncMixDialWithReply(
+    const QString &peerId,
+    const QString &multiaddr,
+    const QString &proto,
+    int expectReply,
+    uint8_t numSurbs)
+{
+    return runSync(this, __func__, [&]() {
+        return mixDialWithReply(peerId, multiaddr, proto, expectReply, numSurbs);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncMixRegisterDestReadBehavior(
+    const QString &proto,
+    int behavior,
+    uint32_t sizeParam)
+{
+    return runSync(this, __func__, [&]() {
+        return mixRegisterDestReadBehavior(proto, behavior, sizeParam);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncMixSetNodeInfo(
+    const QString &multiaddr,
+    const QByteArray &mixPrivKey)
+{
+    return runSync(this, __func__, [&]() {
+        return mixSetNodeInfo(multiaddr, mixPrivKey);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncMixNodepoolAdd(
+    const QString &peerId,
+    const QString &multiaddr,
+    const QByteArray &mixPubKey,
+    const QByteArray &libp2pPubKey)
+{
+    return runSync(this, __func__, [&]() {
+        return mixNodepoolAdd(peerId, multiaddr, mixPubKey, libp2pPubKey);
+    });
+}
+
