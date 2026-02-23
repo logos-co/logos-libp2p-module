@@ -141,7 +141,7 @@ private slots:
         QVERIFY(readRes.ok);
         QByteArray received = readRes.data.value<QByteArray>();
 
-        QCOMPARE(received.size(), payload.size());
+        QCOMPARE(received, payload);
 
         QVERIFY(nodes[0]->syncStreamClose(streamId).ok);
         QVERIFY(nodes[0]->syncStreamRelease(streamId).ok);

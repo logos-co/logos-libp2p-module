@@ -119,7 +119,7 @@ private:
 private slots:
 
     /* ---------------------------
-     * Core functions
+     * Libp2p Core
      * --------------------------- */
 
     void testStartStop()

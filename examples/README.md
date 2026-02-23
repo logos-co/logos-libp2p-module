@@ -20,7 +20,7 @@ use cases using the `logos-libp2p-module`.
 - [Mix](mix.cpp) — Demonstrates usage of the [Mix](https://github.com/vacp2p/nim-libp2p/blob/master/docs/protocols_mix.md) protocol for private messaging:
   - Generating private and public keys
   - Setting node info
-  - Pupulating mix pools
+  - Populating mix pools
   - Dialing through mix
 
 ## Building

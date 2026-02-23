@@ -50,18 +50,25 @@ public:
     /// Plugin version.
     QString version() const override { return "1.0.0"; }
 
+    /* ----------- Libp2p Core ----------- */
+
     /// Starts the libp2p node.
     Q_INVOKABLE QString libp2pStart() override;
 
     /// Stops the libp2p node.
     Q_INVOKABLE QString libp2pStop() override;
+    
+    /// Generates a new libp2p private key
+    Q_INVOKABLE QString libp2pNewPrivateKey() override;
 
     /// Returns the public key for the libp2p node
     Q_INVOKABLE QString libp2pPublicKey() override;
 
-    /* ----------- Sync core functions ----------- */
+    /* ----------- Sync Libp2p Core ----------- */
+    
     Q_INVOKABLE Libp2pResult syncLibp2pStart() override;
     Q_INVOKABLE Libp2pResult syncLibp2pStop() override;
+    Q_INVOKABLE Libp2pResult syncLibp2pNewPrivateKey() override;
     Q_INVOKABLE Libp2pResult syncLibp2pPublicKey() override;
 
     /* ----------- Connectivity ----------- */
@@ -252,10 +259,6 @@ private:
 
     /// libp2p context.
     libp2p_ctx_t *ctx = nullptr;
-
-    // libp2p node's private key
-    libp2p_private_key_t m_privKey {};
-    bool m_privKeyReady = false;
 
     /// libp2p configuration.
     libp2p_config_t config = {};

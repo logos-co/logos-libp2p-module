@@ -14,12 +14,7 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
     QEventLoop loop;
     QMetaObject::Connection conn;
 
-    QString requestId = asyncCall();
-
-    if (requestId.isEmpty()) {
-        qCritical() << functionName << "failed to start async request";
-        return result;
-    }
+    QString requestId;
 
     conn = QObject::connect(
         self,
@@ -31,6 +26,9 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
             const QString &message,
             const QVariant &data)
         {
+            if (requestId.isEmpty())
+                return;
+
             if (reqId != requestId)
                 return;
 
@@ -47,6 +45,14 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
         }
     );
 
+    requestId = asyncCall();
+
+    if (requestId.isEmpty()) {
+        QObject::disconnect(conn);
+        qCritical() << functionName << "failed to start async request";
+        return result;
+    }
+
     QTimer timer;
     timer.setSingleShot(true);
     QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
@@ -59,7 +65,7 @@ static Libp2pResult runSync(Libp2pModulePlugin* self, const char* functionName, 
 }
 
 /* ---------------------------
- * Core functions
+ * Core Libp2p
  * --------------------------- */
 
 Libp2pResult Libp2pModulePlugin::syncLibp2pStart()
@@ -70,6 +76,11 @@ Libp2pResult Libp2pModulePlugin::syncLibp2pStart()
 Libp2pResult Libp2pModulePlugin::syncLibp2pStop()
 {
     return runSync(this, __func__, [&]() { return libp2pStop(); });
+}
+
+Libp2pResult Libp2pModulePlugin::syncLibp2pNewPrivateKey()
+{
+    return runSync(this, __func__, [&]() { return libp2pNewPrivateKey(); });
 }
 
 Libp2pResult Libp2pModulePlugin::syncLibp2pPublicKey()
