@@ -224,13 +224,14 @@
       "locked": {
         "lastModified": 1770934129,
         "narHash": "sha256-RjeB17MQh4HcS5vKtSrDM/J7fz3K8ZDNpswCGr5JF/k=",
-        "owner": "Logos-co",
+        "owner": "logos-co",
         "repo": "logos-module-builder",
         "rev": "a86eea50450511f4474b35032e5fd218a0f17c3c",
         "type": "github"
       },
       "original": {
-        "owner": "Logos-co",
+        "owner": "logos-co",
+        "ref": "fix/windows-linefeed",
         "repo": "logos-module-builder",
         "type": "github"
       }
