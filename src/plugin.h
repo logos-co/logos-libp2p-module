@@ -57,19 +57,19 @@ public:
 
     /// Stops the libp2p node.
     Q_INVOKABLE QString libp2pStop() override;
-    
-    /// Generates a new libp2p private key
-    Q_INVOKABLE QString libp2pNewPrivateKey() override;
 
     /// Returns the public key for the libp2p node
     Q_INVOKABLE QString libp2pPublicKey() override;
 
+    /// Generates a new libp2p private key
+    Q_INVOKABLE QString libp2pNewPrivateKey() override;
+
     /* ----------- Sync Libp2p Core ----------- */
-    
+
     Q_INVOKABLE Libp2pResult syncLibp2pStart() override;
     Q_INVOKABLE Libp2pResult syncLibp2pStop() override;
-    Q_INVOKABLE Libp2pResult syncLibp2pNewPrivateKey() override;
     Q_INVOKABLE Libp2pResult syncLibp2pPublicKey() override;
+    Q_INVOKABLE Libp2pResult syncLibp2pNewPrivateKey() override;
 
     /* ----------- Connectivity ----------- */
 
