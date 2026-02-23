@@ -2,8 +2,7 @@ name: CI Tests
 
 on:
   push:
-    branches:
-      - master
+    branches: [ master ]
   pull_request:
   merge_group:
   workflow_dispatch:
@@ -12,17 +11,20 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  NIX_CONFIG: |
+    experimental-features = nix-command flakes
+
 jobs:
   flake-check:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Linux
           - name: Linux (x86_64-linux)
             runner: ubuntu-latest
             system: x86_64-linux
@@ -31,11 +33,10 @@ jobs:
             runner: ubuntu-24.04-arm
             system: aarch64-linux
 
-          # macOS
           - name: macOS (aarch64-darwin)
             runner: macos-latest
             system: aarch64-darwin
-            macos_target: 11.3
+            macos_target: "11.3"
 
     steps:
       - name: Checkout
@@ -44,23 +45,49 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v12
 
-      - name: Configure Nix
-        shell: bash
-        run: |
-          mkdir -p ~/.config/nix
-          echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v5
 
       - name: Setup Cachix
-        if: runner.os != 'Windows'
         uses: cachix/cachix-action@v15
         with:
           name: nix-community
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
         continue-on-error: true
 
       - name: Run flake checks
-        shell: bash
         env:
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_target }}
         run: |
-          nix flake check --system ${{ matrix.system }}
+          nix flake check \
+            --system ${{ matrix.system }} \
+            --print-build-logs \
+            --show-trace
+
+  windows-wsl:
+    name: Windows (WSL x86_64-linux)
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Ubuntu (if missing)
+        shell: powershell
+        run: |
+          $distros = wsl -l -q
+          if (-not ($distros -match "Ubuntu")) {
+            wsl --install -d Ubuntu --no-launch
+          }
+
+      - name: Run CI inside WSL
+        shell: powershell
+        run: >
+          wsl -d Ubuntu bash -lc
+          "set -e;
+          sudo apt-get update;
+          sudo apt-get install -y curl git;
+          curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm;
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh;
+          nix flake check --system x86_64-linux --print-build-logs --show-trace"
