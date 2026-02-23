@@ -162,17 +162,49 @@ Libp2pResult Libp2pModulePlugin::syncStreamRelease(uint64_t streamId)
 
 Libp2pResult Libp2pModulePlugin::syncGossipsubPublish(const QString &topic, const QByteArray &data)
 {
-    return runSync(this, __func__, [&]() {return gossipsubPublish(topic, data); });
+    return runSync(this, __func__, [&]() { return gossipsubPublish(topic, data); });
 }
 
 Libp2pResult Libp2pModulePlugin::syncGossipsubSubscribe(const QString &topic)
 {
-    return runSync(this, __func__, [&]() {return gossipsubSubscribe(topic); });
+    return runSync(this, __func__, [&]() { return gossipsubSubscribe(topic); });
 }
 
 Libp2pResult Libp2pModulePlugin::syncGossipsubUnsubscribe(const QString &topic)
 {
-    return runSync(this, __func__, [&]() {return gossipsubUnsubscribe(topic); });
+    return runSync(this, __func__, [&]() { return gossipsubUnsubscribe(topic); });
+}
+
+// syncGossipsubNextMessage
+Libp2pResult Libp2pModulePlugin::syncGossipsubNextMessage(const QString &topic, int timeoutMs)
+{
+    Libp2pResult result{false, QString{}, QVariant{}};
+
+    QMutexLocker lock(&m_queueMutex);
+
+    // ensure queue exists
+    if (!m_topicQueues.contains(topic)) {
+        m_topicQueues[topic] = QSharedPointer<QQueue<QByteArray>>::create();
+    }
+
+    auto queue = m_topicQueues[topic];
+
+    // wait until queue has a message or timeout
+    if (queue->isEmpty()) {
+        if (!m_queueCond.wait(&m_queueMutex, timeoutMs)) {
+            result.error = "timeout waiting for message";
+            return result;
+        }
+    }
+
+    if (!queue->isEmpty()) {
+        result.ok = true;
+        result.data = queue->dequeue();
+    } else {
+        result.error = "queue is empty";
+    }
+
+    return result;
 }
 
 /* ---------------------------

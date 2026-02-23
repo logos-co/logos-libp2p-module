@@ -145,9 +145,9 @@ public:
     Q_INVOKABLE virtual QString peerInfo() = 0;
 
     /// Returns currently connected peers.
-    /// Possible Direction values: Direction_In = 0, Direction_Out = 1.
+    /// Possible Direction values: Direction_In, Direction_Out.
     /// Returns a UUID string identifying this request.
-    Q_INVOKABLE virtual QString connectedPeers(int direction = 0) = 0;
+    Q_INVOKABLE virtual QString connectedPeers(int direction = Direction_In) = 0;
 
     /// Opens a stream using a protocol.
     /// Returns a UUID string identifying this request.
@@ -249,6 +249,11 @@ public:
     /// data: none
     Q_INVOKABLE virtual Libp2pResult syncGossipsubUnsubscribe(
         const QString &topic
+    ) = 0;
+    /// data: QByteArray (message)
+    Q_INVOKABLE virtual Libp2pResult syncGossipsubNextMessage(
+        const QString &topic,
+        int timeoutMs
     ) = 0;
 
     /* ----------- Kademlia ----------- */

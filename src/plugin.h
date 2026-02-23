@@ -6,6 +6,9 @@
 #include <QtCore/QString>
 #include <QtCore/QHash>
 #include <QtCore/QReadWriteLock>
+#include <QtCore/QMutex>
+#include <QtCore/QQueue>
+#include <QtCore/QWaitCondition>
 
 #include <logos_api.h>
 #include <logos_api_client.h>
@@ -104,7 +107,7 @@ public:
     Q_INVOKABLE Libp2pResult syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
     Q_INVOKABLE Libp2pResult syncDisconnectPeer(const QString &peerId) override;
     Q_INVOKABLE Libp2pResult syncPeerInfo() override;
-    Q_INVOKABLE Libp2pResult syncConnectedPeers(int direction = 0) override;
+    Q_INVOKABLE Libp2pResult syncConnectedPeers(int direction = Direction_In) override;
     Q_INVOKABLE Libp2pResult syncDial(const QString &peerId, const QString &proto) override;
 
     /* ----------- Gossipsub ----------- */
@@ -118,6 +121,7 @@ public:
     Q_INVOKABLE Libp2pResult syncGossipsubPublish(const QString &topic,const QByteArray &data) override;
     Q_INVOKABLE Libp2pResult syncGossipsubSubscribe(const QString &topic) override;
     Q_INVOKABLE Libp2pResult syncGossipsubUnsubscribe(const QString &topic) override;
+    Q_INVOKABLE Libp2pResult syncGossipsubNextMessage(const QString &topic, int timeoutMs = 1000) override;
 
     /* ----------- Kademlia ----------- */
 
@@ -301,6 +305,12 @@ private:
 
     /// Checks if a stream exists.
     bool hasStream(uint64_t id) const;
+
+    /// Gossipsub messages map
+    QMutex m_queueMutex;
+    QWaitCondition m_queueCond;
+    // topic queues: map topic -> shared pointer queue
+    QMap<QString, QSharedPointer<QQueue<QByteArray>>> m_topicQueues;
 
     /* ----------- libp2p Callbacks ----------- */
 

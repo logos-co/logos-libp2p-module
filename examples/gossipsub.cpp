@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     /* -----------------------------
        Fetch messages for Node B
        ----------------------------- */
-    // In synchronous mode, Node B receives messages via `syncGossipsubReceive` or similar if implemented.
+    // In synchronous mode, Node B receives messages via `syncGossipsubNextMessage`.
     // Since our plugin forwards events to libp2pEvent, we simulate by calling libp2pEvent handlers directly
     qDebug() << "Node B should now have received the message";
 

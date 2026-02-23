@@ -482,18 +482,27 @@ void Libp2pModulePlugin::topicHandler(
     void *userData
 )
 {
-
-    qDebug() << "topicHandler called";
-
     auto *callbackCtx = static_cast<CallbackContext *>(userData);
     if (!callbackCtx) return;
 
     Libp2pModulePlugin *self = callbackCtx->instance;
-
     if (!self) { delete callbackCtx; return; }
 
     QString topicStr = QString::fromUtf8(topic);
     QByteArray payload(reinterpret_cast<const char*>(data), static_cast<int>(len));
+
+    // add payload to the queue for syncGossipsubNextMessage
+    {
+        QMutexLocker lock(&self->m_queueMutex);
+
+        // ensure a queue exists for this topic
+        if (!self->m_topicQueues.contains(topicStr)) {
+            self->m_topicQueues[topicStr] = QSharedPointer<QQueue<QByteArray>>::create();
+        }
+
+        self->m_topicQueues[topicStr]->enqueue(payload);
+        self->m_queueCond.wakeOne();
+    }
 
     QPointer<Libp2pModulePlugin> safeSelf(self);
     QMetaObject::invokeMethod(
