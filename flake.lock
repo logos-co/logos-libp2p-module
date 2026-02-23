@@ -231,6 +231,7 @@
       },
       "original": {
         "owner": "logos-co",
+        "ref": "fix/windows-linefeed",
         "repo": "logos-module-builder",
         "type": "github"
       }
