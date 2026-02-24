@@ -303,7 +303,9 @@ private slots:
         QVERIFY(plugin.syncLibp2pStart().ok);
 
         // no registered records yet
-        QVERIFY(!plugin.syncKadGetRandomRecords().ok);
+        auto res = plugin.syncKadGetRandomRecords();
+        QVERIFY(res.ok);
+        QVERIFY(res.data.isValid());
 
         QVERIFY(plugin.syncLibp2pStop().ok);
     }

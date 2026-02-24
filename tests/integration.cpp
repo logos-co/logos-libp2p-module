@@ -57,7 +57,6 @@ private slots:
             result = nodeB.syncKadGetValue(key, quorum).data.value<QByteArray>();
             if (!result.isEmpty())
                 break;
-
             QThread::msleep(200);
         }
 
@@ -221,7 +220,7 @@ private slots:
         QString topic = "integration-topic";
         QVERIFY(nodeB.syncGossipsubSubscribe(topic).ok);
         QVERIFY(nodeA.syncGossipsubSubscribe(topic).ok);
-        QThread::msleep(5000);
+        QThread::msleep(2000);
 
         QByteArray payload = "Hello from Node A";
         QVERIFY(nodeA.syncGossipsubPublish(topic, payload).ok);
@@ -238,7 +237,10 @@ private slots:
     {
         Libp2pModulePlugin nodeA;
         QVERIFY(nodeA.syncLibp2pStart().ok);
-        QVERIFY(nodeA.syncGossipsubSubscribe("multi-topic").ok);
+
+        QString topic = "multi-topic";
+
+        QVERIFY(nodeA.syncGossipsubSubscribe(topic).ok);
 
         const int NUM_SUBS = 3;
         std::vector<std::unique_ptr<Libp2pModulePlugin>> subscribers;
@@ -252,12 +254,12 @@ private slots:
             PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
             QVERIFY(subscribers.back()->syncConnectPeer(infoA.peerId, infoA.addrs, 500).ok);
 
-            QVERIFY(subscribers.back()->syncGossipsubSubscribe("multi-topic").ok);
+            QVERIFY(subscribers.back()->syncGossipsubSubscribe(topic).ok);
         }
 
-        QThread::msleep(3000);
+        QThread::msleep(2000);
         QByteArray payload = "Broadcast message";
-        QVERIFY(nodeA.syncGossipsubPublish("multi-topic", payload).ok);
+        QVERIFY(nodeA.syncGossipsubPublish(topic, payload).ok);
 
         for (auto &sub : subscribers) {
             QByteArray received = sub->syncGossipsubNextMessage(topic).data.value<QByteArray>();

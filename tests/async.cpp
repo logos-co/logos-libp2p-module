@@ -561,15 +561,8 @@ private slots:
         QString uuid = plugin.kadGetRandomRecords();
         auto res = waitForUuid(plugin, *spy, uuid, "kadGetRandomRecords");
 
-        // should fail: kademlia discovery is not mounted
-        QVERIFY(!res.ok);
-
-        // QVERIFY(res.data.isValid());
-        // QVariantList randomRecords = res.data.toList();
-
-        // We expect at least one record (ourselves)
-        // TODO: this should not be empty, but for that we need more peers
-        // TODO: QVERIFY(!randomRecords.isEmpty());
+        QVERIFY(res.ok);
+        QVERIFY(res.data.isValid());
 
         stopPlugin(plugin, *spy);
     }
