@@ -44,7 +44,7 @@ public:
      *
      * bootstrapNodes are used to initially connect to the network.
      */
-    explicit Libp2pModulePlugin(const QList<QString> addrs = {}, const QList<PeerInfo> &bootstrapNodes = {}, int transport = LIBP2P_TRANSPORT_TCP);
+    explicit Libp2pModulePlugin(const QList<QString> addrs = {}, const QList<PeerInfo> &bootstrapNodes = {}, int transport = LIBP2P_TRANSPORT_TCP, bool autonat = false, bool autonatV2 = false, bool autonatV2Server = false, bool circuitRelay = false);
     ~Libp2pModulePlugin() override;
 
     /// Plugin name exposed to Logos.
