@@ -8,7 +8,7 @@
 #include <QEventLoop>
 #include <QThread>
 
-Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<PeerInfo> &bootstrapNodes, int transport)
+Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<PeerInfo> &bootstrapNodes, int transport, bool autonat, bool autonatV2, bool autonatV2Server, bool circuitRelay)
     : ctx(nullptr),
       m_bootstrapNodes(bootstrapNodes),
       m_addrs(addrs)
@@ -33,6 +33,26 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<P
     config.max_in = 25;
     config.max_out = 25;
     config.max_conns_per_peer = 1;
+
+    config.autonat = 0;
+    if (autonat) {
+        config.autonat = 1;
+    }
+
+    config.autonat_v2 = 0;
+    if (autonatV2) {
+        config.autonat_v2 = 1;
+    }
+
+    config.autonat_v2_server = 0;
+    if (autonatV2Server) {
+        config.autonat_v2_server = 1;
+    }
+
+    config.circuit_relay = 0;
+    if (circuitRelay) {
+        config.circuit_relay = 1;
+    }
 
     config.transport = transport;
 
