@@ -8,9 +8,10 @@
 #include <QEventLoop>
 #include <QThread>
 
-Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
+Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<PeerInfo> &bootstrapNodes, int transport)
     : ctx(nullptr),
-      m_bootstrapNodes(bootstrapNodes)
+      m_bootstrapNodes(bootstrapNodes),
+      m_addrs(addrs)
 {
     qRegisterMetaType<PeerInfo>("PeerInfo");
     qRegisterMetaType<QList<PeerInfo>>("QList<PeerInfo>");
@@ -25,11 +26,36 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
 
     std::memset(&config, 0, sizeof(config));
 
-    config.flags |= LIBP2P_CFG_GOSSIPSUB;
     config.mount_gossipsub = 1;
-
-    config.flags |= LIBP2P_CFG_GOSSIPSUB_TRIGGER_SELF;
     config.gossipsub_trigger_self = 1;
+
+    config.max_connections = 50;
+    config.max_in = 25;
+    config.max_out = 25;
+    config.max_conns_per_peer = 1;
+
+    config.transport = transport;
+
+    /* -------------------------
+     * Save local listen addrs
+     * ------------------------- */
+
+    if (!m_addrs.isEmpty()) {
+        m_addrsUtf8.reserve(m_addrs.size());
+        m_addrsPtr.reserve(m_addrs.size());
+
+        for (const QString &addr : m_addrs) {
+            m_addrsUtf8.push_back(addr.toUtf8());
+            m_addrsPtr.push_back(m_addrsUtf8.back().data());
+        }
+
+        config.addrs = const_cast<const char **>(m_addrsPtr.data());
+        config.addrsLen = m_addrsPtr.size();
+    }
+
+    /* -------------------------
+     * Bootstrap nodes
+     * ------------------------- */
 
     if (!m_bootstrapNodes.isEmpty()) {
         m_bootstrapCNodes.reserve(m_bootstrapNodes.size());
@@ -63,19 +89,14 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes)
             m_bootstrapCNodes.push_back(node);
         }
 
-        config.flags |= LIBP2P_CFG_KAD_BOOTSTRAP_NODES;
         config.kad_bootstrap_nodes = m_bootstrapCNodes.data();
         config.kad_bootstrap_nodes_len = m_bootstrapCNodes.size();
     }
 
-    config.flags |= LIBP2P_CFG_KAD;
     config.mount_kad = 1;
 
-    config.flags |= LIBP2P_CFG_KAD_DISCOVERY;
     config.mount_kad_discovery = 1;
 
-    config.flags |= LIBP2P_CFG_MIX;
-    config.flags |= LIBP2P_CFG_PRIVATE_KEY;
     config.mount_mix = 1;
 
     /* -------------------------
