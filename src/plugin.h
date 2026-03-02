@@ -44,7 +44,7 @@ public:
      *
      * bootstrapNodes are used to initially connect to the network.
      */
-    explicit Libp2pModulePlugin(const QList<PeerInfo> &bootstrapNodes = {});
+    explicit Libp2pModulePlugin(const QList<QString> addrs = {}, const QList<PeerInfo> &bootstrapNodes = {}, int transport = LIBP2P_TRANSPORT_TCP);
     ~Libp2pModulePlugin() override;
 
     /// Plugin name exposed to Logos.
@@ -260,18 +260,21 @@ private slots:
 private:
     /// Bootstrap peers used during node startup.
     QList<PeerInfo> m_bootstrapNodes;
-
     /// C-compatible bootstrap node structures.
     QVector<libp2p_bootstrap_node_t> m_bootstrapCNodes;
-
     /// Keeps UTF-8 address buffers alive.
     QVector<QVector<QByteArray>> m_addrUtf8Storage;
-
     /// Keeps char** arrays alive.
     QVector<QVector<char*>> m_addrPtrStorage;
-
     /// Storage for peer IDs.
     QVector<QByteArray> m_peerIdStorage;
+
+    /// List of addrs
+    QList<QString> m_addrs;
+    /// Keeps UTF-8 address buffers alive.
+    QVector<QByteArray> m_addrsUtf8;
+    /// Keeps char* arrays alive.
+    QVector<char*> m_addrsPtr;
 
     /// libp2p context.
     libp2p_ctx_t *ctx = nullptr;

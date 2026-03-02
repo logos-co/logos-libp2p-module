@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     auto res = nodeA.syncPeerInfo();
     PeerInfo nodeAPeerInfo = res.data.value<PeerInfo>();
 
-    Libp2pModulePlugin nodeB({ nodeAPeerInfo });
+    Libp2pModulePlugin nodeB({}, { nodeAPeerInfo });
 
     if (!nodeB.syncLibp2pStart().ok) {
         qFatal("Node B failed to start");
