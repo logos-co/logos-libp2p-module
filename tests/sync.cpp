@@ -180,6 +180,36 @@ private slots:
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
 
+    /* ---------------------------
+     * Gossipsub
+     * --------------------------- */
+
+    void testSyncGossipsubSubscribePublish()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        QString topic = "sync-topic";
+        QByteArray msg = "sync-gossipsub-msg";
+
+        QVERIFY(plugin.syncGossipsubSubscribe(topic).ok);
+        QVERIFY(plugin.syncGossipsubPublish(topic, msg).ok);
+
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
+
+    void testSyncGossipsubUnsubscribe()
+    {
+        Libp2pModulePlugin plugin;
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        QString topic = "sync-topic";
+
+        QVERIFY(plugin.syncGossipsubSubscribe(topic).ok);
+        QVERIFY(plugin.syncGossipsubUnsubscribe(topic).ok);
+
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
 
     /* ---------------------------
      * Kademlia
@@ -273,7 +303,9 @@ private slots:
         QVERIFY(plugin.syncLibp2pStart().ok);
 
         // no registered records yet
-        QVERIFY(!plugin.syncKadGetRandomRecords().ok);
+        auto res = plugin.syncKadGetRandomRecords();
+        QVERIFY(res.ok);
+        QVERIFY(res.data.isValid());
 
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
