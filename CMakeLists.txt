@@ -4,6 +4,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(Libp2pModulePlugin LANGUAGES CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Include the Logos Module CMake helper
 if(DEFINED ENV{LOGOS_MODULE_BUILDER_ROOT})
     include($ENV{LOGOS_MODULE_BUILDER_ROOT}/cmake/LogosModule.cmake)
