@@ -1,5 +1,6 @@
 #include <QtTest>
 #include <plugin.h>
+#include <algorithm>
 
 class TestLibp2pModuleSync : public QObject
 {
@@ -81,6 +82,21 @@ private slots:
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
 
+    void testCustomListenAddress()
+    {
+        Libp2pModulePlugin plugin({"/ip6/::1/tcp/0"});
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        auto res = plugin.syncPeerInfo();
+        QVERIFY(res.ok);
+
+        PeerInfo peerInfo = res.data.value<PeerInfo>();
+
+        bool hasIp6 = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
+            [](const QString &addr) { return addr.contains("/ip6/::1"); });
+        QVERIFY(hasIp6);
+    }
+ 
     /* ---------------------------
      * Stream
      * --------------------------- */
