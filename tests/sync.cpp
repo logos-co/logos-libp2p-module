@@ -9,8 +9,42 @@ class TestLibp2pModuleSync : public QObject
 private slots:
 
     /* ---------------------------
-     * Connectivity
+     * Configuration
      * --------------------------- */
+
+    void testCustomListenAddress()
+    {
+        Libp2pModulePlugin plugin({"/ip6/::1/tcp/0"});
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        auto res = plugin.syncPeerInfo();
+        QVERIFY(res.ok);
+
+        PeerInfo peerInfo = res.data.value<PeerInfo>();
+
+        bool hasIp6 = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
+            [](const QString &addr) { return addr.contains("/ip6/::1"); });
+        QVERIFY(hasIp6);
+    }
+
+    void testQuicTransport()
+    {
+        Libp2pModulePlugin plugin({}, {}, LIBP2P_TRANSPORT_QUIC);
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        auto res = plugin.syncPeerInfo();
+        QVERIFY(res.ok);
+
+        PeerInfo peerInfo = res.data.value<PeerInfo>();
+
+        bool hasQuic = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
+            [](const QString &addr) { return addr.contains("/quic-v1"); });
+        QVERIFY(hasQuic);
+    }
+
+    // /* ---------------------------
+    //  * Connectivity
+    //  * --------------------------- */
 
     void testSyncConnectDisconnectPeer()
     {
@@ -80,21 +114,6 @@ private slots:
         QVERIFY(plugin.syncLibp2pStart().ok);
         QVERIFY(plugin.syncLibp2pPublicKey().ok);
         QVERIFY(plugin.syncLibp2pStop().ok);
-    }
-
-    void testCustomListenAddress()
-    {
-        Libp2pModulePlugin plugin({"/ip6/::1/tcp/0"});
-        QVERIFY(plugin.syncLibp2pStart().ok);
-
-        auto res = plugin.syncPeerInfo();
-        QVERIFY(res.ok);
-
-        PeerInfo peerInfo = res.data.value<PeerInfo>();
-
-        bool hasIp6 = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
-            [](const QString &addr) { return addr.contains("/ip6/::1"); });
-        QVERIFY(hasIp6);
     }
  
     /* ---------------------------
@@ -420,7 +439,6 @@ private slots:
 
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
-
 };
 
 QTEST_MAIN(TestLibp2pModuleSync)
