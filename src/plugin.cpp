@@ -8,7 +8,7 @@
 #include <QEventLoop>
 #include <QThread>
 
-Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<PeerInfo> &bootstrapNodes, int transport, bool autonat, bool autonatV2, bool autonatV2Server, bool circuitRelay)
+Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<PeerInfo> &bootstrapNodes, int transport, bool autonat, bool autonatV2, bool autonatV2Server, bool circuitRelay, bool circuitRelayClient)
     : ctx(nullptr),
       m_bootstrapNodes(bootstrapNodes),
       m_addrs(addrs)
@@ -52,6 +52,11 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<P
     config.circuit_relay = 0;
     if (circuitRelay) {
         config.circuit_relay = 1;
+    }
+
+    config.circuit_relay_client = 0;
+    if (circuitRelayClient) {
+        config.circuit_relay_client = 1;
     }
 
     config.transport = transport;
@@ -484,6 +489,71 @@ QString Libp2pModulePlugin::dial(const QString &peerId, const QString &proto)
     int ret = libp2p_dial(
         ctx,
         peerIdUtf8.constData(),
+        protoUtf8.constData(),
+        &Libp2pModulePlugin::connectionCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK) {
+        delete callbackCtx;
+        return {};
+    }
+
+    return uuid;
+}
+
+/* --------------- Circuit Relay --------------- */
+
+QString Libp2pModulePlugin::circuitRelayReserve(const QString &relayPeerId, const QList<QString> &relayAddrs)
+{
+    if (!ctx) return {};
+
+    QByteArray peerIdUtf8 = relayPeerId.toUtf8();
+
+    QList<QByteArray> addrBuffers;
+    QVector<const char*> addrPtrs;
+    addrBuffers.reserve(relayAddrs.size());
+    addrPtrs.reserve(relayAddrs.size());
+    for (const auto &addr : relayAddrs) {
+        addrBuffers.append(addr.toUtf8());
+        addrPtrs.append(addrBuffers.last().constData());
+    }
+
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{"circuitRelayReserve", uuid, this};
+
+    int ret = libp2p_circuit_relay_reserve(
+        ctx,
+        peerIdUtf8.constData(),
+        addrPtrs.data(),
+        addrPtrs.size(),
+        &Libp2pModulePlugin::reservationCallback,
+        callbackCtx
+    );
+
+    if (ret != RET_OK) {
+        delete callbackCtx;
+        return {};
+    }
+
+    return uuid;
+}
+
+QString Libp2pModulePlugin::dialCircuitRelay(const QString &dstPeerId, const QString &multiaddr, const QString &proto)
+{
+    if (!ctx) return {};
+
+    QByteArray peerIdUtf8 = dstPeerId.toUtf8();
+    QByteArray addrUtf8 = multiaddr.toUtf8();
+    QByteArray protoUtf8 = proto.toUtf8();
+
+    QString uuid = QUuid::createUuid().toString();
+    auto *callbackCtx = new CallbackContext{"dialCircuitRelay", uuid, this};
+
+    int ret = libp2p_dial_circuit_relay(
+        ctx,
+        peerIdUtf8.constData(),
+        addrUtf8.constData(),
         protoUtf8.constData(),
         &Libp2pModulePlugin::connectionCallback,
         callbackCtx

@@ -89,6 +89,20 @@ Libp2pResult Libp2pModulePlugin::syncLibp2pPublicKey()
 }
 
 /* ---------------------------
+ * Circuit Relay
+ * --------------------------- */
+
+Libp2pResult Libp2pModulePlugin::syncCircuitRelayReserve(const QString &relayPeerId, const QList<QString> &relayAddrs)
+{
+    return runSync(this, __func__, [&]() { return circuitRelayReserve(relayPeerId, relayAddrs); });
+}
+
+Libp2pResult Libp2pModulePlugin::syncDialCircuitRelay(const QString &dstPeerId, const QString &multiaddr, const QString &proto)
+{
+    return runSync(this, __func__, [&]() { return dialCircuitRelay(dstPeerId, multiaddr, proto); });
+}
+
+/* ---------------------------
  * Connectivity
  * --------------------------- */
 

@@ -44,7 +44,16 @@ public:
      *
      * bootstrapNodes are used to initially connect to the network.
      */
-    explicit Libp2pModulePlugin(const QList<QString> addrs = {}, const QList<PeerInfo> &bootstrapNodes = {}, int transport = LIBP2P_TRANSPORT_TCP, bool autonat = false, bool autonatV2 = false, bool autonatV2Server = false, bool circuitRelay = false);
+    explicit Libp2pModulePlugin(
+        const QList<QString> addrs = {},
+        const QList<PeerInfo> &bootstrapNodes = {},
+        int transport = LIBP2P_TRANSPORT_TCP,
+        bool autonat = false,
+        bool autonatV2 = false,
+        bool autonatV2Server = false,
+        bool circuitRelay = false,
+        bool circuitRelayClient = false
+    );
     ~Libp2pModulePlugin() override;
 
     /// Plugin name exposed to Logos.
@@ -101,6 +110,16 @@ public:
     Q_INVOKABLE Libp2pResult syncStreamClose(uint64_t streamId) override;
     Q_INVOKABLE Libp2pResult syncStreamCloseWithEOF(uint64_t streamId) override;
     Q_INVOKABLE Libp2pResult syncStreamRelease(uint64_t streamId) override;
+
+    /* ----------- Circuit Relay ----------- */
+
+    Q_INVOKABLE QString circuitRelayReserve(const QString &relayPeerId, const QList<QString> &relayAddrs);
+    Q_INVOKABLE QString dialCircuitRelay(const QString &dstPeerId, const QString &multiaddr, const QString &proto);
+
+    /* ----------- Sync Circuit Relay ----------- */
+
+    Q_INVOKABLE Libp2pResult syncCircuitRelayReserve(const QString &relayPeerId, const QList<QString> &relayAddrs);
+    Q_INVOKABLE Libp2pResult syncDialCircuitRelay(const QString &dstPeerId, const QString &multiaddr, const QString &proto);
 
     /* ----------- Sync Connectivity ----------- */
 
@@ -378,6 +397,16 @@ private:
     static void connectionCallback(
         int callerRet,
         libp2p_stream_t *stream,
+        const char *msg,
+        size_t len,
+        void *userData
+    );
+
+    static void reservationCallback(
+        int callerRet,
+        const char **addrs,
+        size_t addrsLen,
+        uint64_t expireTime,
         const char *msg,
         size_t len,
         void *userData
