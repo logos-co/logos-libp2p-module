@@ -15,6 +15,7 @@
       "original": {
         "owner": "vacp2p",
         "repo": "nim-libp2p",
+        "rev": "8338d37a93cb5fd3f07ad935e22d24658f85b7dd",
         "type": "github"
       }
     },

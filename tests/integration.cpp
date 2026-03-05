@@ -9,7 +9,7 @@ class TestIntegration : public QObject
 
 private slots:
 
-    void bootstrapNodes()
+    void bootstrapNodeAutoConnect()
     {
         // setup node A
         Libp2pModulePlugin nodeA;

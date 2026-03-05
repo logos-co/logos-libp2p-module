@@ -143,6 +143,16 @@ public:
     Q_INVOKABLE Libp2pResult syncStreamCloseWithEOF(uint64_t streamId) override;
     Q_INVOKABLE Libp2pResult syncStreamRelease(uint64_t streamId) override;
 
+    /* ----------- Circuit Relay ----------- */
+
+    Q_INVOKABLE QString circuitRelayReserve(const QString &relayPeerId, const QList<QString> &relayAddrs);
+    Q_INVOKABLE QString dialCircuitRelay(const QString &dstPeerId, const QString &multiaddr, const QString &proto);
+
+    /* ----------- Sync Circuit Relay ----------- */
+
+    Q_INVOKABLE Libp2pResult syncCircuitRelayReserve(const QString &relayPeerId, const QList<QString> &relayAddrs);
+    Q_INVOKABLE Libp2pResult syncDialCircuitRelay(const QString &dstPeerId, const QString &multiaddr, const QString &proto);
+
     /* ----------- Sync Connectivity ----------- */
 
     Q_INVOKABLE Libp2pResult syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
@@ -419,6 +429,16 @@ private:
     static void connectionCallback(
         int callerRet,
         libp2p_stream_t *stream,
+        const char *msg,
+        size_t len,
+        void *userData
+    );
+
+    static void reservationCallback(
+        int callerRet,
+        const char **addrs,
+        size_t addrsLen,
+        uint64_t expireTime,
         const char *msg,
         size_t len,
         void *userData
