@@ -60,6 +60,14 @@
               mkdir -p lib
               cp -r ${cbind}/lib/* lib/ 2>/dev/null || true
 
+              ${lib.optionalString (lib.hasSuffix "darwin" system) ''
+              for f in lib/*.dylib; do
+                [ -f "$f" ] || continue
+                chmod +w "$f"
+                install_name_tool -id "@rpath/$(basename "$f")" "$f"
+              done
+              ''}
+
               mkdir -p include
               cp -r ${cbind}/include/* include/ 2>/dev/null || true
             '';
