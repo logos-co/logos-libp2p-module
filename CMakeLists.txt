@@ -56,6 +56,11 @@ if(APPLE)
         BUILD_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/lib"
         INSTALL_RPATH "@loader_path;@loader_path/../lib"
     )
+elseif(UNIX)
+    set_target_properties(libp2p_module_module_plugin PROPERTIES
+        BUILD_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/lib"
+        INSTALL_RPATH "$ORIGIN"
+    )
 endif()
 
 enable_testing()

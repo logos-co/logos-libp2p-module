@@ -35,8 +35,14 @@
 
           postInstall = ''
             mkdir -p $out/lib
-            cp lib/*.dylib $out/lib/ 2>/dev/null || true
-            cp lib/*.so $out/lib/ 2>/dev/null || true
+            cp ${libp2pCbind system}/lib/*.dylib $out/lib/ 2>/dev/null || true
+            cp ${libp2pCbind system}/lib/*.so $out/lib/ 2>/dev/null || true
+          '' + lib.optionalString (lib.hasSuffix "darwin" system) ''
+            for f in $out/lib/*.dylib; do
+              [ -f "$f" ] || continue
+              chmod +w "$f"
+              install_name_tool -id "@rpath/$(basename "$f")" "$f"
+            done
           '';
         };
 
