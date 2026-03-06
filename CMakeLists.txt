@@ -66,92 +66,44 @@ find_package(Qt6 REQUIRED COMPONENTS Core Test)
 
 logos_find_dependencies()
 
-add_executable(async
-    tests/async.cpp
-)
+# Registers a single test source file as a CTest target.
+# Each file in tests/ becomes its own executable named after the file stem.
+function(libp2p_register_test source)
+    get_filename_component(test_name ${source} NAME_WE)
 
-target_include_directories(async PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+    add_executable(${test_name} ${source})
 
-# ---- Logos SDK includes ----
-if(LOGOS_CPP_SDK_IS_SOURCE)
-    target_include_directories(async PRIVATE
-        ${LOGOS_CPP_SDK_ROOT}/cpp
-        ${LOGOS_CPP_SDK_ROOT}/cpp/generated
+    target_include_directories(${test_name} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
-else()
-    target_include_directories(async PRIVATE
-        ${LOGOS_CPP_SDK_ROOT}/include
-        ${LOGOS_CPP_SDK_ROOT}/include/cpp
-        ${LOGOS_CPP_SDK_ROOT}/include/core
+
+    if(LOGOS_CPP_SDK_IS_SOURCE)
+        target_include_directories(${test_name} PRIVATE
+            ${LOGOS_CPP_SDK_ROOT}/cpp
+            ${LOGOS_CPP_SDK_ROOT}/cpp/generated
+        )
+    else()
+        target_include_directories(${test_name} PRIVATE
+            ${LOGOS_CPP_SDK_ROOT}/include
+            ${LOGOS_CPP_SDK_ROOT}/include/cpp
+            ${LOGOS_CPP_SDK_ROOT}/include/core
+        )
+    endif()
+
+    target_link_libraries(${test_name} PRIVATE
+        libp2p_module_module_plugin
+        Qt6::Core
+        Qt6::Test
     )
-endif()
 
-target_link_libraries(async PRIVATE
-    libp2p_module_module_plugin
-    Qt6::Core
-    Qt6::Test
-)
+    add_test(NAME ${test_name} COMMAND ${test_name})
+endfunction()
 
-add_test(NAME async COMMAND async)
-
-# sync test
-add_executable(sync
-    tests/sync.cpp
-)
-
-target_include_directories(sync PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-if(LOGOS_CPP_SDK_IS_SOURCE)
-    target_include_directories(sync PRIVATE
-        ${LOGOS_CPP_SDK_ROOT}/cpp
-        ${LOGOS_CPP_SDK_ROOT}/cpp/generated
-    )
-else()
-    target_include_directories(sync PRIVATE
-        ${LOGOS_CPP_SDK_ROOT}/include
-        ${LOGOS_CPP_SDK_ROOT}/include/cpp
-        ${LOGOS_CPP_SDK_ROOT}/include/core
-    )
-endif()
-
-target_link_libraries(sync PRIVATE
-    libp2p_module_module_plugin
-    Qt6::Core
-    Qt6::Test
-)
-
-add_test(NAME sync COMMAND sync)
-
-
-
-add_executable(integration
-    tests/integration.cpp
-)
-
-target_include_directories(integration PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_include_directories(integration PRIVATE
-    ${LOGOS_CPP_SDK_ROOT}/include
-    ${LOGOS_CPP_SDK_ROOT}/include/cpp
-    ${LOGOS_CPP_SDK_ROOT}/include/core
-)
-
-target_link_libraries(integration PRIVATE
-    libp2p_module_module_plugin
-    Qt6::Core
-    Qt6::Test
-)
-
-add_test(NAME integration COMMAND integration)
+file(GLOB TEST_SOURCES tests/*.cpp)
+foreach(source ${TEST_SOURCES})
+    libp2p_register_test(${source})
+endforeach()
 
 
 # for examples

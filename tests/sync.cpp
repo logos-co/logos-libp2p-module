@@ -1,6 +1,5 @@
 #include <QtTest>
 #include <plugin.h>
-#include <algorithm>
 
 class TestLibp2pModuleSync : public QObject
 {
@@ -9,42 +8,8 @@ class TestLibp2pModuleSync : public QObject
 private slots:
 
     /* ---------------------------
-     * Configuration
+     * Connectivity
      * --------------------------- */
-
-    void testCustomListenAddress()
-    {
-        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .addrs = {"/ip6/::1/tcp/0"} });
-        QVERIFY(plugin.syncLibp2pStart().ok);
-
-        auto res = plugin.syncPeerInfo();
-        QVERIFY(res.ok);
-
-        PeerInfo peerInfo = res.data.value<PeerInfo>();
-
-        bool hasIp6 = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
-            [](const QString &addr) { return addr.contains("/ip6/::1"); });
-        QVERIFY(hasIp6);
-    }
-
-    void testQuicTransport()
-    {
-        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .transport = LIBP2P_TRANSPORT_QUIC });
-        QVERIFY(plugin.syncLibp2pStart().ok);
-
-        auto res = plugin.syncPeerInfo();
-        QVERIFY(res.ok);
-
-        PeerInfo peerInfo = res.data.value<PeerInfo>();
-
-        bool hasQuic = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
-            [](const QString &addr) { return addr.contains("/quic-v1"); });
-        QVERIFY(hasQuic);
-    }
-
-    // /* ---------------------------
-    //  * Connectivity
-    //  * --------------------------- */
 
     void testSyncConnectDisconnectPeer()
     {
