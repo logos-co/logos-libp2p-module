@@ -9,6 +9,25 @@ class TestIntegration : public QObject
 
 private slots:
 
+    void bootstrapNodes()
+    {
+        // setup node A
+        Libp2pModulePlugin nodeA;
+        QVERIFY(nodeA.syncLibp2pStart().ok);
+        PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
+
+        // setup node B with node A as bootstrap
+        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
+        QVERIFY(nodeB.syncLibp2pStart().ok);
+
+        auto connectedPeers = nodeB.syncConnectedPeers(Direction_Out).data.value<QList<QString>>();
+        QVERIFY(!connectedPeers.isEmpty());
+        QCOMPARE(connectedPeers[0], nodeAPeerInfo.peerId);
+
+        QVERIFY(nodeA.syncLibp2pStop().ok);
+        QVERIFY(nodeB.syncLibp2pStop().ok);
+    }
+
     void connectAndDisconnect()
     {
         Libp2pModulePlugin nodeA;
@@ -42,7 +61,7 @@ private slots:
         PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
 
         // setup node B
-        Libp2pModulePlugin nodeB({}, { nodeAPeerInfo });
+        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
         QVERIFY(nodeB.syncLibp2pStart().ok);
 
         QByteArray key = "integration-key";
