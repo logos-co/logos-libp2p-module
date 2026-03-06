@@ -48,6 +48,21 @@ struct Libp2pModuleOptions {
 
     /// Enable circuit relay.
     bool circuitRelay = false;
+
+    /// Maximum total connections (in + out).
+    int maxConnections = 50;
+
+    /// Maximum incoming connections.
+    int maxInConnections = 25;
+
+    /// Maximum outgoing connections.
+    int maxOutConnections = 25;
+
+    /// Maximum connections per peer.
+    int maxConnsPerPeer = 1;
+
+    /// If true, messages published by this node are also delivered to its own subscribers.
+    bool gossipsubTriggerSelf = true;
 };
 
 /**
@@ -68,7 +83,7 @@ public:
     /**
      * Creates the plugin instance.
      *
-     * bootstrapNodes in the config are used to initially connect to the network.
+     * bootstrapNodes in the options are used to initially connect to the network.
      */
     explicit Libp2pModulePlugin(const Libp2pModuleOptions &options = {});
     ~Libp2pModulePlugin() override;

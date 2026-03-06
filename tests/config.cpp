@@ -22,6 +22,11 @@ private slots:
         QCOMPARE(opts.autonatV2, false);
         QCOMPARE(opts.autonatV2Server, false);
         QCOMPARE(opts.circuitRelay, false);
+        QCOMPARE(opts.maxConnections, 50);
+        QCOMPARE(opts.maxInConnections, 25);
+        QCOMPARE(opts.maxOutConnections, 25);
+        QCOMPARE(opts.maxConnsPerPeer, 1);
+        QCOMPARE(opts.gossipsubTriggerSelf, true);
     }
 
     void testOptionsDesignatedInit()
@@ -54,6 +59,41 @@ private slots:
         bool hasIp6 = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
             [](const QString &addr) { return addr.contains("/ip6/::1"); });
         QVERIFY(hasIp6);
+
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
+
+    void testGossipsubTriggerSelfEnabled()
+    {
+        Libp2pModulePlugin plugin; // default: gossipsubTriggerSelf = true
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        QString topic = "self-test";
+        QVERIFY(plugin.syncGossipsubSubscribe(topic).ok);
+
+        QByteArray payload("hello");
+        QVERIFY(plugin.syncGossipsubPublish(topic, payload).ok);
+
+        auto res = plugin.syncGossipsubNextMessage(topic, 1000);
+        QVERIFY(res.ok);
+        QCOMPARE(res.data.value<QByteArray>(), payload);
+    
+        QVERIFY(plugin.syncLibp2pStop().ok);
+    }
+
+    void testGossipsubTriggerSelfDisabled()
+    {
+        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .gossipsubTriggerSelf = false });
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        QString topic = "self-test";
+        QVERIFY(plugin.syncGossipsubSubscribe(topic).ok);
+        QVERIFY(plugin.syncGossipsubPublish(topic, QByteArray("hello")).ok);
+
+        auto res = plugin.syncGossipsubNextMessage(topic, 500);
+        QVERIFY(!res.ok); // own message should not be delivered
+    
+        QVERIFY(plugin.syncLibp2pStop().ok);
     }
 
     void testTcpTransport()
@@ -69,6 +109,8 @@ private slots:
         bool hasTcp = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
             [](const QString &addr) { return addr.contains("/tcp/"); });
         QVERIFY(hasTcp);
+        
+        QVERIFY(plugin.syncLibp2pStop().ok);
     }
 
     void testQuicTransport()
@@ -84,6 +126,8 @@ private slots:
         bool hasQuic = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
             [](const QString &addr) { return addr.contains("/quic-v1"); });
         QVERIFY(hasQuic);
+    
+        QVERIFY(plugin.syncLibp2pStop().ok);
     }
 };
 

@@ -27,12 +27,12 @@ Libp2pModulePlugin::Libp2pModulePlugin(const Libp2pModuleOptions &options)
     std::memset(&m_libp2pConfig, 0, sizeof(m_libp2pConfig));
 
     m_libp2pConfig.mount_gossipsub = 1;
-    m_libp2pConfig.gossipsub_trigger_self = 1;
+    m_libp2pConfig.gossipsub_trigger_self = options.gossipsubTriggerSelf ? 1 : 0;
 
-    m_libp2pConfig.max_connections = 50;
-    m_libp2pConfig.max_in = 25;
-    m_libp2pConfig.max_out = 25;
-    m_libp2pConfig.max_conns_per_peer = 1;
+    m_libp2pConfig.max_connections    = options.maxConnections;
+    m_libp2pConfig.max_in             = options.maxInConnections;
+    m_libp2pConfig.max_out            = options.maxOutConnections;
+    m_libp2pConfig.max_conns_per_peer = options.maxConnsPerPeer;
 
     m_libp2pConfig.autonat = options.autonat ? 1 : 0;
     m_libp2pConfig.autonat_v2 = options.autonatV2 ? 1 : 0;

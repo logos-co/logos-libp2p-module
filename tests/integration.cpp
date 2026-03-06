@@ -21,6 +21,7 @@ private slots:
         QVERIFY(nodeB.syncLibp2pStart().ok);
 
         auto connectedPeers = nodeB.syncConnectedPeers(Direction_Out).data.value<QList<QString>>();
+        QVERIFY(!connectedPeers.isEmpty());
         QCOMPARE(connectedPeers[0], nodeAPeerInfo.peerId);
 
         QVERIFY(nodeA.syncLibp2pStop().ok);
