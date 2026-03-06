@@ -8,10 +8,10 @@
 #include <QEventLoop>
 #include <QThread>
 
-Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<PeerInfo> &bootstrapNodes, int transport, bool autonat, bool autonatV2, bool autonatV2Server, bool circuitRelay)
+Libp2pModulePlugin::Libp2pModulePlugin(const Libp2pModuleOptions &options)
     : ctx(nullptr),
-      m_bootstrapNodes(bootstrapNodes),
-      m_addrs(addrs)
+      m_bootstrapNodes(options.bootstrapNodes),
+      m_addrs(options.addrs)
 {
     qRegisterMetaType<PeerInfo>("PeerInfo");
     qRegisterMetaType<QList<PeerInfo>>("QList<PeerInfo>");
@@ -24,37 +24,22 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<P
 
     qRegisterMetaType<Libp2pResult>("Libp2pResult");
 
-    std::memset(&config, 0, sizeof(config));
+    std::memset(&m_libp2pConfig, 0, sizeof(m_libp2pConfig));
 
-    config.mount_gossipsub = 1;
-    config.gossipsub_trigger_self = 1;
+    m_libp2pConfig.mount_gossipsub = 1;
+    m_libp2pConfig.gossipsub_trigger_self = options.gossipsubTriggerSelf ? 1 : 0;
 
-    config.max_connections = 50;
-    config.max_in = 25;
-    config.max_out = 25;
-    config.max_conns_per_peer = 1;
+    m_libp2pConfig.max_connections    = options.maxConnections;
+    m_libp2pConfig.max_in             = options.maxInConnections;
+    m_libp2pConfig.max_out            = options.maxOutConnections;
+    m_libp2pConfig.max_conns_per_peer = options.maxConnsPerPeer;
 
-    config.autonat = 0;
-    if (autonat) {
-        config.autonat = 1;
-    }
+    m_libp2pConfig.autonat = options.autonat ? 1 : 0;
+    m_libp2pConfig.autonat_v2 = options.autonatV2 ? 1 : 0;
+    m_libp2pConfig.autonat_v2_server = options.autonatV2Server ? 1 : 0;
+    m_libp2pConfig.circuit_relay = options.circuitRelay ? 1 : 0;
 
-    config.autonat_v2 = 0;
-    if (autonatV2) {
-        config.autonat_v2 = 1;
-    }
-
-    config.autonat_v2_server = 0;
-    if (autonatV2Server) {
-        config.autonat_v2_server = 1;
-    }
-
-    config.circuit_relay = 0;
-    if (circuitRelay) {
-        config.circuit_relay = 1;
-    }
-
-    config.transport = transport;
+    m_libp2pConfig.transport = options.transport;
 
     /* -------------------------
      * Save local listen addrs
@@ -69,8 +54,8 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<P
             m_addrsPtr.push_back(m_addrsUtf8.back().data());
         }
 
-        config.addrs = const_cast<const char **>(m_addrsPtr.data());
-        config.addrsLen = m_addrsPtr.size();
+        m_libp2pConfig.addrs = const_cast<const char **>(m_addrsPtr.data());
+        m_libp2pConfig.addrsLen = m_addrsPtr.size();
     }
 
     /* -------------------------
@@ -109,15 +94,15 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<P
             m_bootstrapCNodes.push_back(node);
         }
 
-        config.kad_bootstrap_nodes = m_bootstrapCNodes.data();
-        config.kad_bootstrap_nodes_len = m_bootstrapCNodes.size();
+        m_libp2pConfig.kad_bootstrap_nodes = m_bootstrapCNodes.data();
+        m_libp2pConfig.kad_bootstrap_nodes_len = m_bootstrapCNodes.size();
     }
 
-    config.mount_kad = 1;
+    m_libp2pConfig.mount_kad = 1;
 
-    config.mount_kad_discovery = 1;
+    m_libp2pConfig.mount_kad_discovery = 1;
 
-    config.mount_mix = 1;
+    m_libp2pConfig.mount_mix = 1;
 
     /* -------------------------
      * Generate secp256k1 key
@@ -132,8 +117,8 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<P
     uint8_t *buf = (uint8_t*)malloc(key.size());
     memcpy(buf, key.constData(), key.size());
 
-    config.priv_key.data = buf;
-    config.priv_key.dataLen = key.size();
+    m_libp2pConfig.priv_key.data = buf;
+    m_libp2pConfig.priv_key.dataLen = key.size();
 
     /* -------------------------
      * Call libp2p_new
@@ -147,7 +132,7 @@ Libp2pModulePlugin::Libp2pModulePlugin(const QList<QString> addrs, const QList<P
 
     m_newDone = false;
 
-    ctx = libp2p_new(&config,
+    ctx = libp2p_new(&m_libp2pConfig,
                      &Libp2pModulePlugin::libp2pCallback,
                      newCallbackCtx);
 
