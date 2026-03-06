@@ -14,7 +14,7 @@ private slots:
 
     void testCustomListenAddress()
     {
-        Libp2pModulePlugin plugin({"/ip6/::1/tcp/0"});
+        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .addrs = {"/ip6/::1/tcp/0"} });
         QVERIFY(plugin.syncLibp2pStart().ok);
 
         auto res = plugin.syncPeerInfo();
@@ -29,7 +29,7 @@ private slots:
 
     void testQuicTransport()
     {
-        Libp2pModulePlugin plugin({}, {}, LIBP2P_TRANSPORT_QUIC);
+        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .transport = LIBP2P_TRANSPORT_QUIC });
         QVERIFY(plugin.syncLibp2pStart().ok);
 
         auto res = plugin.syncPeerInfo();

@@ -25,6 +25,32 @@ struct WaitResult {
 };
 
 /**
+ * User-facing options for Libp2pModulePlugin.
+ */
+struct Libp2pModuleOptions {
+    /// Local listen addresses (e.g. "/ip4/0.0.0.0/tcp/0").
+    QList<QString> addrs = {};
+
+    /// Peers to connect to on startup.
+    QList<PeerInfo> bootstrapNodes = {};
+
+    /// Transport type (LIBP2P_TRANSPORT_TCP, LIBP2P_TRANSPORT_QUIC, ...).
+    int transport = LIBP2P_TRANSPORT_TCP;
+
+    /// Enable AutoNAT v1.
+    bool autonat = false;
+
+    /// Enable AutoNAT v2 client.
+    bool autonatV2 = false;
+
+    /// Enable AutoNAT v2 server.
+    bool autonatV2Server = false;
+
+    /// Enable circuit relay.
+    bool circuitRelay = false;
+};
+
+/**
  * Implementation of the libp2p Logos module plugin.
  *
  * This class bridges:
@@ -42,9 +68,9 @@ public:
     /**
      * Creates the plugin instance.
      *
-     * bootstrapNodes are used to initially connect to the network.
+     * bootstrapNodes in the config are used to initially connect to the network.
      */
-    explicit Libp2pModulePlugin(const QList<QString> addrs = {}, const QList<PeerInfo> &bootstrapNodes = {}, int transport = LIBP2P_TRANSPORT_TCP, bool autonat = false, bool autonatV2 = false, bool autonatV2Server = false, bool circuitRelay = false);
+    explicit Libp2pModulePlugin(const Libp2pModuleOptions &options = {});
     ~Libp2pModulePlugin() override;
 
     /// Plugin name exposed to Logos.
@@ -280,7 +306,7 @@ private:
     libp2p_ctx_t *ctx = nullptr;
 
     /// libp2p configuration.
-    libp2p_config_t config = {};
+    libp2p_config_t m_libp2pConfig = {};
 
     /// Helper for destructor to wait for libp2p_destroy and libp2p_new to be done
     std::atomic<bool> m_destroyDone{false};

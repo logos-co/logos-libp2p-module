@@ -17,7 +17,7 @@ private slots:
         PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
 
         // setup node B with node A as bootstrap
-        Libp2pModulePlugin nodeB({}, { nodeAPeerInfo });
+        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
         QVERIFY(nodeB.syncLibp2pStart().ok);
 
         auto connectedPeers = nodeB.syncConnectedPeers(Direction_Out).data.value<QList<QString>>();
@@ -60,7 +60,7 @@ private slots:
         PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
 
         // setup node B
-        Libp2pModulePlugin nodeB({}, { nodeAPeerInfo });
+        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
         QVERIFY(nodeB.syncLibp2pStart().ok);
 
         QByteArray key = "integration-key";
