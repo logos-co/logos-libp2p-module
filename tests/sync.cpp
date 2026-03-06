@@ -80,7 +80,7 @@ private slots:
         QVERIFY(plugin.syncLibp2pPublicKey().ok);
         QVERIFY(plugin.syncLibp2pStop().ok);
     }
- 
+
     /* ---------------------------
      * Stream
      * --------------------------- */
