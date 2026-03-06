@@ -56,6 +56,21 @@ private slots:
         QVERIFY(hasIp6);
     }
 
+    void testTcpTransport()
+    {
+        Libp2pModulePlugin plugin; // default options → TCP
+        QVERIFY(plugin.syncLibp2pStart().ok);
+
+        auto res = plugin.syncPeerInfo();
+        QVERIFY(res.ok);
+
+        PeerInfo peerInfo = res.data.value<PeerInfo>();
+
+        bool hasTcp = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
+            [](const QString &addr) { return addr.contains("/tcp/"); });
+        QVERIFY(hasTcp);
+    }
+
     void testQuicTransport()
     {
         Libp2pModulePlugin plugin(Libp2pModuleOptions{ .transport = LIBP2P_TRANSPORT_QUIC });
