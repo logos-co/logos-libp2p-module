@@ -46,8 +46,11 @@ struct Libp2pModuleOptions {
     /// Enable AutoNAT v2 server.
     bool autonatV2Server = false;
 
-    /// Enable circuit relay.
+    /// Enable circuit relay server.
     bool circuitRelay = false;
+    
+    /// Enable circuit relay client.
+    bool circuitRelayClient = false;
 
     /// Maximum total connections (in + out).
     int maxConnections = 50;
