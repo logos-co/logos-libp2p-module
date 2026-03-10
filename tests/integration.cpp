@@ -352,6 +352,60 @@ private slots:
         QVERIFY(node.syncLibp2pStop().ok);
     }
 
+    void multipleStreamsOnSameConnection()
+    {
+        const int PING_SIZE = 32;
+
+        Libp2pModulePlugin nodeA;
+        Libp2pModulePlugin nodeB;
+
+        QVERIFY(nodeA.syncLibp2pStart().ok);
+        QVERIFY(nodeB.syncLibp2pStart().ok);
+
+        PeerInfo infoBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
+        QVERIFY(nodeA.syncConnectPeer(infoBPeerInfo.peerId, infoBPeerInfo.addrs, 500).ok);
+
+        // open two streams on the same connection
+        Libp2pResult dial1 = nodeA.syncDial(infoBPeerInfo.peerId, "/ipfs/ping/1.0.0");
+        QVERIFY(dial1.ok);
+        uint64_t stream1 = dial1.data.value<uint64_t>();
+
+        Libp2pResult dial2 = nodeA.syncDial(infoBPeerInfo.peerId, "/ipfs/ping/1.0.0");
+        QVERIFY(dial2.ok);
+        uint64_t stream2 = dial2.data.value<uint64_t>();
+
+        QVERIFY(stream1 != stream2);
+
+        // write different payloads to each stream
+        QByteArray payload1(PING_SIZE, 0);
+        QByteArray payload2(PING_SIZE, 0);
+        for (int i = 0; i < PING_SIZE; ++i) {
+            payload1[i] = static_cast<char>(i);
+            payload2[i] = static_cast<char>(255 - i);
+        }
+
+        QVERIFY(nodeA.syncStreamWrite(stream1, payload1).ok);
+        QVERIFY(nodeA.syncStreamWrite(stream2, payload2).ok);
+
+        // read back from each stream and verify no cross-contamination
+        Libp2pResult read1 = nodeA.syncStreamReadExactly(stream1, PING_SIZE);
+        QVERIFY(read1.ok);
+        QCOMPARE(read1.data.value<QByteArray>(), payload1);
+
+        Libp2pResult read2 = nodeA.syncStreamReadExactly(stream2, PING_SIZE);
+        QVERIFY(read2.ok);
+        QCOMPARE(read2.data.value<QByteArray>(), payload2);
+
+        // cleanup both streams
+        QVERIFY(nodeA.syncStreamCloseWithEOF(stream1).ok);
+        QVERIFY(nodeA.syncStreamRelease(stream1).ok);
+        QVERIFY(nodeA.syncStreamCloseWithEOF(stream2).ok);
+        QVERIFY(nodeA.syncStreamRelease(stream2).ok);
+
+        QVERIFY(nodeA.syncLibp2pStop().ok);
+        QVERIFY(nodeB.syncLibp2pStop().ok);
+    }
+
     void directDialStreamExchange()
     {
         const int PING_SIZE = 32;
