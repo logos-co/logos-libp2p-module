@@ -306,6 +306,47 @@ private slots:
 
         QVERIFY(node.syncLibp2pStop().ok);
     }
+
+    void directDialStreamExchange()
+    {
+        const int PING_SIZE = 32;
+
+        Libp2pModulePlugin nodeA;
+        Libp2pModulePlugin nodeB;
+
+        QVERIFY(nodeA.syncLibp2pStart().ok);
+        QVERIFY(nodeB.syncLibp2pStart().ok);
+
+        PeerInfo infoBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
+
+        // connect A to B
+        QVERIFY(nodeA.syncConnectPeer(infoBPeerInfo.peerId, infoBPeerInfo.addrs, 500).ok);
+
+        // A dials B directly on /ipfs/ping/1.0.0
+        Libp2pResult dialResult = nodeA.syncDial(infoBPeerInfo.peerId, "/ipfs/ping/1.0.0");
+        QVERIFY(dialResult.ok);
+
+        uint64_t streamId = dialResult.data.value<uint64_t>();
+        QVERIFY(streamId != 0);
+
+        // send ping payload
+        QByteArray payload(PING_SIZE, 0);
+        for (int i = 0; i < PING_SIZE; ++i)
+            payload[i] = static_cast<char>(i);
+        QVERIFY(nodeA.syncStreamWrite(streamId, payload).ok);
+
+        // read ping echo
+        Libp2pResult readResult = nodeA.syncStreamReadExactly(streamId, PING_SIZE);
+        QVERIFY(readResult.ok);
+        QCOMPARE(readResult.data.value<QByteArray>(), payload);
+
+        // cleanup
+        QVERIFY(nodeA.syncStreamCloseWithEOF(streamId).ok);
+        QVERIFY(nodeA.syncStreamRelease(streamId).ok);
+
+        QVERIFY(nodeA.syncLibp2pStop().ok);
+        QVERIFY(nodeB.syncLibp2pStop().ok);
+    }
 };
 
 QTEST_MAIN(TestIntegration)
