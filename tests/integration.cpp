@@ -61,23 +61,23 @@ private slots:
         QVERIFY(nodeA.syncLibp2pStart().ok);
         QVERIFY(nodeB.syncLibp2pStart().ok);
 
-        PeerInfo infoBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
+        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
 
         // connect
-        QVERIFY(nodeA.syncConnectPeer(infoBPeerInfo.peerId, infoBPeerInfo.addrs, 500).ok);
+        QVERIFY(nodeA.syncConnectPeer(nodeBPeerInfo.peerId, nodeBPeerInfo.addrs, 500).ok);
         QCOMPARE(nodeA.syncConnectedPeers(Direction_Out).data.value<QList<QString>>().size(), 1);
 
         // disconnect
-        QVERIFY(nodeA.syncDisconnectPeer(infoBPeerInfo.peerId).ok);
+        QVERIFY(nodeA.syncDisconnectPeer(nodeBPeerInfo.peerId).ok);
         QCOMPARE(nodeA.syncConnectedPeers(Direction_Out).data.value<QList<QString>>().size(), 0);
 
         // reconnect
-        QVERIFY(nodeA.syncConnectPeer(infoBPeerInfo.peerId, infoBPeerInfo.addrs, 500).ok);
+        QVERIFY(nodeA.syncConnectPeer(nodeBPeerInfo.peerId, nodeBPeerInfo.addrs, 500).ok);
         QCOMPARE(nodeA.syncConnectedPeers(Direction_Out).data.value<QList<QString>>().size(), 1);
 
         // verify the connection works by dialing ping
         const int PING_SIZE = 32;
-        Libp2pResult dialResult = nodeA.syncDial(infoBPeerInfo.peerId, "/ipfs/ping/1.0.0");
+        Libp2pResult dialResult = nodeA.syncDial(nodeBPeerInfo.peerId, "/ipfs/ping/1.0.0");
         QVERIFY(dialResult.ok);
 
         uint64_t streamId = dialResult.data.value<uint64_t>();
@@ -150,7 +150,6 @@ private slots:
 
         Libp2pModulePlugin nodeD(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
         QVERIFY(nodeD.syncLibp2pStart().ok);
-        PeerInfo infoD = nodeD.syncPeerInfo().data.value<PeerInfo>();
 
         // D looks up B's peer ID — must discover it through the DHT
         Libp2pResult result = nodeD.syncKadFindNode(infoB.peerId);
@@ -416,7 +415,10 @@ private slots:
 
         QVERIFY(nodeA.syncGossipsubPublish(topic, payload).ok);
 
-        QByteArray received = nodeB.syncGossipsubNextMessage(topic).data.value<QByteArray>();
+        Libp2pResult res = nodeB.syncGossipsubNextMessage(topic);
+        QVERIFY(res.ok);
+        QByteArray received = res.data.value<QByteArray>();
+
         QCOMPARE(received.size(), 5);
         QCOMPARE(received, payload);
 
@@ -434,15 +436,15 @@ private slots:
         QVERIFY(nodeA.syncLibp2pStart().ok);
         QVERIFY(nodeB.syncLibp2pStart().ok);
 
-        PeerInfo infoBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
-        QVERIFY(nodeA.syncConnectPeer(infoBPeerInfo.peerId, infoBPeerInfo.addrs, 500).ok);
+        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
+        QVERIFY(nodeA.syncConnectPeer(nodeBPeerInfo.peerId, nodeBPeerInfo.addrs, 500).ok);
 
         // open two streams on the same connection
-        Libp2pResult dial1 = nodeA.syncDial(infoBPeerInfo.peerId, "/ipfs/ping/1.0.0");
+        Libp2pResult dial1 = nodeA.syncDial(nodeBPeerInfo.peerId, "/ipfs/ping/1.0.0");
         QVERIFY(dial1.ok);
         uint64_t stream1 = dial1.data.value<uint64_t>();
 
-        Libp2pResult dial2 = nodeA.syncDial(infoBPeerInfo.peerId, "/ipfs/ping/1.0.0");
+        Libp2pResult dial2 = nodeA.syncDial(nodeBPeerInfo.peerId, "/ipfs/ping/1.0.0");
         QVERIFY(dial2.ok);
         uint64_t stream2 = dial2.data.value<uint64_t>();
 
@@ -488,13 +490,13 @@ private slots:
         QVERIFY(nodeA.syncLibp2pStart().ok);
         QVERIFY(nodeB.syncLibp2pStart().ok);
 
-        PeerInfo infoBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
+        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
 
         // connect A to B
-        QVERIFY(nodeA.syncConnectPeer(infoBPeerInfo.peerId, infoBPeerInfo.addrs, 500).ok);
+        QVERIFY(nodeA.syncConnectPeer(nodeBPeerInfo.peerId, nodeBPeerInfo.addrs, 500).ok);
 
         // A dials B directly on /ipfs/ping/1.0.0
-        Libp2pResult dialResult = nodeA.syncDial(infoBPeerInfo.peerId, "/ipfs/ping/1.0.0");
+        Libp2pResult dialResult = nodeA.syncDial(nodeBPeerInfo.peerId, "/ipfs/ping/1.0.0");
         QVERIFY(dialResult.ok);
 
         uint64_t streamId = dialResult.data.value<uint64_t>();
