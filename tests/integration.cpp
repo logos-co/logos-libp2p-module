@@ -352,6 +352,42 @@ private slots:
         QVERIFY(node.syncLibp2pStop().ok);
     }
 
+    void gossipsubBinaryPayload()
+    {
+        Libp2pModulePlugin nodeA;
+        Libp2pModulePlugin nodeB;
+
+        QVERIFY(nodeA.syncLibp2pStart().ok);
+        QVERIFY(nodeB.syncLibp2pStart().ok);
+
+        PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
+        QVERIFY(nodeB.syncConnectPeer(infoA.peerId, infoA.addrs, 500).ok);
+
+        QString topic = "binary-topic";
+        QVERIFY(nodeB.syncGossipsubSubscribe(topic).ok);
+        QVERIFY(nodeA.syncGossipsubSubscribe(topic).ok);
+        QThread::msleep(2000);
+
+        // payload with embedded null bytes — would be truncated
+        // if any part of the callback chain treats data as C string
+        QByteArray payload;
+        payload.append('\x01');
+        payload.append('\x00');
+        payload.append('\x02');
+        payload.append('\x00');
+        payload.append('\x03');
+        QCOMPARE(payload.size(), 5);
+
+        QVERIFY(nodeA.syncGossipsubPublish(topic, payload).ok);
+
+        QByteArray received = nodeB.syncGossipsubNextMessage(topic).data.value<QByteArray>();
+        QCOMPARE(received.size(), 5);
+        QCOMPARE(received, payload);
+
+        QVERIFY(nodeA.syncLibp2pStop().ok);
+        QVERIFY(nodeB.syncLibp2pStop().ok);
+    }
+
     void multipleStreamsOnSameConnection()
     {
         const int PING_SIZE = 32;
