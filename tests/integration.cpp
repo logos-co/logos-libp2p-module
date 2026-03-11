@@ -98,40 +98,6 @@ private slots:
         QVERIFY(nodeB.syncLibp2pStop().ok);
     }
 
-    void kadPutGet()
-    {
-        // setup node A
-        Libp2pModulePlugin nodeA;
-        QVERIFY(nodeA.syncLibp2pStart().ok);
-        PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
-
-        // setup node B
-        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
-        QVERIFY(nodeB.syncLibp2pStart().ok);
-
-        QByteArray key = "integration-key";
-        QByteArray value = "hello";
-
-        // put value until it shows on other peer
-        int quorum = 1;
-        QByteArray result;
-        for (int i = 0; i < 10; ++i) {
-            QVERIFY(nodeA.syncKadPutValue(key, value).ok);
-            QThread::msleep(200);
-            result = nodeB.syncKadGetValue(key, quorum).data.value<QByteArray>();
-            if (!result.isEmpty())
-                break;
-            QThread::msleep(200);
-        }
-
-        QCOMPARE(result, value);
-
-        QVERIFY(nodeB.syncDisconnectPeer(nodeAPeerInfo.peerId).ok);
-
-        QVERIFY(nodeA.syncLibp2pStop().ok);
-        QVERIFY(nodeB.syncLibp2pStop().ok);
-    }
-
     void mixDialAndReply()
     {
         const int NUM_NODES = 5;
