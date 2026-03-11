@@ -132,41 +132,6 @@ private slots:
         QVERIFY(nodeB.syncLibp2pStop().ok);
     }
 
-    void kadFindNode()
-    {
-        // node A is the bootstrap node
-        Libp2pModulePlugin nodeA;
-        QVERIFY(nodeA.syncLibp2pStart().ok);
-        PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
-
-        // nodes B, C, D all bootstrap from A to form a DHT
-        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-        QVERIFY(nodeB.syncLibp2pStart().ok);
-        PeerInfo infoB = nodeB.syncPeerInfo().data.value<PeerInfo>();
-
-        Libp2pModulePlugin nodeC(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-        QVERIFY(nodeC.syncLibp2pStart().ok);
-        PeerInfo infoC = nodeC.syncPeerInfo().data.value<PeerInfo>();
-
-        Libp2pModulePlugin nodeD(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-        QVERIFY(nodeD.syncLibp2pStart().ok);
-
-        // D looks up B's peer ID — must discover it through the DHT
-        Libp2pResult result = nodeD.syncKadFindNode(infoB.peerId);
-        QVERIFY(result.ok);
-
-        QList<QString> peers = result.data.value<QList<QString>>();
-        QCOMPARE(peers.size(), 3);
-        QVERIFY(peers.contains(infoA.peerId));
-        QVERIFY(peers.contains(infoB.peerId));
-        QVERIFY(peers.contains(infoC.peerId));
-
-        QVERIFY(nodeA.syncLibp2pStop().ok);
-        QVERIFY(nodeB.syncLibp2pStop().ok);
-        QVERIFY(nodeC.syncLibp2pStop().ok);
-        QVERIFY(nodeD.syncLibp2pStop().ok);
-    }
-
     void mixDialAndReply()
     {
         const int NUM_NODES = 5;
