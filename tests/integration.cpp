@@ -451,6 +451,83 @@ private slots:
         QVERIFY(nodeA.syncLibp2pStop().ok);
         QVERIFY(nodeB.syncLibp2pStop().ok);
     }
+
+    void lpStreamExchange()
+    {
+        // Use a 31-byte payload so that the LP frame (1-byte varint + 31 bytes)
+        // gives exactly 32 bytes — the ping echo size. The echoed bytes form
+        // a valid LP frame that readLp can decode back into the original payload.
+        const int LP_PAYLOAD_SIZE = 31;
+
+        Libp2pModulePlugin nodeA;
+        Libp2pModulePlugin nodeB;
+
+        QVERIFY(nodeA.syncLibp2pStart().ok);
+        QVERIFY(nodeB.syncLibp2pStart().ok);
+
+        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
+        QVERIFY(nodeA.syncConnectPeer(nodeBPeerInfo.peerId, nodeBPeerInfo.addrs, 500).ok);
+
+        Libp2pResult dialResult = nodeA.syncDial(nodeBPeerInfo.peerId, "/ipfs/ping/1.0.0");
+        QVERIFY(dialResult.ok);
+
+        uint64_t streamId = dialResult.data.value<uint64_t>();
+        QVERIFY(streamId != 0);
+
+        QByteArray payload(LP_PAYLOAD_SIZE, 0);
+        for (int i = 0; i < LP_PAYLOAD_SIZE; ++i)
+            payload[i] = static_cast<char>(i);
+
+        QVERIFY(nodeA.syncStreamWriteLp(streamId, payload).ok);
+
+        Libp2pResult readResult = nodeA.syncStreamReadLp(streamId, 4096);
+        QVERIFY(readResult.ok);
+        QCOMPARE(readResult.data.value<QByteArray>(), payload);
+
+        QVERIFY(nodeA.syncStreamCloseWithEOF(streamId).ok);
+        QVERIFY(nodeA.syncStreamRelease(streamId).ok);
+
+        QVERIFY(nodeA.syncLibp2pStop().ok);
+        QVERIFY(nodeB.syncLibp2pStop().ok);
+    }
+
+    void quicPingRoundTrip()
+    {
+        const int PING_SIZE = 32;
+
+        Libp2pModuleOptions opts{ .transport = LIBP2P_TRANSPORT_QUIC };
+
+        Libp2pModulePlugin nodeA(opts);
+        Libp2pModulePlugin nodeB(opts);
+
+        QVERIFY(nodeA.syncLibp2pStart().ok);
+        QVERIFY(nodeB.syncLibp2pStart().ok);
+
+        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
+        QVERIFY(nodeA.syncConnectPeer(nodeBPeerInfo.peerId, nodeBPeerInfo.addrs, 500).ok);
+
+        Libp2pResult dialResult = nodeA.syncDial(nodeBPeerInfo.peerId, "/ipfs/ping/1.0.0");
+        QVERIFY(dialResult.ok);
+
+        uint64_t streamId = dialResult.data.value<uint64_t>();
+        QVERIFY(streamId != 0);
+
+        QByteArray payload(PING_SIZE, 0);
+        for (int i = 0; i < PING_SIZE; ++i)
+            payload[i] = static_cast<char>(i);
+
+        QVERIFY(nodeA.syncStreamWrite(streamId, payload).ok);
+
+        Libp2pResult readResult = nodeA.syncStreamReadExactly(streamId, PING_SIZE);
+        QVERIFY(readResult.ok);
+        QCOMPARE(readResult.data.value<QByteArray>(), payload);
+
+        QVERIFY(nodeA.syncStreamCloseWithEOF(streamId).ok);
+        QVERIFY(nodeA.syncStreamRelease(streamId).ok);
+
+        QVERIFY(nodeA.syncLibp2pStop().ok);
+        QVERIFY(nodeB.syncLibp2pStop().ok);
+    }
 };
 
 QTEST_MAIN(TestIntegration)
