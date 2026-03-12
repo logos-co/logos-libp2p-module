@@ -27,7 +27,7 @@ private slots:
         int quorum = 1;
         Libp2pResult result = nodeB.syncKadGetValue(key, quorum);
         QVERIFY(result.ok);
-        
+
         QByteArray record = result.data.value<QByteArray>();
         QCOMPARE(record, value);
 
