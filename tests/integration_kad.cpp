@@ -18,24 +18,18 @@ private slots:
         Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
         QVERIFY(nodeB.syncLibp2pStart().ok);
 
+        // A stores the value
         QByteArray key = "integration-key";
         QByteArray value = "hello";
+        QVERIFY(nodeA.syncKadPutValue(key, value).ok);
 
-        // put value until it shows on other peer
+        // B retrieves it
         int quorum = 1;
-        QByteArray result;
-        for (int i = 0; i < 10; ++i) {
-            QVERIFY(nodeA.syncKadPutValue(key, value).ok);
-            QThread::msleep(200);
-            result = nodeB.syncKadGetValue(key, quorum).data.value<QByteArray>();
-            if (!result.isEmpty())
-                break;
-            QThread::msleep(200);
-        }
-
-        QCOMPARE(result, value);
-
-        QVERIFY(nodeB.syncDisconnectPeer(nodeAPeerInfo.peerId).ok);
+        Libp2pResult result = nodeB.syncKadGetValue(key, quorum);
+        QVERIFY(result.ok);
+        
+        QByteArray record = result.data.value<QByteArray>();
+        QCOMPARE(record, value);
 
         QVERIFY(nodeA.syncLibp2pStop().ok);
         QVERIFY(nodeB.syncLibp2pStop().ok);
@@ -130,13 +124,16 @@ private slots:
         // setup node B
         Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
         QVERIFY(nodeB.syncLibp2pStart().ok);
+        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
 
+        // A requests random record
         Libp2pResult res = nodeA.syncKadGetRandomRecords();
         QVERIFY(res.ok);
         QList<ExtendedPeerRecord> records = res.data.value<QList<ExtendedPeerRecord>>();
 
+        // B returns itself
         QVERIFY(!records.isEmpty());
-        QVERIFY(!records[0].peerId.isEmpty());
+        QCOMPARE(records[0].peerId, nodeBPeerInfo.peerId);
 
         QVERIFY(nodeA.syncLibp2pStop().ok);
         QVERIFY(nodeB.syncLibp2pStop().ok);
