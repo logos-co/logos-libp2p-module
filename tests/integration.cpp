@@ -480,10 +480,10 @@ private slots:
         QList<QString> rsvpAddrs = rsvp.data.value<QList<QString>>();
         QVERIFY(!rsvpAddrs.isEmpty());
 
-        QString relayAddrs = rsvpAddrs[0].append("/p2p-circuit");
+        QString relayAddr = rsvpAddrs[0] + "/p2p-circuit";
 
         // node A dials node B through the relay using /ipfs/ping/1.0.0
-        Libp2pResult dialResult = nodeA.syncDialCircuitRelay(nodeBPeerInfo.peerId, relayAddrs, "/ipfs/ping/1.0.0");
+        Libp2pResult dialResult = nodeA.syncDialCircuitRelay(nodeBPeerInfo.peerId, relayAddr, "/ipfs/ping/1.0.0");
         QVERIFY(dialResult.ok);
         
         uint64_t streamId = dialResult.data.value<qulonglong>();
