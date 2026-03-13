@@ -451,6 +451,62 @@ private slots:
         QVERIFY(nodeA.syncLibp2pStop().ok);
         QVERIFY(nodeB.syncLibp2pStop().ok);
     }
+
+    void circuitRelayRouting()
+    {
+        const int PING_SIZE = 32;
+
+        // setup relay node (circuit_relay = server)
+        Libp2pModulePlugin relay(Libp2pModuleOptions{ .circuitRelay = true });
+        QVERIFY(relay.syncLibp2pStart().ok);
+        PeerInfo relayPeerInfo = relay.syncPeerInfo().data.value<PeerInfo>();
+
+        // setup node A (circuit_relay_client = client)
+        Libp2pModulePlugin nodeA(Libp2pModuleOptions{ .circuitRelayClient = true });
+        QVERIFY(nodeA.syncLibp2pStart().ok);
+
+        // setup node B (circuit_relay_client = client)
+        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .circuitRelayClient = true });
+        QVERIFY(nodeB.syncLibp2pStart().ok);
+        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
+
+        // Connect both clients to relay
+        QVERIFY(nodeA.syncConnectPeer(relayPeerInfo.peerId, relayPeerInfo.addrs, 500).ok);
+        QVERIFY(nodeB.syncConnectPeer(relayPeerInfo.peerId, relayPeerInfo.addrs, 500).ok);
+
+        // node B reserves a slot on the relay and gets relay circuit addresses
+        Libp2pResult rsvp = nodeB.syncCircuitRelayReserve(relayPeerInfo.peerId, relayPeerInfo.addrs);
+        QVERIFY(rsvp.ok);
+        QList<QString> rsvpAddrs = rsvp.data.value<QList<QString>>();
+        QVERIFY(!rsvpAddrs.isEmpty());
+
+        QString relayAddrs = rsvpAddrs[0].append("/p2p-circuit");
+
+        // node A dials node B through the relay using /ipfs/ping/1.0.0
+        Libp2pResult dialResult = nodeA.syncDialCircuitRelay(nodeBPeerInfo.peerId, relayAddrs, "/ipfs/ping/1.0.0");
+        QVERIFY(dialResult.ok);
+        
+        uint64_t streamId = dialResult.data.value<qulonglong>();
+
+        // Send ping payload
+        QByteArray payload(PING_SIZE, 0);
+        for (int i = 0; i < PING_SIZE; ++i)
+            payload[i] = static_cast<char>(i);
+        QVERIFY(nodeA.syncStreamWrite(streamId, payload).ok);
+
+        // Read ping echo
+        Libp2pResult readResult = nodeA.syncStreamReadExactly(streamId, PING_SIZE);
+        QVERIFY(readResult.ok);
+        QCOMPARE(readResult.data.value<QByteArray>(), payload);
+
+        // Cleanup
+        QVERIFY(nodeA.syncStreamCloseWithEOF(streamId).ok);
+        QVERIFY(nodeA.syncStreamRelease(streamId).ok);
+
+        QVERIFY(relay.syncLibp2pStop().ok);
+        QVERIFY(nodeA.syncLibp2pStop().ok);
+        QVERIFY(nodeB.syncLibp2pStop().ok);
+    }
 };
 
 QTEST_MAIN(TestIntegration)
