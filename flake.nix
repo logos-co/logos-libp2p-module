@@ -4,7 +4,7 @@
   inputs = {
     logos-module-builder.url = "github:/logos-co/logos-module-builder";
     nixpkgs.follows = "logos-module-builder/nixpkgs";
-    libp2p.url = "github:vacp2p/nim-libp2p/e54ad2aeaf4536f3809e6c8bfb36ccd3881c75bb";
+    libp2p.url = "github:vacp2p/nim-libp2p";
   };
 
   outputs = { self, logos-module-builder, nixpkgs, libp2p }:
