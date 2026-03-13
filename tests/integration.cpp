@@ -486,7 +486,8 @@ private slots:
         Libp2pResult dialResult = nodeA.syncDialCircuitRelay(nodeBPeerInfo.peerId, relayAddr, "/ipfs/ping/1.0.0");
         QVERIFY(dialResult.ok);
         
-        uint64_t streamId = dialResult.data.value<qulonglong>();
+        uint64_t streamId = dialResult.data.value<uint64_t>();
+        QVERIFY(streamId != 0);
 
         // send ping payload
         QByteArray payload(PING_SIZE, 0);
