@@ -475,6 +475,57 @@ void Libp2pModulePlugin::connectionCallback(
 }
 
 
+void Libp2pModulePlugin::reservationCallback(
+    int callerRet,
+    const char **addrs,
+    size_t addrsLen,
+    uint64_t expireTime,
+    const char *msg,
+    size_t len,
+    void *userData
+)
+{
+    (void)expireTime;
+    auto *callbackCtx = static_cast<CallbackContext *>(userData);
+    if (!callbackCtx) return;
+
+    Libp2pModulePlugin *self = callbackCtx->instance;
+    if (!self) { delete callbackCtx; return; }
+
+    QString caller = callbackCtx->caller;
+    QString reqId = callbackCtx->reqId;
+
+    QList<QString> addrsCopy;
+    if (addrs && addrsLen > 0) {
+        addrsCopy.reserve(addrsLen);
+        for (size_t i = 0; i < addrsLen; i++)
+            addrsCopy.append(QString::fromUtf8(addrs[i]));
+    }
+
+    QString message;
+    if (msg && len > 0)
+        message = QString::fromUtf8(msg, int(len));
+
+    QPointer<Libp2pModulePlugin> safeSelf(self);
+    QMetaObject::invokeMethod(
+        safeSelf,
+        [safeSelf, callerRet, reqId, caller, message,
+         addrsCopy = std::move(addrsCopy)]() {
+            if (!safeSelf) return;
+            emit safeSelf->libp2pEvent(
+                callerRet,
+                reqId,
+                caller,
+                message,
+                QVariant::fromValue(addrsCopy)
+            );
+        },
+        Qt::QueuedConnection
+    );
+
+    delete callbackCtx;
+}
+
 void Libp2pModulePlugin::topicHandler(
     const char *topic,
     uint8_t *data,
