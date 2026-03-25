@@ -18,7 +18,7 @@
       buildModule = system:
         logos-module-builder.lib.mkLogosModule {
           src = ./.;
-          configFile = ./module.yaml;
+          configFile = ./metadata.json;
 
           preConfigure = ''
             mkdir -p lib
