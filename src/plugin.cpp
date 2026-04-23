@@ -101,7 +101,7 @@ Libp2pModulePlugin::Libp2pModulePlugin(const Libp2pModuleOptions &options)
 
     m_libp2pConfig.mount_kad = 1;
 
-    m_libp2pConfig.mount_kad_discovery = 1;
+    m_libp2pConfig.mount_service_discovery = 1;
 
     m_libp2pConfig.mount_mix = 1;
 

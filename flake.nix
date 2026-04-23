@@ -23,8 +23,6 @@
           preConfigure = ''
             mkdir -p lib
             cp -r "${libp2pCbind system}/lib"/* lib/
-            mkdir -p include
-            cp -r "${libp2pCbind system}/include"/* include/
           '' + lib.optionalString (lib.hasSuffix "darwin" system) ''
             for f in lib/*.dylib; do
               [ -f "$f" ] || continue
@@ -67,9 +65,6 @@
                 install_name_tool -id "@rpath/$(basename "$f")" "$f"
               done
               ''}
-
-              mkdir -p include
-              cp -r ${cbind}/include/* include/ 2>/dev/null || true
             '';
           });
         }

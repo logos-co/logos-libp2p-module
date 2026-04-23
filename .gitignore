@@ -56,7 +56,8 @@ dkms.conf
 
 # build dirs
 build/
-include/
+include/*
+!include/libp2p.h
 vendor/build/
 result
 

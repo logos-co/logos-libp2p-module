@@ -317,6 +317,85 @@ public:
     Q_INVOKABLE virtual Libp2pResult syncKadGetRandomRecords() = 0;
 
 
+    /* ----------- Service Discovery ----------- */
+
+    /// Starts the service discovery protocol on the node.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString discoStart() = 0;
+
+    /// Stops the service discovery protocol on the node.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString discoStop() = 0;
+
+    /// Begins advertising serviceId (with optional metadata): announces this node as a provider.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString discoStartAdvertising(
+        const QString &serviceId,
+        const QByteArray &serviceData = {}
+    ) = 0;
+
+    /// Stops advertising serviceId.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString discoStopAdvertising(
+        const QString &serviceId
+    ) = 0;
+
+    /// Registers interest in serviceId to keep routing tables up to date.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString discoStartDiscovering(
+        const QString &serviceId
+    ) = 0;
+
+    /// Stops actively discovering serviceId.
+    /// Returns a UUID string identifying this request.
+    Q_INVOKABLE virtual QString discoStopDiscovering(
+        const QString &serviceId
+    ) = 0;
+
+    /// Looks up current advertisers for serviceId.
+    /// Returns a UUID string identifying this request.
+    /// data: QList<ExtendedPeerRecord>
+    Q_INVOKABLE virtual QString discoLookup(
+        const QString &serviceId,
+        const QByteArray &serviceData = {}
+    ) = 0;
+
+    /// Returns peer records found while walking toward a random peer ID.
+    /// Returns a UUID string identifying this request.
+    /// data: QList<ExtendedPeerRecord>
+    Q_INVOKABLE virtual QString discoRandomLookup() = 0;
+
+    /* ----------- Sync Service Discovery ----------- */
+
+    /// data: none
+    Q_INVOKABLE virtual Libp2pResult syncDiscoStart() = 0;
+    /// data: none
+    Q_INVOKABLE virtual Libp2pResult syncDiscoStop() = 0;
+    /// data: none
+    Q_INVOKABLE virtual Libp2pResult syncDiscoStartAdvertising(
+        const QString &serviceId,
+        const QByteArray &serviceData = {}
+    ) = 0;
+    /// data: none
+    Q_INVOKABLE virtual Libp2pResult syncDiscoStopAdvertising(
+        const QString &serviceId
+    ) = 0;
+    /// data: none
+    Q_INVOKABLE virtual Libp2pResult syncDiscoStartDiscovering(
+        const QString &serviceId
+    ) = 0;
+    /// data: none
+    Q_INVOKABLE virtual Libp2pResult syncDiscoStopDiscovering(
+        const QString &serviceId
+    ) = 0;
+    /// data: QList<ExtendedPeerRecord>
+    Q_INVOKABLE virtual Libp2pResult syncDiscoLookup(
+        const QString &serviceId,
+        const QByteArray &serviceData = {}
+    ) = 0;
+    /// data: QList<ExtendedPeerRecord>
+    Q_INVOKABLE virtual Libp2pResult syncDiscoRandomLookup() = 0;
+
     /* ----------- Mix Network ----------- */
 
     /// Generates a new Curve25519 private key for mix networking.

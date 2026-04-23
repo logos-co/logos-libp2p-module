@@ -29,6 +29,7 @@ logos_module(
         src/stream.cpp
         src/mix.cpp
         src/gossipsub.cpp
+        src/service_discovery.cpp
     EXTERNAL_LIBS
         libp2p
     INCLUDE_DIRS
