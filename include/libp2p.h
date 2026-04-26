@@ -11,8 +11,8 @@
  * This file may not be copied, modified, or distributed except according to
  * those terms.
  */
-#ifndef __libp2p__
-#define __libp2p__
+#ifndef LIBP2P_H
+#define LIBP2P_H
 
 #include <stddef.h>
 #include <stdint.h>
