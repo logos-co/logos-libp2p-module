@@ -67,8 +67,17 @@ struct Libp2pModuleOptions {
     /// If true, messages published by this node are also delivered to its own subscribers.
     bool gossipsubTriggerSelf = true;
 
-    /// Enable the service discovery protocol.
-    bool serviceDiscovery = false;
+    /// Enable gossipsub (default on).
+    bool mountGossipsub = true;
+
+    /// Enable Kademlia DHT (default on).
+    bool mountKad = true;
+
+    /// Enable mix protocol support (default off).
+    bool mountMix = false;
+
+    /// Enable service discovery protocol (default off).
+    bool mountServiceDiscovery = false;
 };
 
 /**

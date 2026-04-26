@@ -11,14 +11,14 @@ int main(int argc, char *argv[])
        Node A: advertiser
        ----------------------------- */
     Libp2pModulePlugin nodeA(Libp2pModuleOptions{
-        .serviceDiscovery = true,
+        .mountServiceDiscovery = true,
     });
 
     /* -----------------------------
        Node B: discoverer
        ----------------------------- */
     Libp2pModulePlugin nodeB(Libp2pModuleOptions{
-        .serviceDiscovery = true,
+        .mountServiceDiscovery = true,
     });
 
     qDebug() << "Starting nodes...";

@@ -554,7 +554,7 @@ private slots:
 
     void testKadGetRandomRecords()
     {
-        Libp2pModulePlugin plugin;
+        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .mountServiceDiscovery = true });
         auto spy = createLibp2pEventSpy(&plugin);
         startPlugin(plugin, *spy);
 
