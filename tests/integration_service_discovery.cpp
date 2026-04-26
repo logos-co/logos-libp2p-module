@@ -145,6 +145,7 @@ private slots:
 
         // B should find no advertisers
         Libp2pResult res = nodeB.syncDiscoLookup(serviceId);
+        QVERIFY(res.ok);
         QList<ExtendedPeerRecord> records =
             res.data.value<QList<ExtendedPeerRecord>>();
         QVERIFY(records.isEmpty());
