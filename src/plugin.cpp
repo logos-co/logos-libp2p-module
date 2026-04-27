@@ -26,7 +26,7 @@ Libp2pModulePlugin::Libp2pModulePlugin(const Libp2pModuleOptions &options)
 
     std::memset(&m_libp2pConfig, 0, sizeof(m_libp2pConfig));
 
-    m_libp2pConfig.mount_gossipsub = 1;
+    m_libp2pConfig.mount_gossipsub = options.mountGossipsub ? 1 : 0;
     m_libp2pConfig.gossipsub_trigger_self = options.gossipsubTriggerSelf ? 1 : 0;
 
     m_libp2pConfig.max_connections    = options.maxConnections;
@@ -99,11 +99,11 @@ Libp2pModulePlugin::Libp2pModulePlugin(const Libp2pModuleOptions &options)
         m_libp2pConfig.kad_bootstrap_nodes_len = m_bootstrapCNodes.size();
     }
 
-    m_libp2pConfig.mount_kad = 1;
+    m_libp2pConfig.mount_kad = options.mountKad ? 1 : 0;
 
-    m_libp2pConfig.mount_kad_discovery = 1;
+    m_libp2pConfig.mount_service_discovery = options.mountServiceDiscovery ? 1 : 0;
 
-    m_libp2pConfig.mount_mix = 1;
+    m_libp2pConfig.mount_mix = options.mountMix ? 1 : 0;
 
     /* -------------------------
      * Generate secp256k1 key

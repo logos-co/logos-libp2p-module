@@ -66,6 +66,18 @@ struct Libp2pModuleOptions {
 
     /// If true, messages published by this node are also delivered to its own subscribers.
     bool gossipsubTriggerSelf = true;
+
+    /// Enable gossipsub (default on).
+    bool mountGossipsub = true;
+
+    /// Enable Kademlia DHT (default on).
+    bool mountKad = true;
+
+    /// Enable mix protocol support (default off).
+    bool mountMix = false;
+
+    /// Enable service discovery protocol (default off).
+    bool mountServiceDiscovery = false;
 };
 
 /**
@@ -245,6 +257,52 @@ public:
         const QByteArray &mixPubKey,
         const QByteArray &libp2pPubKey
     ) override;
+
+    /* ----------- Service Discovery ----------- */
+
+    Q_INVOKABLE QString discoStart() override;
+    Q_INVOKABLE QString discoStop() override;
+    Q_INVOKABLE QString discoStartAdvertising(
+        const QString &serviceId,
+        const QByteArray &serviceData = {}
+    ) override;
+    Q_INVOKABLE QString discoStopAdvertising(
+        const QString &serviceId
+    ) override;
+    Q_INVOKABLE QString discoStartDiscovering(
+        const QString &serviceId
+    ) override;
+    Q_INVOKABLE QString discoStopDiscovering(
+        const QString &serviceId
+    ) override;
+    Q_INVOKABLE QString discoLookup(
+        const QString &serviceId,
+        const QByteArray &serviceData = {}
+    ) override;
+    Q_INVOKABLE QString discoRandomLookup() override;
+
+    /* ----------- Sync Service Discovery ----------- */
+
+    Q_INVOKABLE Libp2pResult syncDiscoStart() override;
+    Q_INVOKABLE Libp2pResult syncDiscoStop() override;
+    Q_INVOKABLE Libp2pResult syncDiscoStartAdvertising(
+        const QString &serviceId,
+        const QByteArray &serviceData = {}
+    ) override;
+    Q_INVOKABLE Libp2pResult syncDiscoStopAdvertising(
+        const QString &serviceId
+    ) override;
+    Q_INVOKABLE Libp2pResult syncDiscoStartDiscovering(
+        const QString &serviceId
+    ) override;
+    Q_INVOKABLE Libp2pResult syncDiscoStopDiscovering(
+        const QString &serviceId
+    ) override;
+    Q_INVOKABLE Libp2pResult syncDiscoLookup(
+        const QString &serviceId,
+        const QByteArray &serviceData = {}
+    ) override;
+    Q_INVOKABLE Libp2pResult syncDiscoRandomLookup() override;
 
     /* ----------- Sync Mix Network ----------- */
 

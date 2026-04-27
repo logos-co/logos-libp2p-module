@@ -271,6 +271,67 @@ Libp2pResult Libp2pModulePlugin::syncToCid(const QByteArray &key)
 }
 
 /* ---------------------------
+ * Service Discovery
+ * --------------------------- */
+
+Libp2pResult Libp2pModulePlugin::syncDiscoStart()
+{
+    return runSync(this, __func__, [&]() { return discoStart(); });
+}
+
+Libp2pResult Libp2pModulePlugin::syncDiscoStop()
+{
+    return runSync(this, __func__, [&]() { return discoStop(); });
+}
+
+Libp2pResult Libp2pModulePlugin::syncDiscoStartAdvertising(
+    const QString &serviceId,
+    const QByteArray &serviceData)
+{
+    return runSync(this, __func__, [&]() {
+        return discoStartAdvertising(serviceId, serviceData);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncDiscoStopAdvertising(
+    const QString &serviceId)
+{
+    return runSync(this, __func__, [&]() {
+        return discoStopAdvertising(serviceId);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncDiscoStartDiscovering(
+    const QString &serviceId)
+{
+    return runSync(this, __func__, [&]() {
+        return discoStartDiscovering(serviceId);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncDiscoStopDiscovering(
+    const QString &serviceId)
+{
+    return runSync(this, __func__, [&]() {
+        return discoStopDiscovering(serviceId);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncDiscoLookup(
+    const QString &serviceId,
+    const QByteArray &serviceData)
+{
+    return runSync(this, __func__, [&]() {
+        return discoLookup(serviceId, serviceData);
+    });
+}
+
+Libp2pResult Libp2pModulePlugin::syncDiscoRandomLookup()
+{
+    return runSync(this, __func__, [&]() { return discoRandomLookup(); });
+}
+
+/* ---------------------------
  * Mix
  * --------------------------- */
 

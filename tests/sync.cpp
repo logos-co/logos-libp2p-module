@@ -298,7 +298,7 @@ private slots:
 
     void testSyncKadRandomRecords()
     {
-        Libp2pModulePlugin plugin;
+        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .mountServiceDiscovery = true });
 
         QVERIFY(plugin.syncLibp2pStart().ok);
 

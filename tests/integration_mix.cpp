@@ -21,7 +21,7 @@ private slots:
 
         // --- Start nodes ---
         for (int i = 0; i < NUM_NODES; ++i) {
-            nodes.push_back(std::make_unique<Libp2pModulePlugin>());
+            nodes.push_back(std::make_unique<Libp2pModulePlugin>(Libp2pModuleOptions{ .mountMix = true }));
             QVERIFY(nodes[i]->syncLibp2pStart().ok);
 
             infos[i] = nodes[i]->syncPeerInfo().data.value<PeerInfo>();
@@ -100,9 +100,9 @@ private slots:
     void mixNodepoolRouting()
     {
         // Smaller test focused on pool correctness
-        Libp2pModulePlugin nodeA;
-        Libp2pModulePlugin nodeB;
-        Libp2pModulePlugin nodeC;
+        Libp2pModulePlugin nodeA(Libp2pModuleOptions{ .mountMix = true });
+        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .mountMix = true });
+        Libp2pModulePlugin nodeC(Libp2pModuleOptions{ .mountMix = true });
 
         QVERIFY(nodeA.syncLibp2pStart().ok);
         QVERIFY(nodeB.syncLibp2pStart().ok);
