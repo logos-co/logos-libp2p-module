@@ -117,12 +117,12 @@ private slots:
     void kadRandomRecords()
     {
         // setup node A
-        Libp2pModulePlugin nodeA;
+        Libp2pModulePlugin nodeA(Libp2pModuleOptions{ .mountServiceDiscovery = true });
         QVERIFY(nodeA.syncLibp2pStart().ok);
         PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
 
         // setup node B
-        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
+        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo }, .mountServiceDiscovery = true });
         QVERIFY(nodeB.syncLibp2pStart().ok);
         PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
 

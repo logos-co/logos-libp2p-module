@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     // Start nodes
     // ----------------------------
     for (int i = 0; i < NUM_NODES; ++i) {
-        auto *node = new Libp2pModulePlugin();
+        auto *node = new Libp2pModulePlugin(Libp2pModuleOptions{ .mountMix = true });
         nodes.append(node);
 
         if (!node->syncLibp2pStart().ok)
