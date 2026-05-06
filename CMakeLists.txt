@@ -46,27 +46,4 @@ else()
     )
 endif()
 
-enable_testing()
-find_package(Qt6 REQUIRED COMPONENTS Core Test)
-
-function(libp2p_register_test source)
-    get_filename_component(test_name ${source} NAME_WE)
-    add_executable(${test_name} ${source})
-    target_include_directories(${test_name} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
-    target_link_libraries(${test_name} PRIVATE
-        libp2p_module_module_plugin
-        Qt6::Core
-        Qt6::Test
-    )
-    add_test(NAME ${test_name} COMMAND ${test_name})
-endfunction()
-
-file(GLOB TEST_SOURCES tests/*.cpp)
-foreach(source ${TEST_SOURCES})
-    libp2p_register_test(${source})
-endforeach()
-
 add_subdirectory(examples)

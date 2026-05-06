@@ -18,29 +18,49 @@
             packages.default = "cbind";
           };
         };
+        tests = {
+          dir = ./tests;
+        };
       };
 
       nixpkgs = logos-module-builder.inputs.nixpkgs;
       systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
 
-      checks = builtins.listToAttrs (map (system:
+      testsApps = builtins.listToAttrs (map (system:
         let
           pkgs = import nixpkgs { inherit system; };
-          pkg = module.packages.${system}.lib;
+          unitTests = module.packages.${system}.unit-tests;
+          runner = pkgs.writeShellScript "run-tests" ''
+            filter="''${1:-}"
+            ran=0
+            for bin in ${unitTests}/bin/*; do
+              name="$(basename "$bin")"
+              if [ -n "$filter" ] && ! echo "$name" | grep -q "$filter"; then
+                continue
+              fi
+              echo "=== $name ==="
+              "$bin"
+              ran=$((ran + 1))
+            done
+            if [ "$ran" -eq 0 ] && [ -n "$filter" ]; then
+              echo "No test binary matched filter: $filter" >&2
+              exit 1
+            fi
+          '';
         in {
           name = system;
-          value = {
-            module-tests = pkg.overrideAttrs (old: {
-              doCheck = true;
-              checkPhase = ''
-                export QT_QPA_PLATFORM=offscreen
-                export QT_PLUGIN_PATH=${pkgs.qt6.qtbase}/${pkgs.qt6.qtbase.qtPluginPrefix}
-                ctest --output-on-failure
-              '';
-            });
-          };
+          value = { tests = { type = "app"; program = toString runner; }; };
         }
       ) systems);
 
-    in module // { inherit checks; };
+      existingApps = module.apps or {};
+      mergedApps = builtins.listToAttrs (map (system: {
+        name = system;
+        value = (existingApps.${system} or {}) // (testsApps.${system} or {});
+      }) systems);
+
+    in module // {
+      apps = mergedApps;
+      checks = module.checks or {};
+    };
 }

@@ -1,144 +1,110 @@
-#include <QtTest>
+#include <logos_test.h>
 #include <plugin.h>
 
-class TestKad : public QObject
-{
-    Q_OBJECT
+LOGOS_TEST(kad_put_get) {
+    Libp2pModulePlugin nodeA;
+    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
+    PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
 
-private slots:
+    Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
+    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
 
-    void kadPutGet()
-    {
-        // setup node A
-        Libp2pModulePlugin nodeA;
-        QVERIFY(nodeA.syncLibp2pStart().ok);
-        PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
+    QByteArray key = "integration-key";
+    QByteArray value = "hello";
+    LOGOS_ASSERT_TRUE(nodeA.syncKadPutValue(key, value).ok);
 
-        // setup node B
-        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
-        QVERIFY(nodeB.syncLibp2pStart().ok);
+    int quorum = 1;
+    Libp2pResult result = nodeB.syncKadGetValue(key, quorum);
+    LOGOS_ASSERT_TRUE(result.ok);
 
-        // A stores the value
-        QByteArray key = "integration-key";
-        QByteArray value = "hello";
-        QVERIFY(nodeA.syncKadPutValue(key, value).ok);
+    QByteArray record = result.data.value<QByteArray>();
+    LOGOS_ASSERT_TRUE(record == value);
 
-        // B retrieves it
-        int quorum = 1;
-        Libp2pResult result = nodeB.syncKadGetValue(key, quorum);
-        QVERIFY(result.ok);
+    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+}
 
-        QByteArray record = result.data.value<QByteArray>();
-        QCOMPARE(record, value);
+LOGOS_TEST(kad_find_node) {
+    Libp2pModulePlugin nodeA;
+    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
+    PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
 
-        QVERIFY(nodeA.syncLibp2pStop().ok);
-        QVERIFY(nodeB.syncLibp2pStop().ok);
-    }
+    Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
+    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
+    PeerInfo infoB = nodeB.syncPeerInfo().data.value<PeerInfo>();
 
-    void kadFindNode()
-    {
-        // node A is the bootstrap node
-        Libp2pModulePlugin nodeA;
-        QVERIFY(nodeA.syncLibp2pStart().ok);
-        PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModulePlugin nodeC(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
+    LOGOS_ASSERT_TRUE(nodeC.syncLibp2pStart().ok);
+    PeerInfo infoC = nodeC.syncPeerInfo().data.value<PeerInfo>();
 
-        // nodes B, C, D all bootstrap from A to form a DHT
-        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-        QVERIFY(nodeB.syncLibp2pStart().ok);
-        PeerInfo infoB = nodeB.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModulePlugin nodeD(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
+    LOGOS_ASSERT_TRUE(nodeD.syncLibp2pStart().ok);
 
-        Libp2pModulePlugin nodeC(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-        QVERIFY(nodeC.syncLibp2pStart().ok);
-        PeerInfo infoC = nodeC.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pResult result = nodeD.syncKadFindNode(infoB.peerId);
+    LOGOS_ASSERT_TRUE(result.ok);
 
-        Libp2pModulePlugin nodeD(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-        QVERIFY(nodeD.syncLibp2pStart().ok);
+    QList<QString> peers = result.data.value<QList<QString>>();
+    LOGOS_ASSERT_EQ(peers.size(), qsizetype(3));
+    LOGOS_ASSERT_TRUE(peers.contains(infoA.peerId));
+    LOGOS_ASSERT_TRUE(peers.contains(infoB.peerId));
+    LOGOS_ASSERT_TRUE(peers.contains(infoC.peerId));
 
-        // D looks up B's peer ID — must discover it through the DHT
-        Libp2pResult result = nodeD.syncKadFindNode(infoB.peerId);
-        QVERIFY(result.ok);
+    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeC.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeD.syncLibp2pStop().ok);
+}
 
-        QList<QString> peers = result.data.value<QList<QString>>();
-        QCOMPARE(peers.size(), 3);
-        QVERIFY(peers.contains(infoA.peerId));
-        QVERIFY(peers.contains(infoB.peerId));
-        QVERIFY(peers.contains(infoC.peerId));
+LOGOS_TEST(kad_start_stop_providing) {
+    Libp2pModulePlugin nodeA;
+    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
+    PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
 
-        QVERIFY(nodeA.syncLibp2pStop().ok);
-        QVERIFY(nodeB.syncLibp2pStop().ok);
-        QVERIFY(nodeC.syncLibp2pStop().ok);
-        QVERIFY(nodeD.syncLibp2pStop().ok);
-    }
+    Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
+    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
 
-    void kadStartStopProviding()
-    {
-        // node A is the bootstrap node
-        Libp2pModulePlugin nodeA;
-        QVERIFY(nodeA.syncLibp2pStart().ok);
-        PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
+    QByteArray key = "provider-test-key";
+    Libp2pResult cidResult = nodeA.syncToCid(key);
+    LOGOS_ASSERT_TRUE(cidResult.ok);
+    QString cid = cidResult.data.value<QString>();
+    LOGOS_ASSERT_FALSE(cid.isEmpty());
 
-        // node B bootstraps from A so they share DHT routing
-        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-        QVERIFY(nodeB.syncLibp2pStart().ok);
-        PeerInfo infoB = nodeB.syncPeerInfo().data.value<PeerInfo>();
+    LOGOS_ASSERT_TRUE(nodeA.syncKadStartProviding(cid).ok);
 
-        // A creates a CID and announces itself as provider
-        QByteArray key = "provider-test-key";
-        Libp2pResult cidResult = nodeA.syncToCid(key);
-        QVERIFY(cidResult.ok);
-        QString cid = cidResult.data.value<QString>();
-        QVERIFY(!cid.isEmpty());
+    Libp2pResult res = nodeB.syncKadGetProviders(cid);
+    LOGOS_ASSERT_TRUE(res.ok);
+    QList<PeerInfo> providers = res.data.value<QList<PeerInfo>>();
 
-        // A starts providing
-        QVERIFY(nodeA.syncKadStartProviding(cid).ok);
+    LOGOS_ASSERT_FALSE(providers.isEmpty());
+    LOGOS_ASSERT_TRUE(providers[0].peerId == infoA.peerId);
 
-        Libp2pResult res = nodeB.syncKadGetProviders(cid);
-        QVERIFY(res.ok);
-        QList<PeerInfo> providers = res.data.value<QList<PeerInfo>>();
+    LOGOS_ASSERT_TRUE(nodeA.syncKadStopProviding(cid).ok);
 
-        // B must discover A as a provider for the CID
-        QVERIFY(!providers.isEmpty());
-        QCOMPARE(providers[0].peerId, infoA.peerId);
+    res = nodeB.syncKadGetProviders(cid);
+    LOGOS_ASSERT_TRUE(res.ok);
+    providers = res.data.value<QList<PeerInfo>>();
+    LOGOS_ASSERT_TRUE(providers.isEmpty());
 
-        // A stops providing — removes from local providedKeys
-        QVERIFY(nodeA.syncKadStopProviding(cid).ok);
+    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+}
 
-        // B queries again — A should no longer appear as provider
-        res = nodeB.syncKadGetProviders(cid);
-        QVERIFY(res.ok);
-        providers = res.data.value<QList<PeerInfo>>();
+LOGOS_TEST(kad_random_records) {
+    Libp2pModulePlugin nodeA(Libp2pModuleOptions{ .mountServiceDiscovery = true });
+    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
+    PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
 
-        QVERIFY(providers.isEmpty());
+    Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo }, .mountServiceDiscovery = true });
+    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
+    PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
 
-        QVERIFY(nodeA.syncLibp2pStop().ok);
-        QVERIFY(nodeB.syncLibp2pStop().ok);
-    }
+    Libp2pResult res = nodeA.syncKadGetRandomRecords();
+    LOGOS_ASSERT_TRUE(res.ok);
+    QList<ExtendedPeerRecord> records = res.data.value<QList<ExtendedPeerRecord>>();
 
-    void kadRandomRecords()
-    {
-        // setup node A
-        Libp2pModulePlugin nodeA(Libp2pModuleOptions{ .mountServiceDiscovery = true });
-        QVERIFY(nodeA.syncLibp2pStart().ok);
-        PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
+    LOGOS_ASSERT_FALSE(records.isEmpty());
+    LOGOS_ASSERT_TRUE(records[0].peerId == nodeBPeerInfo.peerId);
 
-        // setup node B
-        Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo }, .mountServiceDiscovery = true });
-        QVERIFY(nodeB.syncLibp2pStart().ok);
-        PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
-
-        // A requests random record
-        Libp2pResult res = nodeA.syncKadGetRandomRecords();
-        QVERIFY(res.ok);
-        QList<ExtendedPeerRecord> records = res.data.value<QList<ExtendedPeerRecord>>();
-
-        // B returns itself
-        QVERIFY(!records.isEmpty());
-        QCOMPARE(records[0].peerId, nodeBPeerInfo.peerId);
-
-        QVERIFY(nodeA.syncLibp2pStop().ok);
-        QVERIFY(nodeB.syncLibp2pStop().ok);
-    }
-};
-
-QTEST_MAIN(TestKad)
-#include "integration_kad.moc"
+    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+}
