@@ -1,120 +1,97 @@
-#include <QCoreApplication>
-#include <QDebug>
-#include <QThread>
+#include <cstdio>
+#include <thread>
+#include <chrono>
 #include "plugin.h"
 
-int main(int argc, char *argv[])
+int main()
 {
-    QCoreApplication app(argc, argv);
+    Libp2pModuleImpl nodeA(Libp2pModuleOptions{ .mountServiceDiscovery = true });
+    Libp2pModuleImpl nodeB(Libp2pModuleOptions{ .mountServiceDiscovery = true });
 
-    /* -----------------------------
-       Node A: advertiser
-       ----------------------------- */
-    Libp2pModulePlugin nodeA(Libp2pModuleOptions{
-        .mountServiceDiscovery = true,
-    });
+    printf("Starting nodes...\n");
 
-    /* -----------------------------
-       Node B: discoverer
-       ----------------------------- */
-    Libp2pModulePlugin nodeB(Libp2pModuleOptions{
-        .mountServiceDiscovery = true,
-    });
+    if (!nodeA.start().success) {
+        fprintf(stderr, "Node A failed to start\n");
+        return 1;
+    }
 
-    qDebug() << "Starting nodes...";
+    if (!nodeB.start().success) {
+        fprintf(stderr, "Node B failed to start\n");
+        return 1;
+    }
 
-    if (!nodeA.syncLibp2pStart().ok)
-        qFatal("Node A failed to start");
+    if (!nodeA.discoStart().success) {
+        fprintf(stderr, "Node A: discoStart failed\n");
+        return 1;
+    }
 
-    if (!nodeB.syncLibp2pStart().ok)
-        qFatal("Node B failed to start");
+    if (!nodeB.discoStart().success) {
+        fprintf(stderr, "Node B: discoStart failed\n");
+        return 1;
+    }
 
-    /* -----------------------------
-       Start service discovery
-       ----------------------------- */
-    if (!nodeA.syncDiscoStart().ok)
-        qFatal("Node A: discoStart failed");
+    auto infoA = nodeA.peerInfo().value;
+    std::string peerIdA = infoA["peerId"].get<std::string>();
+    std::vector<std::string> addrsA;
+    for (const auto& a : infoA["addrs"]) addrsA.push_back(a.get<std::string>());
 
-    if (!nodeB.syncDiscoStart().ok)
-        qFatal("Node B: discoStart failed");
+    if (!nodeB.connectPeer(peerIdA, addrsA, 500).success) {
+        fprintf(stderr, "Node B failed to connect to Node A\n");
+        return 1;
+    }
 
-    /* -----------------------------
-       Connect B -> A so they share routing
-       ----------------------------- */
-    PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
-    if (!nodeB.syncConnectPeer(infoA.peerId, infoA.addrs, 500).ok)
-        qFatal("Node B failed to connect to Node A");
+    std::string serviceId = "demo-service";
+    std::string serviceData = "version=1";
 
-    /* -----------------------------
-       Node A advertises a service
-       ----------------------------- */
-    QString serviceId = "demo-service";
-    QByteArray serviceData = "version=1";
+    printf("Node A: starting advertising %s\n", serviceId.c_str());
+    if (!nodeA.discoStartAdvertising(serviceId, serviceData).success) {
+        fprintf(stderr, "Node A: discoStartAdvertising failed\n");
+        return 1;
+    }
 
-    qDebug() << "Node A: starting advertising" << serviceId;
-    if (!nodeA.syncDiscoStartAdvertising(serviceId, serviceData).ok)
-        qFatal("Node A: discoStartAdvertising failed");
+    printf("Node B: starting discovering %s\n", serviceId.c_str());
+    if (!nodeB.discoStartDiscovering(serviceId).success) {
+        fprintf(stderr, "Node B: discoStartDiscovering failed\n");
+        return 1;
+    }
 
-    /* Node B registers interest to set up routing tables */
-    qDebug() << "Node B: starting discovering" << serviceId;
-    if (!nodeB.syncDiscoStartDiscovering(serviceId).ok)
-        qFatal("Node B: discoStartDiscovering failed");
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-    /* Give the advertisement time to propagate */
-    QThread::msleep(1000);
+    printf("Node B: looking up %s\n", serviceId.c_str());
+    auto res = nodeB.discoLookup(serviceId, serviceData);
 
-    /* -----------------------------
-       Node B looks up the service
-       ----------------------------- */
-    qDebug() << "Node B: looking up" << serviceId;
-    Libp2pResult res = nodeB.syncDiscoLookup(serviceId, serviceData);
-
-    if (!res.ok) {
-        qWarning() << "Lookup returned no results";
+    if (!res.success) {
+        printf("Lookup returned no results\n");
     } else {
-        QList<ExtendedPeerRecord> records =
-            res.data.value<QList<ExtendedPeerRecord>>();
-        qDebug() << "Node B found" << records.size() << "peer(s) advertising" << serviceId;
-        for (const auto &rec : records) {
-            qDebug() << "  peer:" << rec.peerId
-                     << "seq:" << rec.seqNo
-                     << "addrs:" << rec.addrs.size();
+        auto records = res.value;
+        printf("Node B found %zu peer(s) advertising %s\n", records.size(), serviceId.c_str());
+        for (const auto& rec : records) {
+            printf("  peer: %s seq: %llu addrs: %zu\n",
+                   rec["peerId"].get<std::string>().c_str(),
+                   (unsigned long long)rec["seqNo"].get<uint64_t>(),
+                   rec["addrs"].size());
         }
     }
 
-    /* -----------------------------
-       Random lookup
-       ----------------------------- */
-    qDebug() << "Node A: random lookup";
-    res = nodeA.syncDiscoRandomLookup();
-    if (res.ok) {
-        QList<ExtendedPeerRecord> records =
-            res.data.value<QList<ExtendedPeerRecord>>();
-        qDebug() << "Random lookup returned" << records.size() << "peer(s)";
+    printf("Node A: random lookup\n");
+    auto randRes = nodeA.discoRandomLookup();
+    if (randRes.success) {
+        printf("Random lookup returned %zu peer(s)\n", randRes.value.size());
     }
 
-    /* -----------------------------
-       Stop advertising
-       ----------------------------- */
-    qDebug() << "Node B: stopping discovering" << serviceId;
-    nodeB.syncDiscoStopDiscovering(serviceId);
+    printf("Node B: stopping discovering %s\n", serviceId.c_str());
+    nodeB.discoStopDiscovering(serviceId);
 
-    qDebug() << "Node A: stopping advertising" << serviceId;
-    nodeA.syncDiscoStopAdvertising(serviceId);
+    printf("Node A: stopping advertising %s\n", serviceId.c_str());
+    nodeA.discoStopAdvertising(serviceId);
 
-    /* -----------------------------
-       Stop service discovery
-       ----------------------------- */
-    nodeA.syncDiscoStop();
-    nodeB.syncDiscoStop();
+    nodeA.discoStop();
+    nodeB.discoStop();
 
-    /* -----------------------------
-       Cleanup
-       ----------------------------- */
-    nodeA.syncLibp2pStop();
-    nodeB.syncLibp2pStop();
+    nodeA.stop();
+    nodeB.stop();
 
-    qDebug() << "Done";
+    printf("Done\n");
 
     return 0;
 }

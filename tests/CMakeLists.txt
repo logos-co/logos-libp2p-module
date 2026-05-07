@@ -18,7 +18,6 @@ if(LIBP2P_PATH)
         MODULE_SOURCES
             ../src/plugin.cpp
             ../src/callbacks.cpp
-            ../src/sync.cpp
             ../src/kademlia.cpp
             ../src/stream.cpp
             ../src/mix.cpp

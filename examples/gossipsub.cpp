@@ -1,77 +1,66 @@
-#include <QCoreApplication>
-#include <QDebug>
-#include <QThread>
+#include <cstdio>
+#include <thread>
+#include <chrono>
 #include "plugin.h"
 
-int main(int argc, char *argv[])
+int main()
 {
-    QCoreApplication app(argc, argv);
+    Libp2pModuleImpl nodeA;
+    Libp2pModuleImpl nodeB;
 
-    /* -----------------------------
-       Node A setup
-       ----------------------------- */
-    Libp2pModulePlugin nodeA;
-    Libp2pModulePlugin nodeB;
-
-    qDebug() << "Starting Nodes...";
-    if (!nodeA.syncLibp2pStart().ok) {
-        qFatal("Node A failed to start");
+    printf("Starting Nodes...\n");
+    if (!nodeA.start().success) {
+        fprintf(stderr, "Node A failed to start\n");
+        return 1;
     }
-    if (!nodeB.syncLibp2pStart().ok) {
-        qFatal("Node B failed to start");
+    if (!nodeB.start().success) {
+        fprintf(stderr, "Node B failed to start\n");
+        return 1;
     }
 
-    PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
+    auto infoA = nodeA.peerInfo().value;
+    std::string peerIdA = infoA["peerId"].get<std::string>();
+    std::vector<std::string> addrsA;
+    for (const auto& a : infoA["addrs"]) addrsA.push_back(a.get<std::string>());
 
-    if (!nodeB.syncConnectPeer(nodeAPeerInfo.peerId, nodeAPeerInfo.addrs, 500).ok) {
-        qFatal("Node B failed to connect to Node A");
+    if (!nodeB.connectPeer(peerIdA, addrsA, 500).success) {
+        fprintf(stderr, "Node B failed to connect to Node A\n");
+        return 1;
     }
 
-    /* -----------------------------
-       Subscribe nodes to topic
-       ----------------------------- */
-    QString topic = "demo-topic";
-    qDebug() << "Node B subscribing to topic:" << topic;
-    if (!nodeB.syncGossipsubSubscribe(topic).ok) {
-        qFatal("Node B subscription failed");
+    std::string topic = "demo-topic";
+    printf("Node B subscribing to topic: %s\n", topic.c_str());
+    if (!nodeB.gossipsubSubscribe(topic).success) {
+        fprintf(stderr, "Node B subscription failed\n");
+        return 1;
     }
-    qDebug() << "Node A subscribing to topic:" << topic;
-    if (!nodeA.syncGossipsubSubscribe(topic).ok) {
-        qFatal("Node A subscription failed");
-    }
-
-    /* -----------------------------
-       Give the mesh time to form
-       ----------------------------- */
-    qDebug() << "Waiting for mesh to form";
-    QThread::msleep(2000);
-
-    /* -----------------------------
-       Publish message from Node A
-       ----------------------------- */
-    QByteArray payload = "Hello from Node A via gossipsub!";
-    qDebug() << "Node A publishing message to topic:" << topic;
-    if (!nodeA.syncGossipsubPublish(topic, payload).ok) {
-        qFatal("Node A publish failed");
+    printf("Node A subscribing to topic: %s\n", topic.c_str());
+    if (!nodeA.gossipsubSubscribe(topic).success) {
+        fprintf(stderr, "Node A subscription failed\n");
+        return 1;
     }
 
-    /* -----------------------------
-       Fetch messages for Node B
-       ----------------------------- */
-    auto res = nodeB.syncGossipsubNextMessage(topic);
-    if (!res.ok) {
-        qFatal("Node B did not receive any messages");
+    printf("Waiting for mesh to form\n");
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    std::string payload = "Hello from Node A via gossipsub!";
+    printf("Node A publishing message to topic: %s\n", topic.c_str());
+    if (!nodeA.gossipsubPublish(topic, payload).success) {
+        fprintf(stderr, "Node A publish failed\n");
+        return 1;
     }
-    QByteArray message = res.data.value<QByteArray>();
-    qDebug() << "Node B received:" << message;
 
-    /* -----------------------------
-       Cleanup
-       ----------------------------- */
-    nodeA.syncLibp2pStop();
-    nodeB.syncLibp2pStop();
+    auto res = nodeB.gossipsubNextMessage(topic);
+    if (!res.success) {
+        fprintf(stderr, "Node B did not receive any messages\n");
+        return 1;
+    }
+    printf("Node B received: %s\n", res.value.get<std::string>().c_str());
 
-    qDebug() << "Done";
+    nodeA.stop();
+    nodeB.stop();
+
+    printf("Done\n");
 
     return 0;
 }

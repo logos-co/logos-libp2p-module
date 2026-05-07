@@ -1,5 +1,3 @@
-find_package(Qt6 REQUIRED COMPONENTS Core)
-
 file(GLOB EXAMPLE_SOURCES CONFIGURE_DEPENDS *.cpp)
 
 foreach(example_src ${EXAMPLE_SOURCES})
@@ -9,7 +7,6 @@ foreach(example_src ${EXAMPLE_SOURCES})
     add_executable(${target_name} ${example_src})
 
     target_link_libraries(${target_name} PRIVATE
-        Qt6::Core
         libp2p_module_module_plugin
     )
 

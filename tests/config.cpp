@@ -1,11 +1,10 @@
 #include <logos_test.h>
 #include <plugin.h>
-#include <algorithm>
 
 LOGOS_TEST(config_options_defaults) {
     Libp2pModuleOptions opts;
-    LOGOS_ASSERT_TRUE(opts.addrs.isEmpty());
-    LOGOS_ASSERT_TRUE(opts.bootstrapNodes.isEmpty());
+    LOGOS_ASSERT_TRUE(opts.addrs.empty());
+    LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
     LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
     LOGOS_ASSERT_FALSE(opts.autonat);
     LOGOS_ASSERT_FALSE(opts.autonatV2);
@@ -21,8 +20,8 @@ LOGOS_TEST(config_options_defaults) {
 LOGOS_TEST(config_options_designated_init) {
     Libp2pModuleOptions opts{ .circuitRelay = true };
     LOGOS_ASSERT_TRUE(opts.circuitRelay);
-    LOGOS_ASSERT_TRUE(opts.addrs.isEmpty());
-    LOGOS_ASSERT_TRUE(opts.bootstrapNodes.isEmpty());
+    LOGOS_ASSERT_TRUE(opts.addrs.empty());
+    LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
     LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
     LOGOS_ASSERT_FALSE(opts.autonat);
     LOGOS_ASSERT_FALSE(opts.autonatV2);
@@ -30,81 +29,96 @@ LOGOS_TEST(config_options_designated_init) {
 }
 
 LOGOS_TEST(config_custom_listen_address) {
-    Libp2pModulePlugin plugin(Libp2pModuleOptions{ .addrs = {"/ip6/::1/tcp/0"} });
-    auto startRes = plugin.syncLibp2pStart();
-    if (!startRes.ok) return; // IPv6 not available in sandbox
+    Libp2pModuleImpl plugin(Libp2pModuleOptions{ .addrs = {"/ip6/::1/tcp/0"} });
+    auto startRes = plugin.start();
+    if (!startRes.success) return; // IPv6 not available in sandbox
 
-    auto res = plugin.syncPeerInfo();
-    LOGOS_ASSERT_TRUE(res.ok);
+    auto res = plugin.peerInfo();
+    LOGOS_ASSERT_TRUE(res.success);
 
-    PeerInfo peerInfo = res.data.value<PeerInfo>();
+    auto addrs = res.value["addrs"];
 
-    bool hasIp6 = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
-        [](const QString &addr) { return addr.contains("/ip6/::1"); });
+    bool hasIp6 = false;
+    for (const auto& addr : addrs) {
+        if (addr.get<std::string>().find("/ip6/::1") != std::string::npos) {
+            hasIp6 = true;
+            break;
+        }
+    }
     LOGOS_ASSERT_TRUE(hasIp6);
 
-    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
 
 LOGOS_TEST(config_gossipsub_trigger_self_enabled) {
-    Libp2pModulePlugin plugin;
-    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
+    Libp2pModuleImpl plugin;
+    LOGOS_ASSERT_TRUE(plugin.start().success);
 
-    QString topic = "self-test";
-    LOGOS_ASSERT_TRUE(plugin.syncGossipsubSubscribe(topic).ok);
+    std::string topic = "self-test";
+    LOGOS_ASSERT_TRUE(plugin.gossipsubSubscribe(topic).success);
 
-    QByteArray payload("hello");
-    LOGOS_ASSERT_TRUE(plugin.syncGossipsubPublish(topic, payload).ok);
+    std::string payload = "hello";
+    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, payload).success);
 
-    auto res = plugin.syncGossipsubNextMessage(topic, 1000);
-    LOGOS_ASSERT_TRUE(res.ok);
-    LOGOS_ASSERT_TRUE(res.data.value<QByteArray>() == payload);
+    auto res = plugin.gossipsubNextMessage(topic, 1000);
+    LOGOS_ASSERT_TRUE(res.success);
+    LOGOS_ASSERT_TRUE(res.value.get<std::string>() == payload);
 
-    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
 
 LOGOS_TEST(config_gossipsub_trigger_self_disabled) {
-    Libp2pModulePlugin plugin(Libp2pModuleOptions{ .gossipsubTriggerSelf = false });
-    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
+    Libp2pModuleImpl plugin(Libp2pModuleOptions{ .gossipsubTriggerSelf = false });
+    LOGOS_ASSERT_TRUE(plugin.start().success);
 
-    QString topic = "self-test";
-    LOGOS_ASSERT_TRUE(plugin.syncGossipsubSubscribe(topic).ok);
-    LOGOS_ASSERT_TRUE(plugin.syncGossipsubPublish(topic, QByteArray("hello")).ok);
+    std::string topic = "self-test";
+    LOGOS_ASSERT_TRUE(plugin.gossipsubSubscribe(topic).success);
+    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, "hello").success);
 
-    auto res = plugin.syncGossipsubNextMessage(topic, 500);
-    LOGOS_ASSERT_FALSE(res.ok);
+    auto res = plugin.gossipsubNextMessage(topic, 500);
+    LOGOS_ASSERT_FALSE(res.success);
 
-    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
 
 LOGOS_TEST(config_tcp_transport) {
-    Libp2pModulePlugin plugin;
-    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
+    Libp2pModuleImpl plugin;
+    LOGOS_ASSERT_TRUE(plugin.start().success);
 
-    auto res = plugin.syncPeerInfo();
-    LOGOS_ASSERT_TRUE(res.ok);
+    auto res = plugin.peerInfo();
+    LOGOS_ASSERT_TRUE(res.success);
 
-    PeerInfo peerInfo = res.data.value<PeerInfo>();
+    auto addrs = res.value["addrs"];
 
-    bool hasTcp = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
-        [](const QString &addr) { return addr.contains("/tcp/"); });
+    bool hasTcp = false;
+    for (const auto& addr : addrs) {
+        if (addr.get<std::string>().find("/tcp/") != std::string::npos) {
+            hasTcp = true;
+            break;
+        }
+    }
     LOGOS_ASSERT_TRUE(hasTcp);
 
-    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
 
 LOGOS_TEST(config_quic_transport) {
-    Libp2pModulePlugin plugin(Libp2pModuleOptions{ .transport = LIBP2P_TRANSPORT_QUIC });
-    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
+    Libp2pModuleImpl plugin(Libp2pModuleOptions{ .transport = LIBP2P_TRANSPORT_QUIC });
+    LOGOS_ASSERT_TRUE(plugin.start().success);
 
-    auto res = plugin.syncPeerInfo();
-    LOGOS_ASSERT_TRUE(res.ok);
+    auto res = plugin.peerInfo();
+    LOGOS_ASSERT_TRUE(res.success);
 
-    PeerInfo peerInfo = res.data.value<PeerInfo>();
+    auto addrs = res.value["addrs"];
 
-    bool hasQuic = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
-        [](const QString &addr) { return addr.contains("/quic-v1"); });
+    bool hasQuic = false;
+    for (const auto& addr : addrs) {
+        if (addr.get<std::string>().find("/quic-v1") != std::string::npos) {
+            hasQuic = true;
+            break;
+        }
+    }
     LOGOS_ASSERT_TRUE(hasQuic);
 
-    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(plugin.stop().success);
 }

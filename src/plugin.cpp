@@ -1,29 +1,51 @@
 #include "plugin.h"
 
-#include <QtCore/QJsonDocument>
-#include <QtCore/QJsonObject>
+#include <chrono>
+#include <cstdio>
 #include <cstring>
-#include <QDebug>
-#include <QCoreApplication>
-#include <QEventLoop>
-#include <QThread>
+#include <thread>
 
-Libp2pModulePlugin::Libp2pModulePlugin(const Libp2pModuleOptions &options)
-    : ctx(nullptr),
-      m_bootstrapNodes(options.bootstrapNodes),
-      m_addrs(options.addrs)
+using json = nlohmann::json;
+
+// ---------------------------------------------------------------------------
+// Promise-based callbacks — each resolves a heap-allocated SyncPromise
+// ---------------------------------------------------------------------------
+
+void Libp2pModuleImpl::promiseCallback(int ret, const char* msg, size_t len, void* userData) {
+    auto* p = static_cast<SyncPromise*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
+    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    p->set_value(std::move(r));
+    delete p;
+}
+
+void Libp2pModuleImpl::promiseBufferCallback(int ret, const uint8_t* data, size_t dataLen,
+                                             const char* msg, size_t len, void* userData) {
+    auto* p = static_cast<SyncPromise*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
+    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    if (data && dataLen > 0) {
+        r.buffer.assign(data, data + dataLen);
+    }
+    p->set_value(std::move(r));
+    delete p;
+}
+
+void Libp2pModuleImpl::emitEventSafe(const std::string& name, const std::string& data) const {
+    if (emitEvent) {
+        emitEvent(name, data);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Constructor
+// ---------------------------------------------------------------------------
+
+Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
+    : ctx(nullptr)
 {
-    qRegisterMetaType<PeerInfo>("PeerInfo");
-    qRegisterMetaType<QList<PeerInfo>>("QList<PeerInfo>");
-
-    qRegisterMetaType<ServiceInfo>("ServiceInfo");
-    qRegisterMetaType<QList<ServiceInfo>>("QList<ServiceInfo>");
-
-    qRegisterMetaType<ExtendedPeerRecord>("ExtendedPeerRecord");
-    qRegisterMetaType<QList<ExtendedPeerRecord>>("QList<ExtendedPeerRecord>");
-
-    qRegisterMetaType<Libp2pResult>("Libp2pResult");
-
     std::memset(&m_libp2pConfig, 0, sizeof(m_libp2pConfig));
 
     m_libp2pConfig.mount_gossipsub = options.mountGossipsub ? 1 : 0;
@@ -42,519 +64,348 @@ Libp2pModulePlugin::Libp2pModulePlugin(const Libp2pModuleOptions &options)
 
     m_libp2pConfig.transport = options.transport;
 
-    /* -------------------------
-     * Save local listen addrs
-     * ------------------------- */
-
-    if (!m_addrs.isEmpty()) {
-        m_addrsUtf8.reserve(m_addrs.size());
+    // Listen addresses
+    m_addrs = options.addrs;
+    if (!m_addrs.empty()) {
         m_addrsPtr.reserve(m_addrs.size());
-
-        for (const QString &addr : m_addrs) {
-            m_addrsUtf8.push_back(addr.toUtf8());
-            m_addrsPtr.push_back(m_addrsUtf8.back().data());
+        for (const auto& addr : m_addrs) {
+            m_addrsPtr.push_back(addr.c_str());
         }
-
-        m_libp2pConfig.addrs = const_cast<const char **>(m_addrsPtr.data());
-        m_libp2pConfig.addrsLen = m_addrsPtr.size();
+        m_libp2pConfig.addrs = m_addrsPtr.data();
+        m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
     }
 
-    /* -------------------------
-     * Bootstrap nodes
-     * ------------------------- */
+    // Bootstrap nodes
+    if (!options.bootstrapNodes.empty()) {
+        m_peerIdStorage.reserve(options.bootstrapNodes.size());
+        m_addrStorage.reserve(options.bootstrapNodes.size());
+        m_addrPtrStorage.reserve(options.bootstrapNodes.size());
+        m_bootstrapCNodes.reserve(options.bootstrapNodes.size());
 
-    if (!m_bootstrapNodes.isEmpty()) {
-        m_bootstrapCNodes.reserve(m_bootstrapNodes.size());
-        m_addrUtf8Storage.reserve(m_bootstrapNodes.size());
-        m_addrPtrStorage.reserve(m_bootstrapNodes.size());
-        m_peerIdStorage.reserve(m_bootstrapNodes.size());
+        for (const auto& [peerId, addrs] : options.bootstrapNodes) {
+            m_peerIdStorage.push_back(peerId);
+            m_addrStorage.push_back(addrs);
 
-        for (const PeerInfo &p : m_bootstrapNodes) {
-            QVector<QByteArray> utf8List;
-            QVector<char*> ptrList;
-
-            utf8List.reserve(p.addrs.size());
-            ptrList.reserve(p.addrs.size());
-
-            for (const QString &addr : p.addrs) {
-                utf8List.push_back(addr.toUtf8());
-                ptrList.push_back(utf8List.back().data());
+            std::vector<const char*> ptrs;
+            ptrs.reserve(addrs.size());
+            for (const auto& a : m_addrStorage.back()) {
+                ptrs.push_back(a.c_str());
             }
-
-            m_addrUtf8Storage.push_back(std::move(utf8List));
-            m_addrPtrStorage.push_back(std::move(ptrList));
-
-            m_peerIdStorage.push_back(p.peerId.toUtf8());
+            m_addrPtrStorage.push_back(std::move(ptrs));
 
             libp2p_bootstrap_node_t node{};
-            node.peerId = m_peerIdStorage.back().constData();
-            node.multiaddrs =
-                const_cast<const char**>(m_addrPtrStorage.back().data());
-            node.multiaddrsLen = m_addrPtrStorage.back().size();
-
+            node.peerId = m_peerIdStorage.back().c_str();
+            node.multiaddrs = m_addrPtrStorage.back().data();
+            node.multiaddrsLen = static_cast<int>(m_addrPtrStorage.back().size());
             m_bootstrapCNodes.push_back(node);
         }
 
         m_libp2pConfig.kad_bootstrap_nodes = m_bootstrapCNodes.data();
-        m_libp2pConfig.kad_bootstrap_nodes_len = m_bootstrapCNodes.size();
+        m_libp2pConfig.kad_bootstrap_nodes_len = static_cast<int>(m_bootstrapCNodes.size());
     }
 
     m_libp2pConfig.mount_kad = options.mountKad ? 1 : 0;
-
     m_libp2pConfig.mount_service_discovery = options.mountServiceDiscovery ? 1 : 0;
-
     m_libp2pConfig.mount_mix = options.mountMix ? 1 : 0;
 
-    /* -------------------------
-     * Generate secp256k1 key
-     * ------------------------- */
-
-    auto res = this->syncLibp2pNewPrivateKey();
-    if (!res.ok) {
-        qFatal("libp2p_new_private_key failed: %s", qPrintable(res.error));
+    // Generate private key
+    auto keyResult = newPrivateKey();
+    if (!keyResult.success) {
+        fprintf(stderr, "libp2p_new_private_key failed: %s\n", keyResult.error.c_str());
+        return;
     }
-    QByteArray key = res.data.toByteArray();
+    std::string keyStr = keyResult.value.get<std::string>();
+    m_privKey.assign(keyStr.begin(), keyStr.end());
 
-    uint8_t *buf = (uint8_t*)malloc(key.size());
-    memcpy(buf, key.constData(), key.size());
+    m_libp2pConfig.priv_key.data = static_cast<uint8_t*>(malloc(m_privKey.size()));
+    memcpy(m_libp2pConfig.priv_key.data, m_privKey.data(), m_privKey.size());
+    m_libp2pConfig.priv_key.dataLen = static_cast<int>(m_privKey.size());
 
-    m_libp2pConfig.priv_key.data = buf;
-    m_libp2pConfig.priv_key.dataLen = key.size();
-
-    /* -------------------------
-     * Call libp2p_new
-     * ------------------------- */
-
-    auto *newCallbackCtx = new CallbackContext{
-        "libp2pNew",
-        QUuid::createUuid().toString(),
-        this
-    };
-
+    // Call libp2p_new
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
     m_newDone = false;
 
-    ctx = libp2p_new(&m_libp2pConfig,
-                     &Libp2pModulePlugin::libp2pCallback,
-                     newCallbackCtx);
+    ctx = libp2p_new(&m_libp2pConfig, &Libp2pModuleImpl::promiseCallback, p);
 
-    QElapsedTimer timer;
-    timer.start();
-    while (!m_newDone) {
-        if (timer.elapsed() > 5000) {
-            qFatal("libp2p_new timeout");
-        }
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+    f.wait_for(std::chrono::milliseconds(5000));
+    m_newDone = true;
+
+    if (!ctx) {
+        fprintf(stderr, "libp2p_new returned null context\n");
     }
-
-    connect(this,
-            &Libp2pModulePlugin::libp2pEvent,
-            this,
-            &Libp2pModulePlugin::onLibp2pEventDefault);
 }
 
+// ---------------------------------------------------------------------------
+// Destructor
+// ---------------------------------------------------------------------------
 
-Libp2pModulePlugin::~Libp2pModulePlugin()
-{
-    // Stream Registry cleanup
-    QList<uint64_t> streamIds;
+Libp2pModuleImpl::~Libp2pModuleImpl() {
+    // Release all streams
+    std::vector<uint64_t> streamIds;
     {
-
-        QWriteLocker locker(&m_streamsLock);
-        streamIds = m_streams.keys();
+        std::shared_lock<std::shared_mutex> lock(m_streamsLock);
+        for (const auto& [id, _] : m_streams) {
+            streamIds.push_back(id);
+        }
     }
-    for (uint64_t streamId : streamIds) {
-        syncStreamRelease(streamId);
+    for (uint64_t sid : streamIds) {
+        streamRelease(sid);
     }
 
-    // Stop libp2p
+    // Destroy libp2p context
     if (ctx) {
-        auto *callbackCtx = new CallbackContext{
-            "libp2pDestroy",
-            QUuid::createUuid().toString(),
-            this
-        };
-
+        auto* p = new SyncPromise();
+        auto f = p->get_future();
         m_destroyDone = false;
 
-        libp2p_destroy(
-            ctx,
-            &Libp2pModulePlugin::libp2pCallback,
-            callbackCtx
-        );
+        libp2p_destroy(ctx, &Libp2pModuleImpl::promiseCallback, p);
 
-        QElapsedTimer timer;
-        timer.start();
-
-        while (!m_destroyDone) {
-            if (timer.elapsed() > 5000) {
-                qFatal("libp2p_destroy timeout");
-            }
-            QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
-        }
-
+        f.wait_for(std::chrono::milliseconds(5000));
+        m_destroyDone = true;
         ctx = nullptr;
-
-    }
-
-    // Logos cleanup
-    if (logosAPI) {
-        delete logosAPI;
-        logosAPI = nullptr;
     }
 }
 
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
 
-void Libp2pModulePlugin::initLogos(LogosAPI* logosAPIInstance) {
-    if (logosAPI) {
-        delete logosAPI;
-    }
-    logosAPI = logosAPIInstance;
+StdLogosResult Libp2pModuleImpl::start() {
+    if (!ctx) return {false, {}, "No libp2p context"};
+
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_start(ctx, &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to start libp2p"}; }
+
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-/* ---------------- Helper Functions ----------------- */
+StdLogosResult Libp2pModuleImpl::stop() {
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-QString Libp2pModulePlugin::toCid(const QByteArray &key)
-{
-    if (key.isEmpty())
-        return {};
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_stop(ctx, &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to stop libp2p"}; }
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "toCid", uuid, this };
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
+}
 
+StdLogosResult Libp2pModuleImpl::publicKey() {
+    if (!ctx) return {false, {}, "No libp2p context"};
+
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_public_key(ctx, &Libp2pModuleImpl::promiseBufferCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get public key"}; }
+
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
+}
+
+StdLogosResult Libp2pModuleImpl::newPrivateKey() {
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_new_private_key(LIBP2P_PK_SECP256K1,
+                                     &Libp2pModuleImpl::promiseBufferCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to generate private key"}; }
+
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
+}
+
+// ---------------------------------------------------------------------------
+// Helper: toCid
+// ---------------------------------------------------------------------------
+
+StdLogosResult Libp2pModuleImpl::toCid(const std::string& key) {
+    if (key.empty()) return {false, {}, "Key is empty"};
+
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
     int ret = libp2p_create_cid(
-        1,                      // CIDv1
-        "dag-pb",
-        "sha2-256",
-        reinterpret_cast<const uint8_t *>(key.constData()),
-        size_t(key.size()),
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
+        1, "dag-pb", "sha2-256",
+        reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+        &Libp2pModuleImpl::promiseCallback, p
     );
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to create CID"}; }
 
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, r.message, ""};
 }
 
-/* --------------- Libp2p Core --------------- */
+// ---------------------------------------------------------------------------
+// Event Callback
+// ---------------------------------------------------------------------------
 
-QString Libp2pModulePlugin::libp2pStart()
-{
-    qDebug() << "Libp2pModulePlugin::libp2pStart called";
-    if (!ctx) {
-        qDebug() << "libp2pStart called without a context";
-        return {};
-    }
+void Libp2pModuleImpl::eventCallback(int ret, const char* msg, size_t len, void* userData) {
+    auto* self = static_cast<Libp2pModuleImpl*>(userData);
+    if (!self) return;
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "libp2pStart", uuid, this };
-
-    int ret = libp2p_start(ctx, &Libp2pModulePlugin::libp2pCallback, callbackCtx);
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    std::string message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    json j;
+    j["result"] = ret;
+    j["message"] = message;
+    self->emitEventSafe("libp2pEvent", j.dump());
 }
 
-QString Libp2pModulePlugin::libp2pStop()
-{
-    qDebug() << "Libp2pModulePlugin::libp2pStop called";
-    if (!ctx) {
-        qDebug() << "libp2pStop called without a context";
-        return {};
-    }
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "libp2pStop", uuid, this };
-
-    int ret = libp2p_stop(ctx, &Libp2pModulePlugin::libp2pCallback, callbackCtx);
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
-}
-
-QString Libp2pModulePlugin::libp2pPublicKey()
-{
-    if (!ctx)
-        return {};
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx =
-        new CallbackContext{ "libp2pPublicKey", uuid, this };
-
-    int ret = libp2p_public_key(
-        ctx,
-        &Libp2pModulePlugin::libp2pBufferCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
-}
-
-QString Libp2pModulePlugin::libp2pNewPrivateKey()
-{
-    qDebug() << "Libp2pModulePlugin::libp2pNewPrivateKey called";
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "libp2pNewPrivateKey", uuid, this };
-
-    int ret = libp2p_new_private_key(
-        LIBP2P_PK_SECP256K1,
-        &Libp2pModulePlugin::libp2pBufferCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
-}
-
-/* --------------- Connectivity --------------- */
-QString Libp2pModulePlugin::connectPeer(
-    const QString &peerId,
-    const QList<QString> multiaddrs,
-    int64_t timeoutMs
-)
-{
-    if (!ctx) return {};
-
-    QByteArray peerIdUtf8 = peerId.toUtf8();
-
-    QList<QByteArray> addrBuffers;
-    QVector<const char*> addrPtrs;
-
-    addrBuffers.reserve(multiaddrs.size());
-    addrPtrs.reserve(multiaddrs.size());
-
-    for (const auto &addr : multiaddrs) {
-        addrBuffers.append(addr.toUtf8());
-        addrPtrs.append(addrBuffers.last().constData());
-    }
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "connectPeer",
-        uuid,
-        this
-    };
-
-    int ret = libp2p_connect(
-        ctx,
-        peerIdUtf8.constData(),
-        addrPtrs.data(),
-        addrPtrs.size(),
-        timeoutMs,
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
-}
-
-QString Libp2pModulePlugin::disconnectPeer(const QString &peerId)
-{
-    if (!ctx) return {};
-
-    QByteArray peerIdUtf8 = peerId.toUtf8();
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "disconnectPeer",
-        uuid,
-        this
-    };
-
-    int ret = libp2p_disconnect(
-        ctx,
-        peerIdUtf8.constData(),
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
-}
-
-QString Libp2pModulePlugin::peerInfo()
-{
-    if (!ctx) return {};
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "peerInfo",
-        uuid,
-        this
-    };
-
-    int ret = libp2p_peerinfo(
-        ctx,
-        &Libp2pModulePlugin::peerInfoCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
-}
-
-QString Libp2pModulePlugin::connectedPeers(int direction)
-{
-    if (!ctx) return {};
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "connectedPeers",
-        uuid,
-        this
-    };
-
-    int ret = libp2p_connected_peers(
-        ctx,
-        direction,
-        &Libp2pModulePlugin::peersCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
-}
-
-QString Libp2pModulePlugin::dial(const QString &peerId, const QString &proto)
-{
-    if (!ctx) return {};
-
-    QByteArray peerIdUtf8 = peerId.toUtf8();
-    QByteArray protoUtf8 = proto.toUtf8();
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "dial",
-        uuid,
-        this
-    };
-
-    int ret = libp2p_dial(
-        ctx,
-        peerIdUtf8.constData(),
-        protoUtf8.constData(),
-        &Libp2pModulePlugin::connectionCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
-}
-
-/* --------------- Circuit Relay --------------- */
-
-QString Libp2pModulePlugin::circuitRelayReserve(const QString &relayPeerId, const QList<QString> &relayAddrs)
-{
-    if (!ctx) return {};
-
-    QByteArray peerIdUtf8 = relayPeerId.toUtf8();
-
-    QList<QByteArray> addrBuffers;
-    QVector<const char*> addrPtrs;
-    addrBuffers.reserve(relayAddrs.size());
-    addrPtrs.reserve(relayAddrs.size());
-    for (const auto &addr : relayAddrs) {
-        addrBuffers.append(addr.toUtf8());
-        addrPtrs.append(addrBuffers.last().constData());
-    }
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{"circuitRelayReserve", uuid, this};
-
-    int ret = libp2p_circuit_relay_reserve(
-        ctx,
-        peerIdUtf8.constData(),
-        addrPtrs.data(),
-        addrPtrs.size(),
-        &Libp2pModulePlugin::reservationCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
-}
-
-QString Libp2pModulePlugin::dialCircuitRelay(const QString &dstPeerId, const QString &multiaddr, const QString &proto)
-{
-    if (!ctx) return {};
-
-    QByteArray peerIdUtf8 = dstPeerId.toUtf8();
-    QByteArray addrUtf8 = multiaddr.toUtf8();
-    QByteArray protoUtf8 = proto.toUtf8();
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{"dialCircuitRelay", uuid, this};
-
-    int ret = libp2p_dial_circuit_relay(
-        ctx,
-        peerIdUtf8.constData(),
-        addrUtf8.constData(),
-        protoUtf8.constData(),
-        &Libp2pModulePlugin::connectionCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
-}
-
-bool Libp2pModulePlugin::setEventCallback()
-{
-    if (!ctx) {
-        return false;
-    }
-
-    libp2p_set_event_callback(ctx, &Libp2pModulePlugin::libp2pCallback, NULL);
+bool Libp2pModuleImpl::setEventCallback() {
+    if (!ctx) return false;
+    libp2p_set_event_callback(ctx, &Libp2pModuleImpl::eventCallback, this);
     return true;
 }
 
+// ---------------------------------------------------------------------------
+// Connectivity
+// ---------------------------------------------------------------------------
+
+StdLogosResult Libp2pModuleImpl::connectPeer(
+    const std::string& peerId,
+    const std::vector<std::string>& multiaddrs,
+    int64_t timeoutMs)
+{
+    if (!ctx) return {false, {}, "No libp2p context"};
+
+    std::vector<const char*> addrPtrs;
+    addrPtrs.reserve(multiaddrs.size());
+    for (const auto& addr : multiaddrs) {
+        addrPtrs.push_back(addr.c_str());
+    }
+
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_connect(ctx, peerId.c_str(), addrPtrs.data(),
+                             static_cast<int>(addrPtrs.size()), timeoutMs,
+                             &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to connect"}; }
+
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
+}
+
+StdLogosResult Libp2pModuleImpl::disconnectPeer(const std::string& peerId) {
+    if (!ctx) return {false, {}, "No libp2p context"};
+
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_disconnect(ctx, peerId.c_str(),
+                                &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to disconnect"}; }
+
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
+}
+
+StdLogosResult Libp2pModuleImpl::peerInfo() {
+    if (!ctx) return {false, {}, "No libp2p context"};
+
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_peerinfo(ctx, &Libp2pModuleImpl::promisePeerInfoCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get peer info"}; }
+
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, json::parse(r.message), ""};
+}
+
+StdLogosResult Libp2pModuleImpl::connectedPeers(int direction) {
+    if (!ctx) return {false, {}, "No libp2p context"};
+
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_connected_peers(ctx, direction,
+                                     &Libp2pModuleImpl::promisePeersCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get connected peers"}; }
+
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    if (r.message.empty()) return {true, json::array(), ""};
+    return {true, json::parse(r.message), ""};
+}
+
+StdLogosResult Libp2pModuleImpl::dial(const std::string& peerId, const std::string& proto) {
+    if (!ctx) return {false, {}, "No libp2p context"};
+
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_dial(ctx, peerId.c_str(), proto.c_str(),
+                          &Libp2pModuleImpl::promiseConnectionCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to dial"}; }
+
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+
+    auto* stream = static_cast<libp2p_stream_t*>(r.extra);
+    if (stream) {
+        uint64_t streamId = addStream(stream);
+        return {true, streamId, ""};
+    }
+    return {true, 0, ""};
+}
+
+// ---------------------------------------------------------------------------
+// Circuit Relay
+// ---------------------------------------------------------------------------
+
+StdLogosResult Libp2pModuleImpl::circuitRelayReserve(
+    const std::string& relayPeerId,
+    const std::vector<std::string>& relayAddrs)
+{
+    if (!ctx) return {false, {}, "No libp2p context"};
+
+    std::vector<const char*> addrPtrs;
+    addrPtrs.reserve(relayAddrs.size());
+    for (const auto& addr : relayAddrs) {
+        addrPtrs.push_back(addr.c_str());
+    }
+
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_circuit_relay_reserve(ctx, relayPeerId.c_str(),
+                                           addrPtrs.data(),
+                                           static_cast<int>(addrPtrs.size()),
+                                           &Libp2pModuleImpl::promiseReservationCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to reserve relay"}; }
+
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    if (r.message.empty()) return {true, json::array(), ""};
+    return {true, json::parse(r.message), ""};
+}
+
+StdLogosResult Libp2pModuleImpl::dialCircuitRelay(
+    const std::string& dstPeerId,
+    const std::string& multiaddr,
+    const std::string& proto)
+{
+    if (!ctx) return {false, {}, "No libp2p context"};
+
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_dial_circuit_relay(ctx, dstPeerId.c_str(),
+                                        multiaddr.c_str(), proto.c_str(),
+                                        &Libp2pModuleImpl::promiseConnectionCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to dial circuit relay"}; }
+
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+
+    auto* stream = static_cast<libp2p_stream_t*>(r.extra);
+    if (stream) {
+        uint64_t streamId = addStream(stream);
+        return {true, streamId, ""};
+    }
+    return {true, 0, ""};
+}

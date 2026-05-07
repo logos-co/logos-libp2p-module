@@ -1,90 +1,76 @@
-#include <QCoreApplication>
-#include <QDebug>
+#include <cstdio>
 #include "plugin.h"
 
-int main(int argc, char *argv[])
+int main()
 {
-    QCoreApplication app(argc, argv);
+    Libp2pModuleImpl nodeA;
 
-    Libp2pModulePlugin nodeA;
+    printf("Starting nodes...\n");
 
-    qDebug() << "Starting nodes...";
-
-    if (!nodeA.syncLibp2pStart().ok) {
-        qFatal("Node A failed to start");
+    if (!nodeA.start().success) {
+        fprintf(stderr, "Node A failed to start\n");
+        return 1;
     }
-    auto res = nodeA.syncPeerInfo();
-    PeerInfo nodeAPeerInfo = res.data.value<PeerInfo>();
+    auto infoA = nodeA.peerInfo().value;
+    std::string peerIdA = infoA["peerId"].get<std::string>();
+    std::vector<std::string> addrsA;
+    for (const auto& a : infoA["addrs"]) addrsA.push_back(a.get<std::string>());
 
-    Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
+    Libp2pModuleImpl nodeB(Libp2pModuleOptions{
+        .bootstrapNodes = { {peerIdA, addrsA} }
+    });
 
-    if (!nodeB.syncLibp2pStart().ok) {
-        qFatal("Node B failed to start");
-    }
-
-    qDebug() << "Nodes started";
-
-    // Obtain node B peer info from node B
-    res = nodeB.syncKadGetRandomRecords();
-    QList<ExtendedPeerRecord> peersB = res.data.value<QList<ExtendedPeerRecord>>();
-
-    if (peersB.isEmpty()) {
-        qDebug() << "Node B has no known peers yet";
+    if (!nodeB.start().success) {
+        fprintf(stderr, "Node B failed to start\n");
+        return 1;
     }
 
-    /* ----------------------------------
-       Kademlia Put from A
-       ---------------------------------- */
+    printf("Nodes started\n");
 
-    QByteArray key   = "demo-key";
-    QByteArray value = "Hello from node A";
-
-    qDebug() << "Node A putting value into DHT";
-
-    if (!nodeA.syncKadPutValue(key, value).ok) {
-        qFatal("PutValue failed");
+    auto recordsRes = nodeB.kadGetRandomRecords();
+    if (recordsRes.success && recordsRes.value.is_array() && recordsRes.value.empty()) {
+        printf("Node B has no known peers yet\n");
     }
 
-    /* ----------------------------------
-       Node B retrieves value
-       ---------------------------------- */
+    std::string key = "demo-key";
+    std::string value = "Hello from node A";
 
-    qDebug() << "Node B fetching value from DHT";
+    printf("Node A putting value into DHT\n");
 
-    res = nodeB.syncKadGetValue(key, 1);
-    QByteArray received = res.data.value<QByteArray>();
+    if (!nodeA.kadPutValue(key, value).success) {
+        fprintf(stderr, "PutValue failed\n");
+        return 1;
+    }
 
-    if (received.isEmpty()) {
-        qWarning() << "Node B did not find value";
+    printf("Node B fetching value from DHT\n");
+
+    auto getRes = nodeB.kadGetValue(key, 1);
+    std::string received = getRes.value.get<std::string>();
+
+    if (received.empty()) {
+        printf("Node B did not find value\n");
     } else {
-        qDebug() << "Node B received:" << received;
+        printf("Node B received: %s\n", received.c_str());
     }
 
-    /* ----------------------------------
-       Providers demo
-       ---------------------------------- */
+    auto cidRes = nodeA.toCid(key);
+    std::string cid = cidRes.value.get<std::string>();
 
-    res = nodeA.syncToCid(key);
-    QString cid = res.data.value<QString>();
+    printf("CID: %s\n", cid.c_str());
 
-    qDebug() << "CID:" << cid;
+    nodeA.kadStartProviding(cid);
 
-    nodeA.syncKadStartProviding(cid);
-
-    res = nodeB.syncKadGetProviders(cid);
-    QList<PeerInfo> providers = res.data.value<QList<PeerInfo>>();
-    qDebug() << "Providers found by B:" << providers.size();
-    for (const auto &p : providers) {
-        qDebug() << "Provider:" << p.peerId;
+    auto provRes = nodeB.kadGetProviders(cid);
+    auto providers = provRes.value;
+    printf("Providers found by B: %zu\n", providers.size());
+    for (const auto& p : providers) {
+        printf("Provider: %s\n", p["peerId"].get<std::string>().c_str());
     }
 
-    /* ---------------------------------- */
+    nodeA.stop();
+    nodeB.stop();
 
-    nodeA.syncLibp2pStop();
-    nodeB.syncLibp2pStop();
-
-    qDebug() << "Done";
+    printf("Done\n");
 
     return 0;
 }
-

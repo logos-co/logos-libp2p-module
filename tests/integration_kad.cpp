@@ -1,110 +1,142 @@
 #include <logos_test.h>
 #include <plugin.h>
 
+static std::pair<std::string, std::vector<std::string>> getPeerInfoPair(Libp2pModuleImpl& node) {
+    auto res = node.peerInfo();
+    auto info = res.value;
+    std::string peerId = info["peerId"].get<std::string>();
+    std::vector<std::string> addrs;
+    for (const auto& a : info["addrs"]) {
+        addrs.push_back(a.get<std::string>());
+    }
+    return {peerId, addrs};
+}
+
 LOGOS_TEST(kad_put_get) {
-    Libp2pModulePlugin nodeA;
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
-    PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModuleImpl nodeA;
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
 
-    Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo } });
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
+    Libp2pModuleImpl nodeB(Libp2pModuleOptions{
+        .bootstrapNodes = { {peerIdA, addrsA} }
+    });
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
 
-    QByteArray key = "integration-key";
-    QByteArray value = "hello";
-    LOGOS_ASSERT_TRUE(nodeA.syncKadPutValue(key, value).ok);
+    std::string key = "integration-key";
+    std::string value = "hello";
+    LOGOS_ASSERT_TRUE(nodeA.kadPutValue(key, value).success);
 
     int quorum = 1;
-    Libp2pResult result = nodeB.syncKadGetValue(key, quorum);
-    LOGOS_ASSERT_TRUE(result.ok);
+    auto result = nodeB.kadGetValue(key, quorum);
+    LOGOS_ASSERT_TRUE(result.success);
 
-    QByteArray record = result.data.value<QByteArray>();
+    std::string record = result.value.get<std::string>();
     LOGOS_ASSERT_TRUE(record == value);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
 
 LOGOS_TEST(kad_find_node) {
-    Libp2pModulePlugin nodeA;
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
-    PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModuleImpl nodeA;
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
 
-    Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
-    PeerInfo infoB = nodeB.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModuleImpl nodeB(Libp2pModuleOptions{
+        .bootstrapNodes = { {peerIdA, addrsA} }
+    });
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
+    auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
 
-    Libp2pModulePlugin nodeC(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-    LOGOS_ASSERT_TRUE(nodeC.syncLibp2pStart().ok);
-    PeerInfo infoC = nodeC.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModuleImpl nodeC(Libp2pModuleOptions{
+        .bootstrapNodes = { {peerIdA, addrsA} }
+    });
+    LOGOS_ASSERT_TRUE(nodeC.start().success);
+    auto [peerIdC, addrsC] = getPeerInfoPair(nodeC);
 
-    Libp2pModulePlugin nodeD(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-    LOGOS_ASSERT_TRUE(nodeD.syncLibp2pStart().ok);
+    Libp2pModuleImpl nodeD(Libp2pModuleOptions{
+        .bootstrapNodes = { {peerIdA, addrsA} }
+    });
+    LOGOS_ASSERT_TRUE(nodeD.start().success);
 
-    Libp2pResult result = nodeD.syncKadFindNode(infoB.peerId);
-    LOGOS_ASSERT_TRUE(result.ok);
+    auto result = nodeD.kadFindNode(peerIdB);
+    LOGOS_ASSERT_TRUE(result.success);
 
-    QList<QString> peers = result.data.value<QList<QString>>();
-    LOGOS_ASSERT_EQ(peers.size(), qsizetype(3));
-    LOGOS_ASSERT_TRUE(peers.contains(infoA.peerId));
-    LOGOS_ASSERT_TRUE(peers.contains(infoB.peerId));
-    LOGOS_ASSERT_TRUE(peers.contains(infoC.peerId));
+    auto peers = result.value;
+    LOGOS_ASSERT_EQ(peers.size(), size_t(3));
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeC.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeD.syncLibp2pStop().ok);
+    bool foundA = false, foundB = false, foundC = false;
+    for (const auto& p : peers) {
+        std::string pid = p.get<std::string>();
+        if (pid == peerIdA) foundA = true;
+        if (pid == peerIdB) foundB = true;
+        if (pid == peerIdC) foundC = true;
+    }
+    LOGOS_ASSERT_TRUE(foundA);
+    LOGOS_ASSERT_TRUE(foundB);
+    LOGOS_ASSERT_TRUE(foundC);
+
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
+    LOGOS_ASSERT_TRUE(nodeC.stop().success);
+    LOGOS_ASSERT_TRUE(nodeD.stop().success);
 }
 
 LOGOS_TEST(kad_start_stop_providing) {
-    Libp2pModulePlugin nodeA;
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
-    PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModuleImpl nodeA;
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
 
-    Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
+    Libp2pModuleImpl nodeB(Libp2pModuleOptions{
+        .bootstrapNodes = { {peerIdA, addrsA} }
+    });
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
 
-    QByteArray key = "provider-test-key";
-    Libp2pResult cidResult = nodeA.syncToCid(key);
-    LOGOS_ASSERT_TRUE(cidResult.ok);
-    QString cid = cidResult.data.value<QString>();
-    LOGOS_ASSERT_FALSE(cid.isEmpty());
+    std::string key = "provider-test-key";
+    auto cidResult = nodeA.toCid(key);
+    LOGOS_ASSERT_TRUE(cidResult.success);
+    std::string cid = cidResult.value.get<std::string>();
+    LOGOS_ASSERT_FALSE(cid.empty());
 
-    LOGOS_ASSERT_TRUE(nodeA.syncKadStartProviding(cid).ok);
+    LOGOS_ASSERT_TRUE(nodeA.kadStartProviding(cid).success);
 
-    Libp2pResult res = nodeB.syncKadGetProviders(cid);
-    LOGOS_ASSERT_TRUE(res.ok);
-    QList<PeerInfo> providers = res.data.value<QList<PeerInfo>>();
+    auto res = nodeB.kadGetProviders(cid);
+    LOGOS_ASSERT_TRUE(res.success);
+    auto providers = res.value;
 
-    LOGOS_ASSERT_FALSE(providers.isEmpty());
-    LOGOS_ASSERT_TRUE(providers[0].peerId == infoA.peerId);
+    LOGOS_ASSERT_FALSE(providers.empty());
+    LOGOS_ASSERT_TRUE(providers[0]["peerId"].get<std::string>() == peerIdA);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncKadStopProviding(cid).ok);
+    LOGOS_ASSERT_TRUE(nodeA.kadStopProviding(cid).success);
 
-    res = nodeB.syncKadGetProviders(cid);
-    LOGOS_ASSERT_TRUE(res.ok);
-    providers = res.data.value<QList<PeerInfo>>();
-    LOGOS_ASSERT_TRUE(providers.isEmpty());
+    res = nodeB.kadGetProviders(cid);
+    LOGOS_ASSERT_TRUE(res.success);
+    providers = res.value;
+    LOGOS_ASSERT_TRUE(providers.empty());
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
 
 LOGOS_TEST(kad_random_records) {
-    Libp2pModulePlugin nodeA(Libp2pModuleOptions{ .mountServiceDiscovery = true });
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
-    PeerInfo nodeAPeerInfo = nodeA.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModuleImpl nodeA(Libp2pModuleOptions{ .mountServiceDiscovery = true });
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
 
-    Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { nodeAPeerInfo }, .mountServiceDiscovery = true });
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
-    PeerInfo nodeBPeerInfo = nodeB.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModuleOptions optsB;
+    optsB.mountServiceDiscovery = true;
+    optsB.bootstrapNodes = { {peerIdA, addrsA} };
+    Libp2pModuleImpl nodeB(optsB);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
+    auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
 
-    Libp2pResult res = nodeA.syncKadGetRandomRecords();
-    LOGOS_ASSERT_TRUE(res.ok);
-    QList<ExtendedPeerRecord> records = res.data.value<QList<ExtendedPeerRecord>>();
+    auto res = nodeA.kadGetRandomRecords();
+    LOGOS_ASSERT_TRUE(res.success);
+    auto records = res.value;
 
-    LOGOS_ASSERT_FALSE(records.isEmpty());
-    LOGOS_ASSERT_TRUE(records[0].peerId == nodeBPeerInfo.peerId);
+    LOGOS_ASSERT_FALSE(records.empty());
+    LOGOS_ASSERT_TRUE(records[0]["peerId"].get<std::string>() == peerIdB);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
