@@ -23,6 +23,7 @@ if(LIBP2P_PATH)
             ../src/mix.cpp
             ../src/gossipsub.cpp
             ../src/service_discovery.cpp
+            ../src/peerstore.cpp
         TEST_SOURCES
             main.cpp
             sync.cpp
@@ -32,6 +33,7 @@ if(LIBP2P_PATH)
             integration_kad.cpp
             integration_mix.cpp
             integration_service_discovery.cpp
+            integration_peerstore.cpp
         EXTRA_INCLUDES
             ../lib
         EXTRA_LINK_LIBS
