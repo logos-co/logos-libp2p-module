@@ -1,232 +1,157 @@
 #include "plugin.h"
 
-#include <QtCore/QJsonDocument>
-#include <QtCore/QJsonObject>
 #include <cstring>
 
-QByteArray Libp2pModulePlugin::mixGeneratePrivKey()
-{
-    if (!ctx)
-        return {};
+// ---------------------------------------------------------------------------
+// Mix Network
+// ---------------------------------------------------------------------------
 
-    libp2p_curve25519_key_t key {};
+StdLogosResult Libp2pModuleImpl::mixGeneratePrivKey() {
+    if (!ctx) return {false, {}, "No libp2p context"};
+
+    libp2p_curve25519_key_t key{};
     libp2p_mix_generate_priv_key(&key);
 
-    return QByteArray(
-        reinterpret_cast<const char*>(&key),
-        sizeof(key)
-    );
+    return {true, std::string(reinterpret_cast<const char*>(&key), sizeof(key)), ""};
 }
 
-QByteArray Libp2pModulePlugin::mixPublicKey(const QByteArray &privKey)
-{
-    if (!ctx)
-        return {};
+StdLogosResult Libp2pModuleImpl::mixPublicKey(const std::string& privKey) {
+    if (!ctx) return {false, {}, "No libp2p context"};
 
     if (privKey.size() != sizeof(libp2p_curve25519_key_t)) {
-        qCritical() << "mixPublicKey invalid private key size:" << privKey.size();
-        return {};
+        return {false, {}, "Invalid private key size"};
     }
 
-    libp2p_curve25519_key_t inKey {};
-    libp2p_curve25519_key_t outKey {};
-
-    memcpy(&inKey, privKey.constData(), sizeof(inKey));
+    libp2p_curve25519_key_t inKey{};
+    libp2p_curve25519_key_t outKey{};
+    memcpy(&inKey, privKey.data(), sizeof(inKey));
 
     libp2p_mix_public_key(inKey, &outKey);
 
-    return QByteArray(
-        reinterpret_cast<const char*>(&outKey),
-        sizeof(outKey)
-    );
+    return {true, std::string(reinterpret_cast<const char*>(&outKey), sizeof(outKey)), ""};
 }
 
-QString Libp2pModulePlugin::mixDial(
-    const QString &peerId,
-    const QString &multiaddr,
-    const QString &proto
-)
+StdLogosResult Libp2pModuleImpl::mixDial(
+    const std::string& peerId,
+    const std::string& multiaddr,
+    const std::string& proto)
 {
-    if (!ctx)
-        return {};
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx =
-        new CallbackContext{ "mixDial", uuid, this };
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_mix_dial(ctx, peerId.c_str(), multiaddr.c_str(), proto.c_str(),
+                              &Libp2pModuleImpl::promiseConnectionCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to mix dial"}; }
 
-    QByteArray peerIdUtf8 = peerId.toUtf8();
-    QByteArray addrUtf8 = multiaddr.toUtf8();
-    QByteArray protoUtf8 = proto.toUtf8();
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
 
-    int ret = libp2p_mix_dial(
-        ctx,
-        peerIdUtf8.constData(),
-        addrUtf8.constData(),
-        protoUtf8.constData(),
-        &Libp2pModulePlugin::connectionCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
+    auto* stream = static_cast<libp2p_stream_t*>(r.extra);
+    if (stream) {
+        uint64_t streamId = addStream(stream);
+        return {true, streamId, ""};
     }
-
-    return uuid;
+    return {true, 0, ""};
 }
 
-QString Libp2pModulePlugin::mixDialWithReply(
-    const QString &peerId,
-    const QString &multiaddr,
-    const QString &proto,
+StdLogosResult Libp2pModuleImpl::mixDialWithReply(
+    const std::string& peerId,
+    const std::string& multiaddr,
+    const std::string& proto,
     int expectReply,
-    uint8_t numSurbs
-)
+    uint8_t numSurbs)
 {
-    if (!ctx)
-        return {};
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx =
-        new CallbackContext{ "mixDialWithReply", uuid, this };
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_mix_dial_with_reply(ctx, peerId.c_str(), multiaddr.c_str(),
+                                         proto.c_str(), expectReply, numSurbs,
+                                         &Libp2pModuleImpl::promiseConnectionCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to mix dial with reply"}; }
 
-    QByteArray peerIdUtf8 = peerId.toUtf8();
-    QByteArray addrUtf8 = multiaddr.toUtf8();
-    QByteArray protoUtf8 = proto.toUtf8();
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
 
-    int ret = libp2p_mix_dial_with_reply(
-        ctx,
-        peerIdUtf8.constData(),
-        addrUtf8.constData(),
-        protoUtf8.constData(),
-        expectReply,
-        numSurbs,
-        &Libp2pModulePlugin::connectionCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
+    auto* stream = static_cast<libp2p_stream_t*>(r.extra);
+    if (stream) {
+        uint64_t streamId = addStream(stream);
+        return {true, streamId, ""};
     }
-
-    return uuid;
+    return {true, 0, ""};
 }
 
-QString Libp2pModulePlugin::mixRegisterDestReadBehavior(
-    const QString &proto,
+StdLogosResult Libp2pModuleImpl::mixRegisterDestReadBehavior(
+    const std::string& proto,
     int behavior,
-    uint32_t sizeParam
-)
+    uint32_t sizeParam)
 {
-    if (!ctx)
-        return {};
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx =
-        new CallbackContext{ "mixRegisterDestReadBehavior", uuid, this };
-
-    QByteArray protoUtf8 = proto.toUtf8();
-
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
     int ret = libp2p_mix_register_dest_read_behavior(
-        ctx,
-        protoUtf8.constData(),
-        static_cast<Libp2pMixReadBehavior>(behavior),
-        sizeParam,
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
+        ctx, proto.c_str(),
+        static_cast<Libp2pMixReadBehavior>(behavior), sizeParam,
+        &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to register dest read behavior"}; }
 
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-QString Libp2pModulePlugin::mixSetNodeInfo(
-    const QString &multiaddr,
-    const QByteArray &mixPrivKey
-)
+StdLogosResult Libp2pModuleImpl::mixSetNodeInfo(
+    const std::string& multiaddr,
+    const std::string& mixPrivKey)
 {
-    if (!ctx)
-        return {};
+    if (!ctx) return {false, {}, "No libp2p context"};
 
     if (mixPrivKey.size() != sizeof(libp2p_curve25519_key_t)) {
-        qCritical() << "mixSetNodeInfo invalid key size:" << mixPrivKey.size();
-        return {};
+        return {false, {}, "Invalid key size"};
     }
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx =
-        new CallbackContext{ "mixSetNodeInfo", uuid, this };
+    libp2p_curve25519_key_t key{};
+    memcpy(&key, mixPrivKey.data(), sizeof(key));
 
-    QByteArray addrUtf8 = multiaddr.toUtf8();
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_mix_set_node_info(ctx, multiaddr.c_str(), key,
+                                       &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to set node info"}; }
 
-    libp2p_curve25519_key_t key {};
-    memcpy(&key, mixPrivKey.constData(), sizeof(key));
-
-    int ret = libp2p_mix_set_node_info(
-        ctx,
-        addrUtf8.constData(),
-        key,
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-QString Libp2pModulePlugin::mixNodepoolAdd(
-    const QString &peerId,
-    const QString &multiaddr,
-    const QByteArray &mixPubKey,
-    const QByteArray &libp2pPubKey
-)
+StdLogosResult Libp2pModuleImpl::mixNodepoolAdd(
+    const std::string& peerId,
+    const std::string& multiaddr,
+    const std::string& mixPubKey,
+    const std::string& libp2pPubKey)
 {
-    if (!ctx)
-        return {};
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx =
-        new CallbackContext{ "mixNodepoolAdd", uuid, this };
-
-    QByteArray peerIdUtf8 = peerId.toUtf8();
-    QByteArray addrUtf8 = multiaddr.toUtf8();
-
-    libp2p_curve25519_key_t mixKey {};
-    libp2p_secp256k1_pubkey_t lpKey {};
+    if (!ctx) return {false, {}, "No libp2p context"};
 
     if (mixPubKey.size() != sizeof(libp2p_curve25519_key_t) ||
         libp2pPubKey.size() != sizeof(libp2p_secp256k1_pubkey_t)) {
-        qCritical() << "mixNodepoolAdd invalid key sizes";
-        return {};
+        return {false, {}, "Invalid key sizes"};
     }
 
-    memcpy(&mixKey, mixPubKey.constData(), sizeof(mixKey));
-    memcpy(&lpKey, libp2pPubKey.constData(), sizeof(lpKey));
+    libp2p_curve25519_key_t mixKey{};
+    libp2p_secp256k1_pubkey_t lpKey{};
+    memcpy(&mixKey, mixPubKey.data(), sizeof(mixKey));
+    memcpy(&lpKey, libp2pPubKey.data(), sizeof(lpKey));
 
-    int ret = libp2p_mix_nodepool_add(
-        ctx,
-        peerIdUtf8.constData(),
-        addrUtf8.constData(),
-        mixKey,
-        lpKey,
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_mix_nodepool_add(ctx, peerId.c_str(), multiaddr.c_str(),
+                                      mixKey, lpKey,
+                                      &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to add to nodepool"}; }
 
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
-

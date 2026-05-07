@@ -1,165 +1,175 @@
 #include <logos_test.h>
 #include <plugin.h>
-#include <QThread>
+#include <thread>
+#include <chrono>
 
 static Libp2pModuleOptions discoOptions() {
     return Libp2pModuleOptions{ .mountServiceDiscovery = true };
 }
 
+static std::pair<std::string, std::vector<std::string>> getPeerInfoPair(Libp2pModuleImpl& node) {
+    auto res = node.peerInfo();
+    auto info = res.value;
+    std::string peerId = info["peerId"].get<std::string>();
+    std::vector<std::string> addrs;
+    for (const auto& a : info["addrs"]) {
+        addrs.push_back(a.get<std::string>());
+    }
+    return {peerId, addrs};
+}
+
 LOGOS_TEST(disco_start_stop) {
-    Libp2pModulePlugin node(discoOptions());
-    LOGOS_ASSERT_TRUE(node.syncLibp2pStart().ok);
+    Libp2pModuleImpl node(discoOptions());
+    LOGOS_ASSERT_TRUE(node.start().success);
 
-    LOGOS_ASSERT_TRUE(node.syncDiscoStart().ok);
-    LOGOS_ASSERT_TRUE(node.syncDiscoStop().ok);
+    LOGOS_ASSERT_TRUE(node.discoStart().success);
+    LOGOS_ASSERT_TRUE(node.discoStop().success);
 
-    LOGOS_ASSERT_TRUE(node.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(node.stop().success);
 }
 
 LOGOS_TEST(disco_advertise_and_lookup) {
-    Libp2pModulePlugin nodeC(discoOptions());
-    LOGOS_ASSERT_TRUE(nodeC.syncLibp2pStart().ok);
-    LOGOS_ASSERT_TRUE(nodeC.syncDiscoStart().ok);
-    PeerInfo infoC = nodeC.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModuleImpl nodeC(discoOptions());
+    LOGOS_ASSERT_TRUE(nodeC.start().success);
+    LOGOS_ASSERT_TRUE(nodeC.discoStart().success);
+    auto [peerIdC, addrsC] = getPeerInfoPair(nodeC);
 
     Libp2pModuleOptions optsA = discoOptions();
-    optsA.bootstrapNodes = { infoC };
-    Libp2pModulePlugin nodeA(optsA);
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStart().ok);
-    LOGOS_ASSERT_TRUE(nodeA.syncConnectPeer(infoC.peerId, infoC.addrs, 5000).ok);
+    optsA.bootstrapNodes = { {peerIdC, addrsC} };
+    Libp2pModuleImpl nodeA(optsA);
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeA.discoStart().success);
+    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdC, addrsC, 5000).success);
 
     Libp2pModuleOptions optsB = discoOptions();
-    optsB.bootstrapNodes = { infoC };
-    Libp2pModulePlugin nodeB(optsB);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncDiscoStart().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncConnectPeer(infoC.peerId, infoC.addrs, 5000).ok);
+    optsB.bootstrapNodes = { {peerIdC, addrsC} };
+    Libp2pModuleImpl nodeB(optsB);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.discoStart().success);
+    LOGOS_ASSERT_TRUE(nodeB.connectPeer(peerIdC, addrsC, 5000).success);
 
-    QString serviceId = "test-service";
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStartAdvertising(serviceId).ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncDiscoStartDiscovering(serviceId).ok);
+    std::string serviceId = "test-service";
+    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId).success);
+    LOGOS_ASSERT_TRUE(nodeB.discoStartDiscovering(serviceId).success);
 
-    QThread::msleep(2000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    Libp2pResult res = nodeB.syncDiscoLookup(serviceId);
-    LOGOS_ASSERT_TRUE(res.ok);
+    auto res = nodeB.discoLookup(serviceId);
+    LOGOS_ASSERT_TRUE(res.success);
 
-    QList<ExtendedPeerRecord> records =
-        res.data.value<QList<ExtendedPeerRecord>>();
-    LOGOS_ASSERT_FALSE(records.isEmpty());
-    PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
-    LOGOS_ASSERT_TRUE(records[0].peerId == infoA.peerId);
+    auto records = res.value;
+    LOGOS_ASSERT_FALSE(records.empty());
 
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncDiscoStop().ok);
-    LOGOS_ASSERT_TRUE(nodeC.syncDiscoStop().ok);
+    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
+    LOGOS_ASSERT_TRUE(records[0]["peerId"].get<std::string>() == peerIdA);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeC.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeB.discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeC.discoStop().success);
+
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
+    LOGOS_ASSERT_TRUE(nodeC.stop().success);
 }
 
 LOGOS_TEST(disco_advertise_with_data) {
-    Libp2pModulePlugin nodeC(discoOptions());
-    LOGOS_ASSERT_TRUE(nodeC.syncLibp2pStart().ok);
-    LOGOS_ASSERT_TRUE(nodeC.syncDiscoStart().ok);
-    PeerInfo infoC = nodeC.syncPeerInfo().data.value<PeerInfo>();
+    Libp2pModuleImpl nodeC(discoOptions());
+    LOGOS_ASSERT_TRUE(nodeC.start().success);
+    LOGOS_ASSERT_TRUE(nodeC.discoStart().success);
+    auto [peerIdC, addrsC] = getPeerInfoPair(nodeC);
 
     Libp2pModuleOptions optsA = discoOptions();
-    optsA.bootstrapNodes = { infoC };
-    Libp2pModulePlugin nodeA(optsA);
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStart().ok);
-    LOGOS_ASSERT_TRUE(nodeA.syncConnectPeer(infoC.peerId, infoC.addrs, 5000).ok);
+    optsA.bootstrapNodes = { {peerIdC, addrsC} };
+    Libp2pModuleImpl nodeA(optsA);
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeA.discoStart().success);
+    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdC, addrsC, 5000).success);
 
     Libp2pModuleOptions optsB = discoOptions();
-    optsB.bootstrapNodes = { infoC };
-    Libp2pModulePlugin nodeB(optsB);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncDiscoStart().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncConnectPeer(infoC.peerId, infoC.addrs, 5000).ok);
+    optsB.bootstrapNodes = { {peerIdC, addrsC} };
+    Libp2pModuleImpl nodeB(optsB);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.discoStart().success);
+    LOGOS_ASSERT_TRUE(nodeB.connectPeer(peerIdC, addrsC, 5000).success);
 
-    QString serviceId = "data-service";
-    QByteArray serviceData = "version=2;proto=test";
+    std::string serviceId = "data-service";
+    std::string serviceData = "version=2;proto=test";
 
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStartAdvertising(serviceId, serviceData).ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncDiscoStartDiscovering(serviceId).ok);
+    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId, serviceData).success);
+    LOGOS_ASSERT_TRUE(nodeB.discoStartDiscovering(serviceId).success);
 
-    QThread::msleep(2000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    Libp2pResult res = nodeB.syncDiscoLookup(serviceId, serviceData);
-    LOGOS_ASSERT_TRUE(res.ok);
+    auto res = nodeB.discoLookup(serviceId, serviceData);
+    LOGOS_ASSERT_TRUE(res.success);
 
-    QList<ExtendedPeerRecord> records =
-        res.data.value<QList<ExtendedPeerRecord>>();
-    LOGOS_ASSERT_FALSE(records.isEmpty());
+    auto records = res.value;
+    LOGOS_ASSERT_FALSE(records.empty());
 
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncDiscoStop().ok);
-    LOGOS_ASSERT_TRUE(nodeC.syncDiscoStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeB.discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeC.discoStop().success);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeC.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
+    LOGOS_ASSERT_TRUE(nodeC.stop().success);
 }
 
 LOGOS_TEST(disco_start_stop_advertising) {
-    Libp2pModulePlugin nodeA(discoOptions());
-    Libp2pModulePlugin nodeB(discoOptions());
+    Libp2pModuleImpl nodeA(discoOptions());
+    Libp2pModuleImpl nodeB(discoOptions());
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStart().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncDiscoStart().ok);
+    LOGOS_ASSERT_TRUE(nodeA.discoStart().success);
+    LOGOS_ASSERT_TRUE(nodeB.discoStart().success);
 
-    PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
-    LOGOS_ASSERT_TRUE(nodeB.syncConnectPeer(infoA.peerId, infoA.addrs, 500).ok);
+    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
+    LOGOS_ASSERT_TRUE(nodeB.connectPeer(peerIdA, addrsA, 500).success);
 
-    QString serviceId = "ephemeral-service";
+    std::string serviceId = "ephemeral-service";
 
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStartAdvertising(serviceId).ok);
-    QThread::msleep(500);
+    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId).success);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStopAdvertising(serviceId).ok);
-    QThread::msleep(500);
+    LOGOS_ASSERT_TRUE(nodeA.discoStopAdvertising(serviceId).success);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    Libp2pResult res = nodeB.syncDiscoLookup(serviceId);
-    LOGOS_ASSERT_TRUE(res.ok);
+    auto res = nodeB.discoLookup(serviceId);
+    LOGOS_ASSERT_TRUE(res.success);
 
-    QList<ExtendedPeerRecord> records =
-        res.data.value<QList<ExtendedPeerRecord>>();
-    LOGOS_ASSERT_TRUE(records.isEmpty());
+    auto records = res.value;
+    LOGOS_ASSERT_TRUE(records.empty());
 
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncDiscoStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeB.discoStop().success);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
 
 LOGOS_TEST(disco_random_lookup) {
-    Libp2pModulePlugin nodeA(discoOptions());
-    Libp2pModulePlugin nodeB(discoOptions());
+    Libp2pModuleImpl nodeA(discoOptions());
+    Libp2pModuleImpl nodeB(discoOptions());
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStart().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncDiscoStart().ok);
+    LOGOS_ASSERT_TRUE(nodeA.discoStart().success);
+    LOGOS_ASSERT_TRUE(nodeB.discoStart().success);
 
-    PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
-    LOGOS_ASSERT_TRUE(nodeB.syncConnectPeer(infoA.peerId, infoA.addrs, 500).ok);
+    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
+    LOGOS_ASSERT_TRUE(nodeB.connectPeer(peerIdA, addrsA, 500).success);
 
-    QThread::msleep(500);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    Libp2pResult res = nodeA.syncDiscoRandomLookup();
-    LOGOS_ASSERT_TRUE(res.ok);
+    auto res = nodeA.discoRandomLookup();
+    LOGOS_ASSERT_TRUE(res.success);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncDiscoStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncDiscoStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeB.discoStop().success);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }

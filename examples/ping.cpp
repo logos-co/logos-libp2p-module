@@ -1,78 +1,87 @@
-#include <QCoreApplication>
-#include <QDebug>
+#include <cstdio>
 #include "plugin.h"
 
-int main(int argc, char *argv[])
+int main()
 {
-    QCoreApplication app(argc, argv);
+    Libp2pModuleImpl nodeA;
 
-    Libp2pModulePlugin nodeA;
-
-    qDebug() << "Starting node A...";
-    if (!nodeA.syncLibp2pStart().ok) {
-        qFatal("Node A failed to start");
+    printf("Starting node A...\n");
+    if (!nodeA.start().success) {
+        fprintf(stderr, "Node A failed to start\n");
+        return 1;
     }
 
-    auto res = nodeA.syncPeerInfo();
-    PeerInfo infoA = res.data.value<PeerInfo>();
+    auto infoRes = nodeA.peerInfo();
+    auto infoA = infoRes.value;
+    std::string peerIdA = infoA["peerId"].get<std::string>();
+    std::vector<std::string> addrsA;
+    for (const auto& a : infoA["addrs"]) addrsA.push_back(a.get<std::string>());
 
-    Libp2pModulePlugin nodeB(Libp2pModuleOptions{ .bootstrapNodes = { infoA } });
+    Libp2pModuleImpl nodeB(Libp2pModuleOptions{
+        .bootstrapNodes = { {peerIdA, addrsA} }
+    });
 
-    qDebug() << "Starting node B...";
-    if (!nodeB.syncLibp2pStart().ok) {
-        qFatal("Node B failed to start");
+    printf("Starting node B...\n");
+    if (!nodeB.start().success) {
+        fprintf(stderr, "Node B failed to start\n");
+        return 1;
     }
 
-    qDebug() << "Nodes started";
+    printf("Nodes started\n");
 
-    // Connect B -> A
-    if (!nodeB.syncConnectPeer(infoA.peerId, infoA.addrs, 500).ok) {
-        qFatal("Failed to connect peers");
+    if (!nodeB.connectPeer(peerIdA, addrsA, 500).success) {
+        fprintf(stderr, "Failed to connect peers\n");
+        return 1;
     }
 
-    qDebug() << "Connected";
+    printf("Connected\n");
 
-    // Dial ping protocol
-    auto dialRes = nodeB.syncDial(infoA.peerId, "/ipfs/ping/1.0.0");
-    if (!dialRes.ok) {
-        qFatal("Dial failed");
+    auto dialRes = nodeB.dial(peerIdA, "/ipfs/ping/1.0.0");
+    if (!dialRes.success) {
+        fprintf(stderr, "Dial failed\n");
+        return 1;
     }
 
-    uint64_t streamId = dialRes.data.value<uint64_t>();
+    uint64_t streamId = dialRes.value.get<uint64_t>();
 
-    QByteArray payload(32, 0);
-    for (int i = 0; i < payload.size(); ++i)
-        payload[i] = char(i);
+    const int PING_SIZE = 32;
+    std::string payload(PING_SIZE, '\0');
+    for (int i = 0; i < PING_SIZE; ++i)
+        payload[i] = static_cast<char>(i);
 
-    qDebug() << "Sending ping...";
-    if (!nodeB.syncStreamWrite(streamId, payload).ok) {
-        qFatal("Write failed");
+    printf("Sending ping...\n");
+    if (!nodeB.streamWrite(streamId, payload).success) {
+        fprintf(stderr, "Write failed\n");
+        return 1;
     }
 
-    auto readRes = nodeB.syncStreamReadExactly(streamId, payload.size());
-    if (!readRes.ok) {
-        qFatal("Read failed");
+    auto readRes = nodeB.streamReadExactly(streamId, PING_SIZE);
+    if (!readRes.success) {
+        fprintf(stderr, "Read failed\n");
+        return 1;
     }
 
-    QByteArray reply = readRes.data.value<QByteArray>();
+    std::string reply = readRes.value.get<std::string>();
 
     if (reply.size() != payload.size()) {
-        qFatal("Ping response size mismatch");
+        fprintf(stderr, "Ping response size mismatch\n");
+        return 1;
     }
 
     if (reply != payload) {
-        qFatal("Ping payload mismatch");
+        fprintf(stderr, "Ping payload mismatch\n");
+        return 1;
     }
 
-    qDebug() << "Ping successful — payload verified";
+    printf("Ping successful — payload verified\n");
 
-    nodeB.syncStreamClose(streamId);
-    nodeB.syncStreamRelease(streamId);
+    nodeB.streamClose(streamId);
+    nodeB.streamRelease(streamId);
 
-    nodeA.syncLibp2pStop();
-    nodeB.syncLibp2pStop();
+    nodeA.stop();
+    nodeB.stop();
 
-    qDebug() << "Done";
+    printf("Done\n");
 
     return 0;
 }
