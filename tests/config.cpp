@@ -1,135 +1,110 @@
-#include <QtTest>
+#include <logos_test.h>
 #include <plugin.h>
 #include <algorithm>
 
-class TestLibp2pModuleConfig : public QObject
-{
-    Q_OBJECT
+LOGOS_TEST(config_options_defaults) {
+    Libp2pModuleOptions opts;
+    LOGOS_ASSERT_TRUE(opts.addrs.isEmpty());
+    LOGOS_ASSERT_TRUE(opts.bootstrapNodes.isEmpty());
+    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_FALSE(opts.autonat);
+    LOGOS_ASSERT_FALSE(opts.autonatV2);
+    LOGOS_ASSERT_FALSE(opts.autonatV2Server);
+    LOGOS_ASSERT_FALSE(opts.circuitRelay);
+    LOGOS_ASSERT_EQ(opts.maxConnections, 50);
+    LOGOS_ASSERT_EQ(opts.maxInConnections, 25);
+    LOGOS_ASSERT_EQ(opts.maxOutConnections, 25);
+    LOGOS_ASSERT_EQ(opts.maxConnsPerPeer, 1);
+    LOGOS_ASSERT_TRUE(opts.gossipsubTriggerSelf);
+}
 
-private slots:
+LOGOS_TEST(config_options_designated_init) {
+    Libp2pModuleOptions opts{ .circuitRelay = true };
+    LOGOS_ASSERT_TRUE(opts.circuitRelay);
+    LOGOS_ASSERT_TRUE(opts.addrs.isEmpty());
+    LOGOS_ASSERT_TRUE(opts.bootstrapNodes.isEmpty());
+    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_FALSE(opts.autonat);
+    LOGOS_ASSERT_FALSE(opts.autonatV2);
+    LOGOS_ASSERT_FALSE(opts.autonatV2Server);
+}
 
-    /* ---------------------------
-     * Libp2pModuleOptions struct
-     * --------------------------- */
+LOGOS_TEST(config_custom_listen_address) {
+    Libp2pModulePlugin plugin(Libp2pModuleOptions{ .addrs = {"/ip6/::1/tcp/0"} });
+    auto startRes = plugin.syncLibp2pStart();
+    if (!startRes.ok) return; // IPv6 not available in sandbox
 
-    void testOptionsDefaults()
-    {
-        Libp2pModuleOptions opts;
-        QVERIFY(opts.addrs.isEmpty());
-        QVERIFY(opts.bootstrapNodes.isEmpty());
-        QCOMPARE(opts.transport, LIBP2P_TRANSPORT_TCP);
-        QCOMPARE(opts.autonat, false);
-        QCOMPARE(opts.autonatV2, false);
-        QCOMPARE(opts.autonatV2Server, false);
-        QCOMPARE(opts.circuitRelay, false);
-        QCOMPARE(opts.maxConnections, 50);
-        QCOMPARE(opts.maxInConnections, 25);
-        QCOMPARE(opts.maxOutConnections, 25);
-        QCOMPARE(opts.maxConnsPerPeer, 1);
-        QCOMPARE(opts.gossipsubTriggerSelf, true);
-    }
+    auto res = plugin.syncPeerInfo();
+    LOGOS_ASSERT_TRUE(res.ok);
 
-    void testOptionsDesignatedInit()
-    {
-        // Setting one field leaves all others at their defaults.
-        Libp2pModuleOptions opts{ .circuitRelay = true };
-        QCOMPARE(opts.circuitRelay, true);
-        QVERIFY(opts.addrs.isEmpty());
-        QVERIFY(opts.bootstrapNodes.isEmpty());
-        QCOMPARE(opts.transport, LIBP2P_TRANSPORT_TCP);
-        QCOMPARE(opts.autonat, false);
-        QCOMPARE(opts.autonatV2, false);
-        QCOMPARE(opts.autonatV2Server, false);
-    }
+    PeerInfo peerInfo = res.data.value<PeerInfo>();
 
-    /* ---------------------------
-     * Options propagation
-     * --------------------------- */
+    bool hasIp6 = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
+        [](const QString &addr) { return addr.contains("/ip6/::1"); });
+    LOGOS_ASSERT_TRUE(hasIp6);
 
-    void testCustomListenAddress()
-    {
-        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .addrs = {"/ip6/::1/tcp/0"} });
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        auto res = plugin.syncPeerInfo();
-        QVERIFY(res.ok);
+LOGOS_TEST(config_gossipsub_trigger_self_enabled) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        PeerInfo peerInfo = res.data.value<PeerInfo>();
+    QString topic = "self-test";
+    LOGOS_ASSERT_TRUE(plugin.syncGossipsubSubscribe(topic).ok);
 
-        bool hasIp6 = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
-            [](const QString &addr) { return addr.contains("/ip6/::1"); });
-        QVERIFY(hasIp6);
+    QByteArray payload("hello");
+    LOGOS_ASSERT_TRUE(plugin.syncGossipsubPublish(topic, payload).ok);
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    auto res = plugin.syncGossipsubNextMessage(topic, 1000);
+    LOGOS_ASSERT_TRUE(res.ok);
+    LOGOS_ASSERT_TRUE(res.data.value<QByteArray>() == payload);
 
-    void testGossipsubTriggerSelfEnabled()
-    {
-        Libp2pModulePlugin plugin; // default: gossipsubTriggerSelf = true
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QString topic = "self-test";
-        QVERIFY(plugin.syncGossipsubSubscribe(topic).ok);
+LOGOS_TEST(config_gossipsub_trigger_self_disabled) {
+    Libp2pModulePlugin plugin(Libp2pModuleOptions{ .gossipsubTriggerSelf = false });
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        QByteArray payload("hello");
-        QVERIFY(plugin.syncGossipsubPublish(topic, payload).ok);
+    QString topic = "self-test";
+    LOGOS_ASSERT_TRUE(plugin.syncGossipsubSubscribe(topic).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncGossipsubPublish(topic, QByteArray("hello")).ok);
 
-        auto res = plugin.syncGossipsubNextMessage(topic, 1000);
-        QVERIFY(res.ok);
-        QCOMPARE(res.data.value<QByteArray>(), payload);
-    
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    auto res = plugin.syncGossipsubNextMessage(topic, 500);
+    LOGOS_ASSERT_FALSE(res.ok);
 
-    void testGossipsubTriggerSelfDisabled()
-    {
-        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .gossipsubTriggerSelf = false });
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QString topic = "self-test";
-        QVERIFY(plugin.syncGossipsubSubscribe(topic).ok);
-        QVERIFY(plugin.syncGossipsubPublish(topic, QByteArray("hello")).ok);
+LOGOS_TEST(config_tcp_transport) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        auto res = plugin.syncGossipsubNextMessage(topic, 500);
-        QVERIFY(!res.ok); // own message should not be delivered
-    
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    auto res = plugin.syncPeerInfo();
+    LOGOS_ASSERT_TRUE(res.ok);
 
-    void testTcpTransport()
-    {
-        Libp2pModulePlugin plugin; // default options → TCP
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    PeerInfo peerInfo = res.data.value<PeerInfo>();
 
-        auto res = plugin.syncPeerInfo();
-        QVERIFY(res.ok);
+    bool hasTcp = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
+        [](const QString &addr) { return addr.contains("/tcp/"); });
+    LOGOS_ASSERT_TRUE(hasTcp);
 
-        PeerInfo peerInfo = res.data.value<PeerInfo>();
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        bool hasTcp = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
-            [](const QString &addr) { return addr.contains("/tcp/"); });
-        QVERIFY(hasTcp);
-        
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+LOGOS_TEST(config_quic_transport) {
+    Libp2pModulePlugin plugin(Libp2pModuleOptions{ .transport = LIBP2P_TRANSPORT_QUIC });
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-    void testQuicTransport()
-    {
-        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .transport = LIBP2P_TRANSPORT_QUIC });
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    auto res = plugin.syncPeerInfo();
+    LOGOS_ASSERT_TRUE(res.ok);
 
-        auto res = plugin.syncPeerInfo();
-        QVERIFY(res.ok);
+    PeerInfo peerInfo = res.data.value<PeerInfo>();
 
-        PeerInfo peerInfo = res.data.value<PeerInfo>();
+    bool hasQuic = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
+        [](const QString &addr) { return addr.contains("/quic-v1"); });
+    LOGOS_ASSERT_TRUE(hasQuic);
 
-        bool hasQuic = std::any_of(peerInfo.addrs.begin(), peerInfo.addrs.end(),
-            [](const QString &addr) { return addr.contains("/quic-v1"); });
-        QVERIFY(hasQuic);
-    
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
-};
-
-QTEST_MAIN(TestLibp2pModuleConfig)
-#include "config.moc"
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}

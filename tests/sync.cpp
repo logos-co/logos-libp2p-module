@@ -1,411 +1,303 @@
-#include <QtTest>
+#include <logos_test.h>
 #include <plugin.h>
 
-class TestLibp2pModuleSync : public QObject
-{
-    Q_OBJECT
+LOGOS_TEST(sync_connect_disconnect_peer) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-private slots:
+    QString fakePeer = "12D3KooWInvalidPeerForTest";
+    QList<QString> fakeAddrs = { "/ip4/127.0.0.1/tcp/9999" };
 
-    /* ---------------------------
-     * Connectivity
-     * --------------------------- */
+    LOGOS_ASSERT_FALSE(plugin.syncConnectPeer(fakePeer, fakeAddrs).ok);
+    LOGOS_ASSERT_FALSE(plugin.syncDisconnectPeer(fakePeer).ok);
 
-    void testSyncConnectDisconnectPeer()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QString fakePeer =
-            "12D3KooWInvalidPeerForTest";
+LOGOS_TEST(sync_peer_info) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        QList<QString> fakeAddrs = {
-            "/ip4/127.0.0.1/tcp/9999"
-        };
+    auto res = plugin.syncPeerInfo();
+    LOGOS_ASSERT_TRUE(res.ok);
 
-        // connect and disconnect should fail
-        QVERIFY(!plugin.syncConnectPeer(fakePeer, fakeAddrs).ok);
-        QVERIFY(!plugin.syncDisconnectPeer(fakePeer).ok);
+    PeerInfo peerInfo = res.data.value<PeerInfo>();
+    LOGOS_ASSERT_FALSE(peerInfo.peerId.isEmpty());
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-    void testSyncPeerInfo()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+LOGOS_TEST(sync_connected_peers) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        auto res = plugin.syncPeerInfo();
-        QVERIFY(res.ok);
+    auto res = plugin.syncConnectedPeers();
+    LOGOS_ASSERT_TRUE(res.ok);
 
-        PeerInfo peerInfo = res.data.value<PeerInfo>();
-        QVERIFY(!peerInfo.peerId.isEmpty());
+    QList<QString> connectedPeers = res.data.value<QList<QString>>();
+    LOGOS_ASSERT_EQ(connectedPeers.size(), qsizetype(0));
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-    void testSyncConnectedPeers()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+LOGOS_TEST(sync_dial) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        auto res = plugin.syncConnectedPeers();
-        QVERIFY(res.ok);
+    QString fakePeer = "12D3KooWInvalidPeerForTest";
+    QString proto = "/test/1.0.0";
 
-        QList<QString> connectedPeers = res.data.value<QList<QString>>();
-        QCOMPARE(connectedPeers.size(), 0);
+    LOGOS_ASSERT_FALSE(plugin.syncDial(fakePeer, proto).ok);
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-    void testSyncDial()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+LOGOS_TEST(sync_public_key) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pPublicKey().ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QString fakePeer =
-            "12D3KooWInvalidPeerForTest";
+LOGOS_TEST(sync_stream_close) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        QString proto = "/test/1.0.0";
+    uint64_t fakeStreamId = 1234;
+    LOGOS_ASSERT_FALSE(plugin.syncStreamClose(fakeStreamId).ok);
 
-        QVERIFY(!plugin.syncDial(fakePeer, proto).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+LOGOS_TEST(sync_stream_close_with_eof) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-    void testPublicKey()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
-        QVERIFY(plugin.syncLibp2pPublicKey().ok);
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    uint64_t fakeStreamId = 1234;
+    LOGOS_ASSERT_FALSE(plugin.syncStreamCloseWithEOF(fakeStreamId).ok);
 
-    /* ---------------------------
-     * Stream
-     * --------------------------- */
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-    void testSyncStreamClose()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+LOGOS_TEST(sync_stream_release) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        uint64_t fakeStreamId = 1234;
+    uint64_t fakeStreamId = 1234;
+    LOGOS_ASSERT_FALSE(plugin.syncStreamRelease(fakeStreamId).ok);
 
-        // cannot close inexistent stream
-        QVERIFY(!plugin.syncStreamClose(fakeStreamId).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+LOGOS_TEST(sync_stream_read_exactly) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-    void testSyncStreamCloseWithEOF()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    uint64_t fakeStreamId = 1234;
+    size_t len = 16;
+    LOGOS_ASSERT_FALSE(plugin.syncStreamReadExactly(fakeStreamId, len).ok);
 
-        uint64_t fakeStreamId = 1234;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        // cannot closeWithEOF inexistent stream
-        QVERIFY(!plugin.syncStreamCloseWithEOF(fakeStreamId).ok);
+LOGOS_TEST(sync_stream_read_lp) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    uint64_t fakeStreamId = 1234;
+    size_t maxSize = 4096;
+    LOGOS_ASSERT_FALSE(plugin.syncStreamReadLp(fakeStreamId, maxSize).ok);
 
-    void testSyncStreamRelease()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        uint64_t fakeStreamId = 1234;
+LOGOS_TEST(sync_stream_write) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        // cannot release inexistent stream
-        QVERIFY(!plugin.syncStreamRelease(fakeStreamId).ok);
+    uint64_t fakeStreamId = 1234;
+    QByteArray data = "hello-stream";
+    LOGOS_ASSERT_FALSE(plugin.syncStreamWrite(fakeStreamId, data).ok);
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-    void testSyncStreamReadExactly()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+LOGOS_TEST(sync_stream_write_lp) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        uint64_t fakeStreamId = 1234;
-        size_t len = 16;
+    uint64_t fakeStreamId = 1234;
+    QByteArray data = "hello-stream-lp";
+    LOGOS_ASSERT_FALSE(plugin.syncStreamWriteLp(fakeStreamId, data).ok);
 
-        // cannot readExactly from inexistent stream
-        QVERIFY(!plugin.syncStreamReadExactly(fakeStreamId, len).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+LOGOS_TEST(sync_gossipsub_subscribe_publish) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-    void testSyncStreamReadLp()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    QString topic = "sync-topic";
+    QByteArray msg = "sync-gossipsub-msg";
 
-        uint64_t fakeStreamId = 1234;
-        size_t maxSize = 4096;
+    LOGOS_ASSERT_TRUE(plugin.syncGossipsubSubscribe(topic).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncGossipsubPublish(topic, msg).ok);
 
-        // cannot readLp from inexistent stream
-        QVERIFY(!plugin.syncStreamReadLp(fakeStreamId, maxSize).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+LOGOS_TEST(sync_gossipsub_unsubscribe) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-    void testSyncStreamWrite()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    QString topic = "sync-topic";
 
-        uint64_t fakeStreamId = 1234;
-        QByteArray data = "hello-stream";
+    LOGOS_ASSERT_TRUE(plugin.syncGossipsubSubscribe(topic).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncGossipsubUnsubscribe(topic).ok);
 
-        // cannot write to inexistent stream
-        QVERIFY(!plugin.syncStreamWrite(fakeStreamId, data).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+LOGOS_TEST(sync_kad_get_put_value) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-    void testSyncStreamWriteLp()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    QByteArray key = "sync-test-key";
+    QByteArray value = "sync-hello-world";
 
-        uint64_t fakeStreamId = 1234;
-        QByteArray data = "hello-stream-lp";
+    LOGOS_ASSERT_TRUE(plugin.syncKadPutValue(key, value).ok);
 
-        // cannot writeLp to inexistent stream
-        QVERIFY(!plugin.syncStreamWriteLp(fakeStreamId, data).ok);
+    auto res = plugin.syncKadGetValue(key, 1);
+    LOGOS_ASSERT_TRUE(res.ok);
+    QByteArray actual = res.data.value<QByteArray>();
+    LOGOS_ASSERT_TRUE(actual == value);
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-    /* ---------------------------
-     * Gossipsub
-     * --------------------------- */
+LOGOS_TEST(sync_key_to_cid_and_providers) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-    void testSyncGossipsubSubscribePublish()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    QByteArray key = "sync-provider-test-key";
+    QByteArray value = "sync-provider-test-value";
 
-        QString topic = "sync-topic";
-        QByteArray msg = "sync-gossipsub-msg";
+    auto res = plugin.syncToCid(key);
+    LOGOS_ASSERT_TRUE(res.ok);
 
-        QVERIFY(plugin.syncGossipsubSubscribe(topic).ok);
-        QVERIFY(plugin.syncGossipsubPublish(topic, msg).ok);
+    QString cid = res.data.value<QString>();
+    LOGOS_ASSERT_FALSE(cid.isEmpty());
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    LOGOS_ASSERT_TRUE(plugin.syncKadPutValue(key, value).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncKadAddProvider(cid).ok);
 
-    void testSyncGossipsubUnsubscribe()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    res = plugin.syncKadGetProviders(cid);
+    LOGOS_ASSERT_TRUE(res.ok);
 
-        QString topic = "sync-topic";
+    QList<PeerInfo> providers = res.data.value<QList<PeerInfo>>();
+    LOGOS_ASSERT_EQ(providers.size(), qsizetype(0));
 
-        QVERIFY(plugin.syncGossipsubSubscribe(topic).ok);
-        QVERIFY(plugin.syncGossipsubUnsubscribe(topic).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+LOGOS_TEST(sync_kad_find_node) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-    /* ---------------------------
-     * Kademlia
-     * --------------------------- */
+    QString fakePeer = "12D3KooWInvalidPeerForSyncTest";
+    LOGOS_ASSERT_FALSE(plugin.syncKadFindNode(fakePeer).ok);
 
-    void testSyncKadGetPutValue()
-    {
-        Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QVERIFY(plugin.syncLibp2pStart().ok);
+LOGOS_TEST(sync_kad_provide_lifecycle) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        QByteArray key = "sync-test-key";
-        QByteArray value = "sync-hello-world";
+    QByteArray key = "sync-providing-key";
 
-        QVERIFY(plugin.syncKadPutValue(key, value).ok);
+    auto res = plugin.syncToCid(key);
+    LOGOS_ASSERT_TRUE(res.ok);
 
-        auto res = plugin.syncKadGetValue(key, 1);
-        QVERIFY(res.ok);
-        QByteArray actual = res.data.value<QByteArray>();
-        QCOMPARE(actual, value);
+    QString cid = res.data.value<QString>();
+    LOGOS_ASSERT_FALSE(cid.isEmpty());
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    LOGOS_ASSERT_TRUE(plugin.syncKadStartProviding(cid).ok);
+    LOGOS_ASSERT_TRUE(plugin.syncKadStopProviding(cid).ok);
 
-    void testSyncKeyToCidAndProviders()
-    {
-        Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QVERIFY(plugin.syncLibp2pStart().ok);
+LOGOS_TEST(sync_kad_random_records) {
+    Libp2pModulePlugin plugin(Libp2pModuleOptions{ .mountServiceDiscovery = true });
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        QByteArray key = "sync-provider-test-key";
-        QByteArray value = "sync-provider-test-value";
+    auto res = plugin.syncKadGetRandomRecords();
+    LOGOS_ASSERT_TRUE(res.ok);
+    LOGOS_ASSERT_TRUE(res.data.isValid());
 
-        auto res = plugin.syncToCid(key);
-        QVERIFY(res.ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QString cid = res.data.value<QString>();
-        QVERIFY(!cid.isEmpty());
+LOGOS_TEST(sync_mix_dial) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        QVERIFY(plugin.syncKadPutValue(key, value).ok);
-        QVERIFY(plugin.syncKadAddProvider(cid).ok);
+    QString fakePeer = "12D3KooWInvalidMixPeer";
+    QString addr = "/ip4/127.0.0.1/tcp/9999";
+    QString proto = "/mix/test/1.0.0";
 
-        // no providers are registered yet
-        res = plugin.syncKadGetProviders(cid);
-        QVERIFY(res.ok);
+    LOGOS_ASSERT_FALSE(plugin.syncMixDial(fakePeer, addr, proto).ok);
 
-        QList<PeerInfo> providers = res.data.value<QList<PeerInfo>>();
-        QCOMPARE(providers.size(), 0);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+LOGOS_TEST(sync_mix_dial_with_reply) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-    void testSyncKadFindNode()
-    {
-        Libp2pModulePlugin plugin;
+    QString fakePeer = "12D3KooWInvalidMixPeer";
+    QString addr = "/ip4/127.0.0.1/tcp/9999";
+    QString proto = "/mix/test/1.0.0";
 
-        QVERIFY(plugin.syncLibp2pStart().ok);
+    LOGOS_ASSERT_FALSE(plugin.syncMixDialWithReply(fakePeer, addr, proto, 1, 2).ok);
 
-        QString fakePeer = "12D3KooWInvalidPeerForSyncTest";
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        // no nodes are registered yet
-        QVERIFY(!plugin.syncKadFindNode(fakePeer).ok);
+LOGOS_TEST(sync_mix_register_dest_read_behavior) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    QString proto = "/mix/test/1.0.0";
+    auto res = plugin.syncMixRegisterDestReadBehavior(proto, LIBP2P_MIX_READ_EXACTLY, 1024);
+    LOGOS_ASSERT_FALSE(res.data.isValid());
 
-    void testSyncKadProvideLifecycle()
-    {
-        Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QVERIFY(plugin.syncLibp2pStart().ok);
+LOGOS_TEST(sync_mix_set_node_info) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        QByteArray key = "sync-providing-key";
+    PeerInfo peerInfo = plugin.syncPeerInfo().data.value<PeerInfo>();
+    LOGOS_ASSERT_TRUE(plugin.syncMixSetNodeInfo(peerInfo.addrs[0], plugin.mixGeneratePrivKey()).ok);
 
-        auto res = plugin.syncToCid(key);
-        QVERIFY(res.ok);
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
 
-        QString cid = res.data.value<QString>();
-        QVERIFY(!cid.isEmpty());
+LOGOS_TEST(sync_mix_nodepool_add) {
+    Libp2pModulePlugin plugin;
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStart().ok);
 
-        QVERIFY(plugin.syncKadStartProviding(cid).ok);
-        QVERIFY(plugin.syncKadStopProviding(cid).ok);
+    QString fakePeer = "12D3KooWInvalidMixPeer";
+    QString addr = "/ip4/127.0.0.1/tcp/9999";
 
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
+    QByteArray mixPubKey = plugin.mixPublicKey(plugin.mixGeneratePrivKey());
+    QByteArray fakeLibp2pKey(33, 0x01);
 
-    void testSyncKadRandomRecords()
-    {
-        Libp2pModulePlugin plugin(Libp2pModuleOptions{ .mountServiceDiscovery = true });
+    auto res = plugin.syncMixNodepoolAdd(fakePeer, addr, mixPubKey, fakeLibp2pKey);
+    LOGOS_ASSERT_FALSE(res.data.isValid());
 
-        QVERIFY(plugin.syncLibp2pStart().ok);
-
-        // no registered records yet
-        auto res = plugin.syncKadGetRandomRecords();
-        QVERIFY(res.ok);
-        QVERIFY(res.data.isValid());
-
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
-
-     /* ---------------------------
-     * Mix
-     * --------------------------- */
-
-    void testSyncMixDial()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
-
-        QString fakePeer = "12D3KooWInvalidMixPeer";
-        QString addr = "/ip4/127.0.0.1/tcp/9999";
-        QString proto = "/mix/test/1.0.0";
-
-        // expected to fail without a configured mix network
-        QVERIFY(!plugin.syncMixDial(fakePeer, addr, proto).ok);
-
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
-
-    void testSyncMixDialWithReply()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
-
-        QString fakePeer = "12D3KooWInvalidMixPeer";
-        QString addr = "/ip4/127.0.0.1/tcp/9999";
-        QString proto = "/mix/test/1.0.0";
-
-        QVERIFY(!plugin.syncMixDialWithReply(
-            fakePeer,
-            addr,
-            proto,
-            1,
-            2
-        ).ok);
-
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
-
-    void testSyncMixRegisterDestReadBehavior()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
-
-        QString proto = "/mix/test/1.0.0";
-
-        auto res = plugin.syncMixRegisterDestReadBehavior(
-            proto,
-            LIBP2P_MIX_READ_EXACTLY,
-            1024
-        );
-
-        // data should not be valid (cant read)
-        QVERIFY(!res.data.isValid());
-
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
-
-    void testSyncMixSetNodeInfo()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
-
-        QString addr = "/ip4/127.0.0.1/tcp/4001";
-        PeerInfo peerInfo = plugin.syncPeerInfo().data.value<PeerInfo>();
-
-        QVERIFY(plugin.syncMixSetNodeInfo(peerInfo.addrs[0], plugin.mixGeneratePrivKey()).ok);
-
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
-
-    void testSyncMixNodepoolAdd()
-    {
-        Libp2pModulePlugin plugin;
-        QVERIFY(plugin.syncLibp2pStart().ok);
-
-        QString fakePeer = "12D3KooWInvalidMixPeer";
-        QString addr = "/ip4/127.0.0.1/tcp/9999";
-
-        QByteArray mixPubKey = plugin.mixPublicKey(plugin.mixGeneratePrivKey());
-
-        QByteArray fakeLibp2pKey(33, 0x01);
-
-        auto res = plugin.syncMixNodepoolAdd(
-            fakePeer,
-            addr,
-            mixPubKey,
-            fakeLibp2pKey
-        );
-
-        QVERIFY(!res.data.isValid());
-
-        QVERIFY(plugin.syncLibp2pStop().ok);
-    }
-};
-
-QTEST_MAIN(TestLibp2pModuleSync)
-#include "sync.moc"
-
+    LOGOS_ASSERT_TRUE(plugin.syncLibp2pStop().ok);
+}
