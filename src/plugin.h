@@ -91,7 +91,9 @@ struct Libp2pModuleOptions {
 class Libp2pModulePlugin : public QObject, public Libp2pModuleInterface
 {
     Q_OBJECT
+#ifndef LOGOS_TESTING
     Q_PLUGIN_METADATA(IID Libp2pModuleInterface_iid FILE "metadata.json")
+#endif
     Q_INTERFACES(Libp2pModuleInterface PluginInterface)
 
 public:

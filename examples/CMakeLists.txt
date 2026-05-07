@@ -1,4 +1,3 @@
-# Ensure Qt usage requirements are available in this directory
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
 file(GLOB EXAMPLE_SOURCES CONFIGURE_DEPENDS *.cpp)
@@ -18,20 +17,6 @@ foreach(example_src ${EXAMPLE_SOURCES})
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_SOURCE_DIR}/include
     )
-
-    # Logos SDK includes
-    if(LOGOS_CPP_SDK_IS_SOURCE)
-        target_include_directories(${target_name} PRIVATE
-            ${LOGOS_CPP_SDK_ROOT}/cpp
-            ${LOGOS_CPP_SDK_ROOT}/cpp/generated
-        )
-    else()
-        target_include_directories(${target_name} PRIVATE
-            ${LOGOS_CPP_SDK_ROOT}/include
-            ${LOGOS_CPP_SDK_ROOT}/include/cpp
-            ${LOGOS_CPP_SDK_ROOT}/include/core
-        )
-    endif()
 
     set_target_properties(${target_name} PROPERTIES
         BUILD_RPATH "${CMAKE_BINARY_DIR}/modules"

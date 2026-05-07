@@ -3,97 +3,64 @@
 
   inputs = {
     logos-module-builder.url = "github:/logos-co/logos-module-builder";
-    nixpkgs.follows = "logos-module-builder/nixpkgs";
     libp2p.url = "github:vacp2p/nim-libp2p";
   };
 
-  outputs = { self, logos-module-builder, nixpkgs, libp2p }:
+  outputs = inputs@{ logos-module-builder, ... }:
     let
-      lib = nixpkgs.lib;
-      systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
-      forAllSystems = f: lib.genAttrs systems (system: f system);
-
-      libp2pCbind = system: libp2p.packages.${system}.cbind;
-
-      buildModule = system:
-        logos-module-builder.lib.mkLogosModule {
-          src = ./.;
-          configFile = ./metadata.json;
-
-          preConfigure = ''
-            mkdir -p lib
-            cp -r "${libp2pCbind system}/lib"/* lib/
-            mkdir -p include
-            cp -r "${libp2pCbind system}/include"/* include/
-          '' + lib.optionalString (lib.hasSuffix "darwin" system) ''
-            for f in lib/*.dylib; do
-              [ -f "$f" ] || continue
-              chmod +w "$f"
-              install_name_tool -id "@rpath/$(basename "$f")" "$f"
-            done
-          '';
-
-          postInstall = ''
-            mkdir -p $out/lib
-            cp lib/*.dylib $out/lib/ 2>/dev/null || true
-            cp lib/*.so $out/lib/ 2>/dev/null || true
-          '';
+      module = logos-module-builder.lib.mkLogosModule {
+        src = ./.;
+        configFile = ./metadata.json;
+        flakeInputs = inputs;
+        externalLibInputs = {
+          libp2p = {
+            input = inputs.libp2p;
+            packages.default = "cbind";
+          };
         };
+        tests = {
+          dir = ./tests;
+        };
+      };
 
-    in {
+      nixpkgs = logos-module-builder.inputs.nixpkgs;
+      systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
 
-      packages = forAllSystems (system:
-        (buildModule system).packages.${system}
-      );
-
-      devShells = forAllSystems (system:
+      testsApps = builtins.listToAttrs (map (system:
         let
-          builderShell = (buildModule system).devShells.${system}.default;
-          cbind = libp2pCbind system;
+          pkgs = import nixpkgs { inherit system; };
+          unitTests = module.packages.${system}.unit-tests;
+          runner = pkgs.writeShellScript "run-tests" ''
+            filter="''${1:-}"
+            ran=0
+            for bin in ${unitTests}/bin/*; do
+              name="$(basename "$bin")"
+              if [ -n "$filter" ] && ! echo "$name" | grep -q "$filter"; then
+                continue
+              fi
+              echo "=== $name ==="
+              "$bin"
+              ran=$((ran + 1))
+            done
+            if [ "$ran" -eq 0 ] && [ -n "$filter" ]; then
+              echo "No test binary matched filter: $filter" >&2
+              exit 1
+            fi
+          '';
         in {
-          default = builderShell.overrideAttrs (old: {
-            shellHook = (old.shellHook or "") + ''
-              export CMAKE_MODULE_PATH=${logos-module-builder}/cmake
-              export LOGOS_MODULE_BUILDER_ROOT=${logos-module-builder}
-
-              # replicate preConfigure from build
-              mkdir -p lib
-              cp -r ${cbind}/lib/* lib/ 2>/dev/null || true
-
-              ${lib.optionalString (lib.hasSuffix "darwin" system) ''
-              for f in lib/*.dylib; do
-                [ -f "$f" ] || continue
-                chmod +w "$f"
-                install_name_tool -id "@rpath/$(basename "$f")" "$f"
-              done
-              ''}
-
-              mkdir -p include
-              cp -r ${cbind}/include/* include/ 2>/dev/null || true
-            '';
-          });
+          name = system;
+          value = { tests = { type = "app"; program = toString runner; }; };
         }
-      );
+      ) systems);
 
+      existingApps = module.apps or {};
+      mergedApps = builtins.listToAttrs (map (system: {
+        name = system;
+        value = (existingApps.${system} or {}) // (testsApps.${system} or {});
+      }) systems);
 
-      checks = forAllSystems (system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-          module = buildModule system;
-          pkg = module.packages.${system}.lib;
-        in {
-          module-tests = pkg.overrideAttrs (old: {
-            doCheck = true;
-            checkPhase = ''
-              echo "Running Qt tests..."
-
-              export QT_QPA_PLATFORM=offscreen
-              export QT_PLUGIN_PATH=${pkgs.qt6.qtbase}/${pkgs.qt6.qtbase.qtPluginPrefix}
-
-              ctest --output-on-failure
-            '';
-          });
-        }
-      );
+    in module // {
+      apps = mergedApps;
+      checks = module.checks or {};
     };
 }
