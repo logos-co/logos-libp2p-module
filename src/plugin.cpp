@@ -181,6 +181,7 @@ StdLogosResult Libp2pModuleImpl::start() {
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
+    m_started = true;
     return {true, {}, ""};
 }
 

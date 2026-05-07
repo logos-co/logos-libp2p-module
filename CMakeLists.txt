@@ -18,6 +18,7 @@ logos_module(
         src/mix.cpp
         src/gossipsub.cpp
         src/service_discovery.cpp
+        src/custom_handlers.cpp
     EXTERNAL_LIBS
         libp2p
 )

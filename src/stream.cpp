@@ -64,8 +64,8 @@ StdLogosResult Libp2pModuleImpl::streamCloseWithEOF(uint64_t streamId) {
 
     auto* p = new SyncPromise();
     auto f = p->get_future();
-    int ret = libp2p_stream_closeWithEOF(ctx, stream,
-                                         &Libp2pModuleImpl::promiseCallback, p);
+    int ret = libp2p_stream_close(ctx, stream,
+                                  &Libp2pModuleImpl::promiseCallback, p);
     if (ret != RET_OK) { delete p; return {false, {}, "Failed to close stream with EOF"}; }
 
     auto r = awaitResult(f);
