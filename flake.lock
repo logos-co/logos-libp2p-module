@@ -2579,11 +2579,7 @@
     "root": {
       "inputs": {
         "libp2p": "libp2p",
-        "logos-module-builder": "logos-module-builder",
-        "nixpkgs": [
-          "logos-module-builder",
-          "nixpkgs"
-        ]
+        "logos-module-builder": "logos-module-builder"
       }
     }
   },
