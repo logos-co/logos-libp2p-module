@@ -4,14 +4,19 @@
     "description": "Libp2p network protocol module for Logos",
     "author": "Logos Core Team",
     "type": "core",
+    "interface": "universal",
+    "codegen": {
+        "impl_header": "plugin.h"
+    },
     "category": "protocol",
     "main": "libp2p_module_plugin",
     "dependencies": [],
     "include": ["libp2p.so", "libp2p.dylib", "libp2p.dll"],
+    "capabilities": [],
 
     "nix": {
         "packages": {
-            "runtime": []
+            "runtime": ["nlohmann_json"]
         },
         "external_libraries": [
             { "name": "libp2p", "vendor_path": "lib" }

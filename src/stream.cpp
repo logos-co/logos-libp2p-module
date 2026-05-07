@@ -1,258 +1,166 @@
 #include "plugin.h"
 
-#include <QtCore/QJsonDocument>
-#include <QtCore/QJsonObject>
-#include <QDebug>
+#include <cstring>
 
-// ------------------- Stream registry helpers ------------------- /
-uint64_t Libp2pModulePlugin::addStream(libp2p_stream_t *stream)
-{
+// ---------------------------------------------------------------------------
+// Stream registry helpers
+// ---------------------------------------------------------------------------
+
+uint64_t Libp2pModuleImpl::addStream(libp2p_stream_t* stream) {
     auto id = m_nextStreamId.fetch_add(1);
-    QWriteLocker locker(&m_streamsLock);
-    m_streams.insert(id, stream);
+    std::unique_lock<std::shared_mutex> lock(m_streamsLock);
+    m_streams[id] = stream;
     return id;
 }
 
-libp2p_stream_t* Libp2pModulePlugin::getStream(uint64_t id) const
-{
-    QReadLocker locker(&m_streamsLock);
-    return m_streams.value(id, nullptr);
+libp2p_stream_t* Libp2pModuleImpl::getStream(uint64_t id) const {
+    std::shared_lock<std::shared_mutex> lock(m_streamsLock);
+    auto it = m_streams.find(id);
+    return (it != m_streams.end()) ? it->second : nullptr;
 }
 
-libp2p_stream_t* Libp2pModulePlugin::removeStream(uint64_t id)
-{
-    QWriteLocker locker(&m_streamsLock);
-    return m_streams.take(id);
+libp2p_stream_t* Libp2pModuleImpl::removeStream(uint64_t id) {
+    std::unique_lock<std::shared_mutex> lock(m_streamsLock);
+    auto it = m_streams.find(id);
+    if (it == m_streams.end()) return nullptr;
+    auto* stream = it->second;
+    m_streams.erase(it);
+    return stream;
 }
 
-bool Libp2pModulePlugin::hasStream(uint64_t id) const
-{
-    QReadLocker locker(&m_streamsLock);
-    return m_streams.contains(id);
+bool Libp2pModuleImpl::hasStream(uint64_t id) const {
+    std::shared_lock<std::shared_mutex> lock(m_streamsLock);
+    return m_streams.find(id) != m_streams.end();
 }
 
-/* --------------- Streams --------------- */
-QString Libp2pModulePlugin::streamClose(uint64_t streamId)
-{
+// ---------------------------------------------------------------------------
+// Stream operations
+// ---------------------------------------------------------------------------
+
+StdLogosResult Libp2pModuleImpl::streamClose(uint64_t streamId) {
     if (!ctx || streamId == 0 || !hasStream(streamId))
-        return {};
+        return {false, {}, "Invalid stream"};
 
-    auto *stream = getStream(streamId);
-    if (!stream)
-        return {};
+    auto* stream = getStream(streamId);
+    if (!stream) return {false, {}, "Stream not found"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "streamClose",
-        uuid,
-        this
-    };
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_stream_close(ctx, stream,
+                                  &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to close stream"}; }
 
-    int ret = libp2p_stream_close(
-        ctx,
-        stream,
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-QString Libp2pModulePlugin::streamCloseWithEOF(uint64_t streamId)
-{
+StdLogosResult Libp2pModuleImpl::streamCloseWithEOF(uint64_t streamId) {
     if (!ctx || streamId == 0 || !hasStream(streamId))
-        return {};
+        return {false, {}, "Invalid stream"};
 
-    auto *stream = getStream(streamId);
-    if (!stream)
-        return {};
+    auto* stream = getStream(streamId);
+    if (!stream) return {false, {}, "Stream not found"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "streamCloseWithEOF",
-        uuid,
-        this
-    };
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_stream_closeWithEOF(ctx, stream,
+                                         &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to close stream with EOF"}; }
 
-    int ret = libp2p_stream_closeWithEOF(
-        ctx,
-        stream,
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-QString Libp2pModulePlugin::streamRelease(uint64_t streamId)
-{
+StdLogosResult Libp2pModuleImpl::streamRelease(uint64_t streamId) {
     if (!ctx || streamId == 0 || !hasStream(streamId))
-        return {};
+        return {false, {}, "Invalid stream"};
 
-    auto *stream = getStream(streamId);
-    if (!stream)
-        return {};
+    auto* stream = getStream(streamId);
+    if (!stream) return {false, {}, "Stream not found"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "streamRelease",
-        uuid,
-        this
-    };
-
-    int ret = libp2p_stream_release(
-        ctx,
-        stream,
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_stream_release(ctx, stream,
+                                    &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to release stream"}; }
 
     removeStream(streamId);
 
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-QString Libp2pModulePlugin::streamReadExactly(uint64_t streamId, size_t len)
-{
-    if (!ctx || streamId == 0)
-        return {};
+StdLogosResult Libp2pModuleImpl::streamReadExactly(uint64_t streamId, size_t len) {
+    if (!ctx || streamId == 0) return {false, {}, "Invalid stream"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "streamReadExactly",
-        uuid,
-        this
-    };
+    auto* stream = getStream(streamId);
+    if (!stream) return {false, {}, "Stream not found"};
 
-    auto *stream = getStream(streamId);
-    if (!stream)
-        return {};
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_stream_readExactly(ctx, stream, len,
+                                        &Libp2pModuleImpl::promiseBufferCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to read from stream"}; }
 
-    int ret = libp2p_stream_readExactly(
-        ctx,
-        stream,
-        len,
-        &Libp2pModulePlugin::libp2pBufferCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
 }
 
-QString Libp2pModulePlugin::streamReadLp(uint64_t streamId, size_t maxSize)
-{
-    if (!ctx || streamId == 0)
-        return {};
+StdLogosResult Libp2pModuleImpl::streamReadLp(uint64_t streamId, size_t maxSize) {
+    if (!ctx || streamId == 0) return {false, {}, "Invalid stream"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "streamReadLp",
-        uuid,
-        this
-    };
+    auto* stream = getStream(streamId);
+    if (!stream) return {false, {}, "Stream not found"};
 
-    auto *stream = getStream(streamId);
-    if (!stream)
-        return {};
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_stream_readLp(ctx, stream, maxSize,
+                                   &Libp2pModuleImpl::promiseBufferCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to read LP from stream"}; }
 
-    int ret = libp2p_stream_readLp(
-        ctx,
-        stream,
-        maxSize,
-        &Libp2pModulePlugin::libp2pBufferCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
 }
 
-QString Libp2pModulePlugin::streamWrite(uint64_t streamId, const QByteArray &data)
-{
-    if (!ctx || streamId == 0)
-        return {};
+StdLogosResult Libp2pModuleImpl::streamWrite(uint64_t streamId, const std::string& data) {
+    if (!ctx || streamId == 0) return {false, {}, "Invalid stream"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "streamWrite",
-        uuid,
-        this
-    };
+    auto* stream = getStream(streamId);
+    if (!stream) return {false, {}, "Stream not found"};
 
-    auto *stream = getStream(streamId);
-    if (!stream)
-        return {};
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_stream_write(ctx, stream,
+                                  reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())),
+                                  data.size(),
+                                  &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to write to stream"}; }
 
-    int ret = libp2p_stream_write(
-        ctx,
-        stream,
-        reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
-        data.size(),
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-QString Libp2pModulePlugin::streamWriteLp(uint64_t streamId, const QByteArray &data)
-{
-    if (!ctx || streamId == 0)
-        return {};
+StdLogosResult Libp2pModuleImpl::streamWriteLp(uint64_t streamId, const std::string& data) {
+    if (!ctx || streamId == 0) return {false, {}, "Invalid stream"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{
-        "streamWriteLp",
-        uuid,
-        this
-    };
+    auto* stream = getStream(streamId);
+    if (!stream) return {false, {}, "Stream not found"};
 
-    auto *stream = getStream(streamId);
-    if (!stream)
-        return {};
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_stream_writeLp(ctx, stream,
+                                    reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())),
+                                    data.size(),
+                                    &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to write LP to stream"}; }
 
-    int ret = libp2p_stream_writeLp(
-        ctx,
-        stream,
-        reinterpret_cast<uint8_t *>(const_cast<char *>(data.constData())),
-        data.size(),
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }

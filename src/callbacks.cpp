@@ -1,573 +1,204 @@
 #include "plugin.h"
 
-#include <QtCore/QJsonDocument>
-#include <QtCore/QJsonObject>
 #include <cstring>
-#include <QDebug>
 
-void Libp2pModulePlugin::onLibp2pEventDefault(
-    int result,
-    const QString &reqId,
-    const QString &caller,
-    const QString &message,
-    const QVariant &data
-)
+using json = nlohmann::json;
+
+// ---------------------------------------------------------------------------
+// Typed promise callbacks — convert C struct data to JSON, resolve promise
+// ---------------------------------------------------------------------------
+
+void Libp2pModuleImpl::promisePeerInfoCallback(
+    int ret, const Libp2pPeerInfo* info,
+    const char* msg, size_t len, void* userData)
 {
-    QByteArray buffer = data.toByteArray();
+    auto* p = static_cast<SyncPromise*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
 
-    qDebug() << "[" << caller << "]"
-             << "reqId:" << reqId
-             << "ret:" << result
-             << "msg:" << message
-             << "data size:" << buffer.size();
-}
-
-
-void Libp2pModulePlugin::libp2pCallback(
-    int callerRet,
-    const char *msg,
-    size_t len,
-    void *userData
-)
-{
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    if (caller == "libp2pDestroy") {
-        self->m_destroyDone.store(true, std::memory_order_release);
-    }
-    if (caller == "libp2pNew") {
-        self->m_newDone.store(true, std::memory_order_release);
-    }
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, callerRet, message, caller, reqId]() {
-            if (!safeSelf) return;
-            emit safeSelf->libp2pEvent(
-                callerRet,
-                reqId,
-                caller,
-                message,
-                QVariant()
-            );
-        },
-        Qt::QueuedConnection
-    );
-
-    // topicHandler is called with context
-    // cannot free it here if that's the case
-    if (caller != "gossipsubSubscribe")
-        delete callbackCtx;
-}
-
-QList<ServiceInfo> copyServiceInfos(
-    const Libp2pServiceInfo *services,
-    size_t servicesLen
-)
-{
-    QList<ServiceInfo> servicesCopy;
-
-    if (!services || servicesLen == 0) {
-        return servicesCopy;
-    }
-
-    servicesCopy.reserve(servicesLen);
-
-    for (size_t i = 0; i < servicesLen; ++i) {
-        ServiceInfo copy;
-
-        if (services[i].id) {
-            copy.id = services[i].id;
-        }
-
-        if (services[i].data && services[i].dataLen > 0) {
-            copy.data = QByteArray(
-                reinterpret_cast<const char *>(services[i].data),
-                int(services[i].dataLen)
-            );
-        }
-
-        servicesCopy.append(std::move(copy));
-    }
-
-    return servicesCopy;
-}
-
-ExtendedPeerRecord copyExtendedPeerRecord(
-    const Libp2pExtendedPeerRecord &record
-)
-{
-    ExtendedPeerRecord copy;
-
-    if (record.peerId) {
-        copy.peerId = record.peerId;
-    }
-
-    copy.seqNo = record.seqNo;
-
-    /* ---- Addresses ---- */
-    if (record.addrs && record.addrsLen > 0) {
-        copy.addrs.reserve(record.addrsLen);
-
-        for (size_t i = 0; i < record.addrsLen; ++i) {
-            const char *addr = record.addrs[i];
-            if (addr) {
-                copy.addrs.append(addr);
+    if (ret == RET_OK && info) {
+        json j;
+        j["peerId"] = info->peerId ? info->peerId : "";
+        json addrs = json::array();
+        if (info->addrs) {
+            for (size_t i = 0; i < info->addrsLen; ++i) {
+                if (info->addrs[i]) addrs.push_back(info->addrs[i]);
             }
         }
+        j["addrs"] = addrs;
+        r.message = j.dump();
+    } else {
+        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
     }
 
-    copy.services = copyServiceInfos(record.services, record.servicesLen);
-
-    return copy;
+    p->set_value(std::move(r));
+    delete p;
 }
 
-QList<ExtendedPeerRecord> copyExtendedRecords(
-    const Libp2pExtendedPeerRecord *records,
-    size_t recordsLen
-)
+void Libp2pModuleImpl::promisePeersCallback(
+    int ret, const char** peerIds, size_t peerIdsLen,
+    const char* msg, size_t len, void* userData)
 {
-    QList<ExtendedPeerRecord> recordsCopy;
+    auto* p = static_cast<SyncPromise*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
 
-    if (!records || recordsLen == 0) {
-        return recordsCopy;
-    }
-
-    recordsCopy.reserve(recordsLen);
-
-    for (size_t i = 0; i < recordsLen; ++i) {
-        recordsCopy.append(copyExtendedPeerRecord(records[i]));
-    }
-
-    return recordsCopy;
-}
-
-
-
-void Libp2pModulePlugin::randomRecordsCallback(
-    int callerRet,
-    const Libp2pExtendedPeerRecord *records,
-    size_t recordsLen,
-    const char *msg,
-    size_t len,
-    void *userData
-)
-{
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QList<ExtendedPeerRecord> recordsCopy = copyExtendedRecords(records, recordsLen);
-
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, callerRet, reqId, caller, message,
-         recordsCopy = std::move(recordsCopy)]() { // avoid copying providers again
-            if (!safeSelf) return;
-            emit safeSelf->libp2pEvent(
-                callerRet,
-                reqId,
-                caller,
-                message,
-                QVariant::fromValue(recordsCopy)
-            );
-        },
-        Qt::QueuedConnection
-    );
-
-    delete callbackCtx;
-}
-
-QList<QString> copyPeerIds(
-    const char **peerIds,
-    size_t peerIdsLen
-)
-{
-    QList<QString> peerIdsCopy;
-
-    if (!peerIds || peerIdsLen == 0) {
-        return peerIdsCopy;
-    }
-
-    peerIdsCopy.reserve(peerIdsLen);
-
-    for (size_t i = 0; i < peerIdsLen; ++i) {
-        peerIdsCopy.append(QString::fromUtf8(peerIds[i]));
-    }
-
-    return peerIdsCopy;
-}
-
-void Libp2pModulePlugin::peersCallback(
-    int callerRet,
-    const char **peerIds,
-    size_t peerIdsLen,
-    const char *msg,
-    size_t len,
-    void *userData
-)
-{
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QList<QString> peerIdsCopy = copyPeerIds(peerIds, peerIdsLen);
-
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, callerRet, message, caller, reqId,
-        peerIdsCopy = std::move(peerIdsCopy)]() { // avoid copying again
-            if (!safeSelf) return;
-            emit safeSelf->libp2pEvent(
-                callerRet,
-                reqId,
-                caller,
-                message,
-                QVariant::fromValue(peerIdsCopy)
-            );
-        },
-        Qt::QueuedConnection
-    );
-
-    delete callbackCtx;
-}
-
-void Libp2pModulePlugin::libp2pBufferCallback(
-    int callerRet,
-    const uint8_t *data,
-    size_t dataLen,
-    const char *msg,
-    size_t len,
-    void *userData
-)
-{
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QByteArray buffer;
-    if (data && dataLen > 0)
-        buffer = QByteArray(reinterpret_cast<const char *>(data), int(dataLen));
-
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(safeSelf, [safeSelf, callerRet, message, buffer, caller, reqId]() {
-        if (!safeSelf) return;
-        emit safeSelf->libp2pEvent(callerRet, reqId, caller, message, QVariant(buffer));
-    }, Qt::QueuedConnection);
-
-    delete callbackCtx;
-}
-
-QList<PeerInfo> copyPeerInfos(
-    const Libp2pPeerInfo *peerInfos,
-    size_t peerInfosLen
-)
-{
-    QList<PeerInfo> peerInfosCopy;
-
-    if (!peerInfos || peerInfosLen == 0) {
-        return peerInfosCopy;
-    }
-
-    peerInfosCopy.reserve(peerInfosLen);
-
-    for (size_t i = 0; i < peerInfosLen; ++i) {
-        PeerInfo copy;
-
-        if (peerInfos[i].peerId)
-            copy.peerId = peerInfos[i].peerId;
-
-        if (!peerInfos[i].addrs){
-            continue;
+    if (ret == RET_OK && peerIds && peerIdsLen > 0) {
+        json arr = json::array();
+        for (size_t i = 0; i < peerIdsLen; ++i) {
+            if (peerIds[i]) arr.push_back(peerIds[i]);
         }
-        for (size_t j = 0; j < peerInfos[i].addrsLen; ++j) {
-            const char* addr = peerInfos[i].addrs[j];
-            if (addr)
-                copy.addrs.append(addr);
+        r.message = arr.dump();
+    } else {
+        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    }
+
+    p->set_value(std::move(r));
+    delete p;
+}
+
+void Libp2pModuleImpl::promiseProvidersCallback(
+    int ret, const Libp2pPeerInfo* providers, size_t providersLen,
+    const char* msg, size_t len, void* userData)
+{
+    auto* p = static_cast<SyncPromise*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
+
+    if (ret == RET_OK && providers && providersLen > 0) {
+        json arr = json::array();
+        for (size_t i = 0; i < providersLen; ++i) {
+            json peer;
+            peer["peerId"] = providers[i].peerId ? providers[i].peerId : "";
+            json addrs = json::array();
+            if (providers[i].addrs) {
+                for (size_t j2 = 0; j2 < providers[i].addrsLen; ++j2) {
+                    if (providers[i].addrs[j2]) addrs.push_back(providers[i].addrs[j2]);
+                }
+            }
+            peer["addrs"] = addrs;
+            arr.push_back(peer);
         }
-
-        peerInfosCopy.append(std::move(copy));
+        r.message = arr.dump();
+    } else {
+        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
     }
 
-    return peerInfosCopy;
+    p->set_value(std::move(r));
+    delete p;
 }
 
-void Libp2pModulePlugin::getProvidersCallback(
-    int callerRet,
-    const Libp2pPeerInfo *providers,
-    size_t providersLen,
-    const char *msg,
-    size_t len,
-    void *userData
-)
+void Libp2pModuleImpl::promiseConnectionCallback(
+    int ret, libp2p_stream_t* stream,
+    const char* msg, size_t len, void* userData)
 {
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QList<PeerInfo> providersCopy = copyPeerInfos(providers, providersLen);
-
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, callerRet, reqId, caller, message,
-         providersCopy = std::move(providersCopy)]() { // avoid copying providers again
-            if (!safeSelf) return;
-            emit safeSelf->libp2pEvent(
-                callerRet,
-                reqId,
-                caller,
-                message,
-                QVariant::fromValue(providersCopy)
-            );
-        },
-        Qt::QueuedConnection
-    );
-
-    delete callbackCtx;
-}
-
-void Libp2pModulePlugin::peerInfoCallback(
-    int callerRet,
-    const Libp2pPeerInfo *info,
-    const char *msg,
-    size_t len,
-    void *userData
-)
-{
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    PeerInfo copy;
-    if (info) {
-        auto copies = copyPeerInfos(info, 1);
-        if (!copies.empty()) {
-            copy = std::move(copies[0]);
-        }
+    auto* p = static_cast<SyncPromise*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
+    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    if (ret == RET_OK && stream) {
+        r.extra = stream;
     }
 
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, callerRet, reqId, caller, message,
-         copy = std::move(copy)]() {
-            if (!safeSelf) return;
-
-            emit safeSelf->libp2pEvent(
-                callerRet,
-                reqId,
-                caller,
-                message,
-                QVariant::fromValue(copy)
-            );
-        },
-        Qt::QueuedConnection
-    );
-
-    delete callbackCtx;
+    p->set_value(std::move(r));
+    delete p;
 }
 
-void Libp2pModulePlugin::connectionCallback(
-    int callerRet,
-    libp2p_stream_t *stream,
-    const char *msg,
-    size_t len,
-    void *userData
-)
-{
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
-
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QVariant streamIdVariant = QVariant::fromValue<qulonglong>(0);
-    if (callerRet == RET_OK && stream) {
-        uint64_t streamId = self->addStream(stream);
-        streamIdVariant = QVariant::fromValue<qulonglong>(streamId);
-    }
-
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, callerRet, reqId, caller, message, streamIdVariant]() {
-            if (!safeSelf) return;
-
-            emit safeSelf->libp2pEvent(
-                callerRet,
-                reqId,
-                caller,
-                message,
-                streamIdVariant
-            );
-        },
-        Qt::QueuedConnection
-    );
-
-    delete callbackCtx;
-}
-
-
-void Libp2pModulePlugin::reservationCallback(
-    int callerRet,
-    const char **addrs,
-    size_t addrsLen,
-    uint64_t expireTime,
-    const char *msg,
-    size_t len,
-    void *userData
-)
+void Libp2pModuleImpl::promiseReservationCallback(
+    int ret, const char** addrs, size_t addrsLen, uint64_t expireTime,
+    const char* msg, size_t len, void* userData)
 {
     (void)expireTime;
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
+    auto* p = static_cast<SyncPromise*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
 
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
-
-    QString caller = callbackCtx->caller;
-    QString reqId = callbackCtx->reqId;
-
-    QList<QString> addrsCopy;
-    if (addrs && addrsLen > 0) {
-        addrsCopy.reserve(addrsLen);
-        for (size_t i = 0; i < addrsLen; i++)
-            addrsCopy.append(QString::fromUtf8(addrs[i]));
+    if (ret == RET_OK && addrs && addrsLen > 0) {
+        json arr = json::array();
+        for (size_t i = 0; i < addrsLen; ++i) {
+            if (addrs[i]) arr.push_back(addrs[i]);
+        }
+        r.message = arr.dump();
+    } else {
+        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
     }
 
-    QString message;
-    if (msg && len > 0)
-        message = QString::fromUtf8(msg, int(len));
-
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, callerRet, reqId, caller, message,
-         addrsCopy = std::move(addrsCopy)]() {
-            if (!safeSelf) return;
-            emit safeSelf->libp2pEvent(
-                callerRet,
-                reqId,
-                caller,
-                message,
-                QVariant::fromValue(addrsCopy)
-            );
-        },
-        Qt::QueuedConnection
-    );
-
-    delete callbackCtx;
+    p->set_value(std::move(r));
+    delete p;
 }
 
-void Libp2pModulePlugin::topicHandler(
-    const char *topic,
-    uint8_t *data,
-    size_t len,
-    void *userData
-)
+void Libp2pModuleImpl::promiseRandomRecordsCallback(
+    int ret, const Libp2pExtendedPeerRecord* records, size_t recordsLen,
+    const char* msg, size_t len, void* userData)
 {
-    auto *callbackCtx = static_cast<CallbackContext *>(userData);
-    if (!callbackCtx) return;
+    auto* p = static_cast<SyncPromise*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
 
-    Libp2pModulePlugin *self = callbackCtx->instance;
-    if (!self) { delete callbackCtx; return; }
+    if (ret == RET_OK && records && recordsLen > 0) {
+        json arr = json::array();
+        for (size_t i = 0; i < recordsLen; ++i) {
+            json rec;
+            rec["peerId"] = records[i].peerId ? records[i].peerId : "";
+            rec["seqNo"] = records[i].seqNo;
 
-    QString topicStr = QString::fromUtf8(topic);
-    QByteArray payload(reinterpret_cast<const char*>(data), static_cast<int>(len));
+            json addrs = json::array();
+            if (records[i].addrs) {
+                for (size_t a = 0; a < records[i].addrsLen; ++a) {
+                    if (records[i].addrs[a]) addrs.push_back(records[i].addrs[a]);
+                }
+            }
+            rec["addrs"] = addrs;
 
-    // add payload to the queue for syncGossipsubNextMessage
-    {
-        QMutexLocker lock(&self->m_queueMutex);
-
-        // ensure a queue exists for this topic
-        if (!self->m_topicQueues.contains(topicStr)) {
-            self->m_topicQueues[topicStr] = QSharedPointer<QQueue<QByteArray>>::create();
+            json services = json::array();
+            if (records[i].services) {
+                for (size_t s = 0; s < records[i].servicesLen; ++s) {
+                    json svc;
+                    svc["id"] = records[i].services[s].id ? records[i].services[s].id : "";
+                    if (records[i].services[s].data && records[i].services[s].dataLen > 0) {
+                        svc["data"] = std::string(
+                            reinterpret_cast<const char*>(records[i].services[s].data),
+                            records[i].services[s].dataLen);
+                    } else {
+                        svc["data"] = "";
+                    }
+                    services.push_back(svc);
+                }
+            }
+            rec["services"] = services;
+            arr.push_back(rec);
         }
-
-        self->m_topicQueues[topicStr]->enqueue(payload);
-        self->m_queueCond.wakeOne();
+        r.message = arr.dump();
+    } else {
+        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
     }
 
-    QPointer<Libp2pModulePlugin> safeSelf(self);
-    QMetaObject::invokeMethod(
-        safeSelf,
-        [safeSelf, topicStr, payload]() {
-            if (!safeSelf) return;
-            emit safeSelf->libp2pEvent(
-                RET_OK,
-                QString{},                // no request id (push event)
-                QString("gossipsubMessage"),
-                topicStr,
-                QVariant(payload)
-            );
-        },
-        Qt::QueuedConnection
-    );
+    p->set_value(std::move(r));
+    delete p;
+}
+
+// ---------------------------------------------------------------------------
+// Gossipsub topic handler — push messages into the queue
+// ---------------------------------------------------------------------------
+
+void Libp2pModuleImpl::topicHandler(
+    const char* topic, uint8_t* data, size_t len, void* userData)
+{
+    auto* subCtx = static_cast<Libp2pModuleImpl::SubscribeCtx*>(userData);
+    if (!subCtx || !subCtx->instance) return;
+
+    auto* self = subCtx->instance;
+    std::string topicStr = topic ? topic : "";
+    std::string payload(reinterpret_cast<const char*>(data), len);
+
+    {
+        std::lock_guard<std::mutex> lock(self->m_queueMutex);
+        self->m_topicQueues[topicStr].push(std::move(payload));
+        self->m_queueCond.notify_all();
+    }
+
+    json j;
+    j["topic"] = topicStr;
+    j["data"] = std::string(reinterpret_cast<const char*>(data), len);
+    self->emitEventSafe("gossipsubMessage", j.dump());
 }

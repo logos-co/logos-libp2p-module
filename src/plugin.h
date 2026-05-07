@@ -1,520 +1,238 @@
 #pragma once
 
-#include <QtCore/QObject>
-#include <QtCore/QVariant>
-#include <QtCore/QByteArray>
-#include <QtCore/QString>
-#include <QtCore/QHash>
-#include <QtCore/QReadWriteLock>
-#include <QtCore/QMutex>
-#include <QtCore/QQueue>
-#include <QtCore/QWaitCondition>
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <future>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include <queue>
 
-#include <logos_api.h>
-#include <logos_api_client.h>
-#include <libp2p.h>
+#include <nlohmann/json.hpp>
 
-#include "libp2p_module_interface.h"
-
-/**
- * Result used internally when waiting for async callbacks.
- */
-struct WaitResult {
-    bool ok;
-    QVariant data;
+#ifndef LOGOS_RESULT_H_INCLUDED
+#define LOGOS_RESULT_H_INCLUDED
+struct StdLogosResult {
+    bool success = false;
+    nlohmann::json value;
+    std::string error;
 };
+#endif
 
-/**
- * User-facing options for Libp2pModulePlugin.
- */
+extern "C" {
+#include "lib/libp2p.h"
+}
+
 struct Libp2pModuleOptions {
-    /// Local listen addresses (e.g. "/ip4/0.0.0.0/tcp/0").
-    QList<QString> addrs = {};
-
-    /// Peers to connect to on startup.
-    QList<PeerInfo> bootstrapNodes = {};
-
-    /// Transport type (LIBP2P_TRANSPORT_TCP, LIBP2P_TRANSPORT_QUIC, ...).
+    std::vector<std::string> addrs = {};
+    std::vector<std::pair<std::string, std::vector<std::string>>> bootstrapNodes = {};
     int transport = LIBP2P_TRANSPORT_TCP;
-
-    /// Enable AutoNAT v1.
     bool autonat = false;
-
-    /// Enable AutoNAT v2 client.
     bool autonatV2 = false;
-
-    /// Enable AutoNAT v2 server.
     bool autonatV2Server = false;
-
-    /// Enable circuit relay server.
     bool circuitRelay = false;
-    
-    /// Enable circuit relay client.
     bool circuitRelayClient = false;
-
-    /// Maximum total connections (in + out).
     int maxConnections = 50;
-
-    /// Maximum incoming connections.
     int maxInConnections = 25;
-
-    /// Maximum outgoing connections.
     int maxOutConnections = 25;
-
-    /// Maximum connections per peer.
     int maxConnsPerPeer = 1;
-
-    /// If true, messages published by this node are also delivered to its own subscribers.
     bool gossipsubTriggerSelf = true;
-
-    /// Enable gossipsub (default on).
     bool mountGossipsub = true;
-
-    /// Enable Kademlia DHT (default on).
     bool mountKad = true;
-
-    /// Enable mix protocol support (default off).
     bool mountMix = false;
-
-    /// Enable service discovery protocol (default off).
     bool mountServiceDiscovery = false;
 };
 
-/**
- * Implementation of the libp2p Logos module plugin.
- *
- * This class bridges:
- * - Logos plugin system
- * - libp2p C bindings
- * - Qt async/signal infrastructure
- */
-class Libp2pModulePlugin : public QObject, public Libp2pModuleInterface
-{
-    Q_OBJECT
-#ifndef LOGOS_TESTING
-    Q_PLUGIN_METADATA(IID Libp2pModuleInterface_iid FILE "metadata.json")
-#endif
-    Q_INTERFACES(Libp2pModuleInterface PluginInterface)
+// Result type for internal sync-over-async operations.
+struct SyncResult {
+    bool ok = false;
+    std::string message;
+    std::vector<uint8_t> buffer;
+    void* extra = nullptr;
+};
 
+using SyncPromise = std::promise<SyncResult>;
+
+// Awaits a future with timeout. Returns a failed result on timeout.
+inline SyncResult awaitResult(std::future<SyncResult>& f, int timeoutMs = 10000) {
+    if (f.wait_for(std::chrono::milliseconds(timeoutMs)) == std::future_status::ready) {
+        return f.get();
+    }
+    return {false, "timeout", {}, nullptr};
+}
+
+class Libp2pModuleImpl {
 public:
-    /**
-     * Creates the plugin instance.
-     *
-     * bootstrapNodes in the options are used to initially connect to the network.
-     */
-    explicit Libp2pModulePlugin(const Libp2pModuleOptions &options = {});
-    ~Libp2pModulePlugin() override;
+    explicit Libp2pModuleImpl(const Libp2pModuleOptions& options = {});
+    ~Libp2pModuleImpl();
 
-    /// Plugin name exposed to Logos.
-    QString name() const override { return "libp2p_module"; }
+    std::function<void(const std::string& eventName, const std::string& data)> emitEvent;
 
-    /// Plugin version.
-    QString version() const override { return "1.0.0"; }
+    /* ----------- Lifecycle ----------- */
 
-    /* ----------- Libp2p Core ----------- */
-
-    /// Starts the libp2p node.
-    Q_INVOKABLE QString libp2pStart() override;
-
-    /// Stops the libp2p node.
-    Q_INVOKABLE QString libp2pStop() override;
-
-    /// Returns the public key for the libp2p node
-    Q_INVOKABLE QString libp2pPublicKey() override;
-
-    /// Generates a new libp2p private key
-    Q_INVOKABLE QString libp2pNewPrivateKey() override;
-
-    /* ----------- Sync Libp2p Core ----------- */
-
-    Q_INVOKABLE Libp2pResult syncLibp2pStart() override;
-    Q_INVOKABLE Libp2pResult syncLibp2pStop() override;
-    Q_INVOKABLE Libp2pResult syncLibp2pPublicKey() override;
-    Q_INVOKABLE Libp2pResult syncLibp2pNewPrivateKey() override;
+    StdLogosResult start();
+    StdLogosResult stop();
+    StdLogosResult publicKey();
+    StdLogosResult newPrivateKey();
 
     /* ----------- Connectivity ----------- */
 
-    Q_INVOKABLE QString connectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
-    Q_INVOKABLE QString disconnectPeer(const QString &peerId) override;
-    Q_INVOKABLE QString peerInfo() override;
-    Q_INVOKABLE QString connectedPeers(int direction = 0) override;
-    Q_INVOKABLE QString dial(const QString &peerId, const QString &proto) override;
-
-    /* ----------- Streams ----------- */
-
-    Q_INVOKABLE QString streamReadExactly(uint64_t streamId, size_t len) override;
-    Q_INVOKABLE QString streamReadLp(uint64_t streamId, size_t maxSize) override;
-    Q_INVOKABLE QString streamWrite(uint64_t streamId, const QByteArray &data) override;
-    Q_INVOKABLE QString streamWriteLp(uint64_t streamId, const QByteArray &data) override;
-    Q_INVOKABLE QString streamClose(uint64_t streamId) override;
-    Q_INVOKABLE QString streamCloseWithEOF(uint64_t streamId) override;
-    Q_INVOKABLE QString streamRelease(uint64_t streamId) override;
-
-    /* ----------- Sync Streams ----------- */
-
-    Q_INVOKABLE Libp2pResult syncStreamReadExactly(uint64_t streamId, size_t len) override;
-    Q_INVOKABLE Libp2pResult syncStreamReadLp(uint64_t streamId, size_t maxSize) override;
-    Q_INVOKABLE Libp2pResult syncStreamWrite(uint64_t streamId, const QByteArray &data) override;
-    Q_INVOKABLE Libp2pResult syncStreamWriteLp(uint64_t streamId, const QByteArray &data) override;
-    Q_INVOKABLE Libp2pResult syncStreamClose(uint64_t streamId) override;
-    Q_INVOKABLE Libp2pResult syncStreamCloseWithEOF(uint64_t streamId) override;
-    Q_INVOKABLE Libp2pResult syncStreamRelease(uint64_t streamId) override;
+    StdLogosResult connectPeer(const std::string& peerId,
+                               const std::vector<std::string>& multiaddrs,
+                               int64_t timeoutMs = -1);
+    StdLogosResult disconnectPeer(const std::string& peerId);
+    StdLogosResult peerInfo();
+    StdLogosResult connectedPeers(int direction = 0);
+    StdLogosResult dial(const std::string& peerId, const std::string& proto);
 
     /* ----------- Circuit Relay ----------- */
 
-    Q_INVOKABLE QString circuitRelayReserve(const QString &relayPeerId, const QList<QString> &relayAddrs);
-    Q_INVOKABLE QString dialCircuitRelay(const QString &dstPeerId, const QString &multiaddr, const QString &proto);
+    StdLogosResult circuitRelayReserve(const std::string& relayPeerId,
+                                       const std::vector<std::string>& relayAddrs);
+    StdLogosResult dialCircuitRelay(const std::string& dstPeerId,
+                                    const std::string& multiaddr,
+                                    const std::string& proto);
 
-    /* ----------- Sync Circuit Relay ----------- */
+    /* ----------- Streams ----------- */
 
-    Q_INVOKABLE Libp2pResult syncCircuitRelayReserve(const QString &relayPeerId, const QList<QString> &relayAddrs);
-    Q_INVOKABLE Libp2pResult syncDialCircuitRelay(const QString &dstPeerId, const QString &multiaddr, const QString &proto);
-
-    /* ----------- Sync Connectivity ----------- */
-
-    Q_INVOKABLE Libp2pResult syncConnectPeer(const QString &peerId, const QList<QString> multiaddrs, int64_t timeoutMs = -1) override;
-    Q_INVOKABLE Libp2pResult syncDisconnectPeer(const QString &peerId) override;
-    Q_INVOKABLE Libp2pResult syncPeerInfo() override;
-    Q_INVOKABLE Libp2pResult syncConnectedPeers(int direction = Direction_In) override;
-    Q_INVOKABLE Libp2pResult syncDial(const QString &peerId, const QString &proto) override;
+    StdLogosResult streamReadExactly(uint64_t streamId, size_t len);
+    StdLogosResult streamReadLp(uint64_t streamId, size_t maxSize);
+    StdLogosResult streamWrite(uint64_t streamId, const std::string& data);
+    StdLogosResult streamWriteLp(uint64_t streamId, const std::string& data);
+    StdLogosResult streamClose(uint64_t streamId);
+    StdLogosResult streamCloseWithEOF(uint64_t streamId);
+    StdLogosResult streamRelease(uint64_t streamId);
 
     /* ----------- Gossipsub ----------- */
 
-    Q_INVOKABLE QString gossipsubPublish(const QString &topic, const QByteArray &data) override;
-    Q_INVOKABLE QString gossipsubSubscribe(const QString &topic) override;
-    Q_INVOKABLE QString gossipsubUnsubscribe(const QString &topic) override;
-
-    /* ----------- Sync Gossipsub ----------- */
-
-    Q_INVOKABLE Libp2pResult syncGossipsubPublish(const QString &topic,const QByteArray &data) override;
-    Q_INVOKABLE Libp2pResult syncGossipsubSubscribe(const QString &topic) override;
-    Q_INVOKABLE Libp2pResult syncGossipsubUnsubscribe(const QString &topic) override;
-    Q_INVOKABLE Libp2pResult syncGossipsubNextMessage(const QString &topic, int timeoutMs = 1000) override;
+    StdLogosResult gossipsubPublish(const std::string& topic, const std::string& data);
+    StdLogosResult gossipsubSubscribe(const std::string& topic);
+    StdLogosResult gossipsubUnsubscribe(const std::string& topic);
+    StdLogosResult gossipsubNextMessage(const std::string& topic, int timeoutMs = 1000);
 
     /* ----------- Kademlia ----------- */
 
-    Q_INVOKABLE QString toCid(const QByteArray &key) override;
-    Q_INVOKABLE QString kadFindNode(const QString &peerId) override;
-    Q_INVOKABLE QString kadPutValue(const QByteArray &key, const QByteArray &value) override;
-    Q_INVOKABLE QString kadGetValue(const QByteArray &key, int quorum = -1) override;
-    Q_INVOKABLE QString kadAddProvider(const QString &cid) override;
-    Q_INVOKABLE QString kadStartProviding(const QString &cid) override;
-    Q_INVOKABLE QString kadStopProviding(const QString &cid) override;
-    Q_INVOKABLE QString kadGetProviders(const QString &cid) override;
-    Q_INVOKABLE QString kadGetRandomRecords() override;
-
-    /* ----------- Sync Kademlia ----------- */
-
-    Q_INVOKABLE Libp2pResult syncToCid(const QByteArray &key) override;
-    Q_INVOKABLE Libp2pResult syncKadFindNode(const QString &peerId) override;
-    Q_INVOKABLE Libp2pResult syncKadPutValue(const QByteArray &key, const QByteArray &value) override;
-    Q_INVOKABLE Libp2pResult syncKadGetValue(const QByteArray &key, int quorum = -1) override;
-    Q_INVOKABLE Libp2pResult syncKadAddProvider(const QString &cid) override;
-    Q_INVOKABLE Libp2pResult syncKadGetProviders(const QString &cid) override;
-    Q_INVOKABLE Libp2pResult syncKadStartProviding(const QString &cid) override;
-    Q_INVOKABLE Libp2pResult syncKadStopProviding(const QString &cid) override;
-    Q_INVOKABLE Libp2pResult syncKadGetRandomRecords() override;
+    StdLogosResult toCid(const std::string& key);
+    StdLogosResult kadFindNode(const std::string& peerId);
+    StdLogosResult kadPutValue(const std::string& key, const std::string& value);
+    StdLogosResult kadGetValue(const std::string& key, int quorum = -1);
+    StdLogosResult kadAddProvider(const std::string& cid);
+    StdLogosResult kadStartProviding(const std::string& cid);
+    StdLogosResult kadStopProviding(const std::string& cid);
+    StdLogosResult kadGetProviders(const std::string& cid);
+    StdLogosResult kadGetRandomRecords();
 
     /* ----------- Mix Network ----------- */
 
-    /// Generates a new Curve25519 private key for mix networking.
-    Q_INVOKABLE QByteArray mixGeneratePrivKey() override;
-
-    /// Derives the public key from a given Curve25519 private key.
-    Q_INVOKABLE QByteArray mixPublicKey(const QByteArray &privKey) override;
-
-    /// Establishes a mix connection to a peer through a multiaddr and protocol.
-    Q_INVOKABLE QString mixDial(
-        const QString &peerId,
-        const QString &multiaddr,
-        const QString &proto
-    ) override;
-
-    /// Establishes a mix connection expecting a reply with SURBs.
-    Q_INVOKABLE QString mixDialWithReply(
-        const QString &peerId,
-        const QString &multiaddr,
-        const QString &proto,
-        int expectReply,
-        uint8_t numSurbs
-    ) override;
-
-    /// Registers how payloads should be read for a protocol at the mix destination.
-    Q_INVOKABLE QString mixRegisterDestReadBehavior(
-        const QString &proto,
-        int behavior,
-        uint32_t sizeParam
-    ) override;
-
-    /// Sets node information used by the mix layer.
-    Q_INVOKABLE QString mixSetNodeInfo(
-        const QString &multiaddr,
-        const QByteArray &mixPrivKey
-    ) override;
-
-    /// Adds a node to the mix node pool.
-    Q_INVOKABLE QString mixNodepoolAdd(
-        const QString &peerId,
-        const QString &multiaddr,
-        const QByteArray &mixPubKey,
-        const QByteArray &libp2pPubKey
-    ) override;
+    StdLogosResult mixGeneratePrivKey();
+    StdLogosResult mixPublicKey(const std::string& privKey);
+    StdLogosResult mixDial(const std::string& peerId,
+                           const std::string& multiaddr,
+                           const std::string& proto);
+    StdLogosResult mixDialWithReply(const std::string& peerId,
+                                    const std::string& multiaddr,
+                                    const std::string& proto,
+                                    int expectReply,
+                                    uint8_t numSurbs);
+    StdLogosResult mixRegisterDestReadBehavior(const std::string& proto,
+                                               int behavior,
+                                               uint32_t sizeParam);
+    StdLogosResult mixSetNodeInfo(const std::string& multiaddr,
+                                  const std::string& mixPrivKey);
+    StdLogosResult mixNodepoolAdd(const std::string& peerId,
+                                  const std::string& multiaddr,
+                                  const std::string& mixPubKey,
+                                  const std::string& libp2pPubKey);
 
     /* ----------- Service Discovery ----------- */
 
-    Q_INVOKABLE QString discoStart() override;
-    Q_INVOKABLE QString discoStop() override;
-    Q_INVOKABLE QString discoStartAdvertising(
-        const QString &serviceId,
-        const QByteArray &serviceData = {}
-    ) override;
-    Q_INVOKABLE QString discoStopAdvertising(
-        const QString &serviceId
-    ) override;
-    Q_INVOKABLE QString discoStartDiscovering(
-        const QString &serviceId
-    ) override;
-    Q_INVOKABLE QString discoStopDiscovering(
-        const QString &serviceId
-    ) override;
-    Q_INVOKABLE QString discoLookup(
-        const QString &serviceId,
-        const QByteArray &serviceData = {}
-    ) override;
-    Q_INVOKABLE QString discoRandomLookup() override;
+    StdLogosResult discoStart();
+    StdLogosResult discoStop();
+    StdLogosResult discoStartAdvertising(const std::string& serviceId,
+                                         const std::string& serviceData = {});
+    StdLogosResult discoStopAdvertising(const std::string& serviceId);
+    StdLogosResult discoStartDiscovering(const std::string& serviceId);
+    StdLogosResult discoStopDiscovering(const std::string& serviceId);
+    StdLogosResult discoLookup(const std::string& serviceId,
+                               const std::string& serviceData = {});
+    StdLogosResult discoRandomLookup();
 
-    /* ----------- Sync Service Discovery ----------- */
+    /* ----------- Event Callback ----------- */
 
-    Q_INVOKABLE Libp2pResult syncDiscoStart() override;
-    Q_INVOKABLE Libp2pResult syncDiscoStop() override;
-    Q_INVOKABLE Libp2pResult syncDiscoStartAdvertising(
-        const QString &serviceId,
-        const QByteArray &serviceData = {}
-    ) override;
-    Q_INVOKABLE Libp2pResult syncDiscoStopAdvertising(
-        const QString &serviceId
-    ) override;
-    Q_INVOKABLE Libp2pResult syncDiscoStartDiscovering(
-        const QString &serviceId
-    ) override;
-    Q_INVOKABLE Libp2pResult syncDiscoStopDiscovering(
-        const QString &serviceId
-    ) override;
-    Q_INVOKABLE Libp2pResult syncDiscoLookup(
-        const QString &serviceId,
-        const QByteArray &serviceData = {}
-    ) override;
-    Q_INVOKABLE Libp2pResult syncDiscoRandomLookup() override;
-
-    /* ----------- Sync Mix Network ----------- */
-
-    Q_INVOKABLE Libp2pResult syncMixDial(
-        const QString &peerId,
-        const QString &multiaddr,
-        const QString &proto
-    ) override;
-    Q_INVOKABLE Libp2pResult syncMixDialWithReply(
-        const QString &peerId,
-        const QString &multiaddr,
-        const QString &proto,
-        int expectReply,
-        uint8_t numSurbs
-    ) override;
-    Q_INVOKABLE Libp2pResult syncMixRegisterDestReadBehavior(
-        const QString &proto,
-        int behavior,
-        uint32_t sizeParam
-    ) override;
-    Q_INVOKABLE Libp2pResult syncMixSetNodeInfo(
-        const QString &multiaddr,
-        const QByteArray &mixPrivKey
-    ) override;
-    Q_INVOKABLE Libp2pResult syncMixNodepoolAdd(
-        const QString &peerId,
-        const QString &multiaddr,
-        const QByteArray &mixPubKey,
-        const QByteArray &libp2pPubKey
-    ) override;
-
-    /// Registers the event callback bridge with libp2p.
-    Q_INVOKABLE bool setEventCallback() override;
-
-    /// Initializes the Logos API instance used by the plugin.
-    Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);
-
-signals:
-    /**
-     * Low-level libp2p event emitted by the underlying library.
-     */
-    void libp2pEvent(
-        int result,
-        QString reqId,
-        QString caller,
-        QString message,
-        QVariant data
-    );
-
-    /**
-     * High-level event forwarded to Logos.
-     */
-    void eventResponse(const QString& eventName, const QVariantList& data);
-
-private slots:
-    /**
-     * Default handler for libp2p events.
-     */
-    void onLibp2pEventDefault(
-        int result,
-        const QString &reqId,
-        const QString &caller,
-        const QString &message,
-        const QVariant &data
-    );
+    bool setEventCallback();
 
 private:
-    /// Bootstrap peers used during node startup.
-    QList<PeerInfo> m_bootstrapNodes;
-    /// C-compatible bootstrap node structures.
-    QVector<libp2p_bootstrap_node_t> m_bootstrapCNodes;
-    /// Keeps UTF-8 address buffers alive.
-    QVector<QVector<QByteArray>> m_addrUtf8Storage;
-    /// Keeps char** arrays alive.
-    QVector<QVector<char*>> m_addrPtrStorage;
-    /// Storage for peer IDs.
-    QVector<QByteArray> m_peerIdStorage;
-
-    /// List of addrs
-    QList<QString> m_addrs;
-    /// Keeps UTF-8 address buffers alive.
-    QVector<QByteArray> m_addrsUtf8;
-    /// Keeps char* arrays alive.
-    QVector<char*> m_addrsPtr;
-
-    /// libp2p context.
-    libp2p_ctx_t *ctx = nullptr;
-
-    /// libp2p configuration.
+    libp2p_ctx_t* ctx = nullptr;
     libp2p_config_t m_libp2pConfig = {};
 
-    /// Helper for destructor to wait for libp2p_destroy and libp2p_new to be done
     std::atomic<bool> m_destroyDone{false};
     std::atomic<bool> m_newDone{false};
 
-    /// Active streams indexed by internal ID.
-    QHash<uint64_t, libp2p_stream_t*> m_streams;
+    // Address storage (kept alive for libp2p_config_t pointers)
+    std::vector<std::string> m_addrs;
+    std::vector<const char*> m_addrsPtr;
 
-    /// Lock protecting the stream registry.
-    mutable QReadWriteLock m_streamsLock;
+    // Bootstrap storage
+    std::vector<std::string> m_peerIdStorage;
+    std::vector<std::vector<std::string>> m_addrStorage;
+    std::vector<std::vector<const char*>> m_addrPtrStorage;
+    std::vector<libp2p_bootstrap_node_t> m_bootstrapCNodes;
 
-    /// Monotonic stream ID generator.
-    std::atomic<uint64_t> m_nextStreamId {1};
+    // Private key storage
+    std::vector<uint8_t> m_privKey;
 
     /* ----------- Stream Registry ----------- */
 
-    /// Registers a new stream and returns its ID.
-    uint64_t addStream(libp2p_stream_t *stream);
+    mutable std::shared_mutex m_streamsLock;
+    std::unordered_map<uint64_t, libp2p_stream_t*> m_streams;
+    std::atomic<uint64_t> m_nextStreamId{1};
 
-    /// Returns a stream by ID.
+    uint64_t addStream(libp2p_stream_t* stream);
     libp2p_stream_t* getStream(uint64_t id) const;
-
-    /// Removes a stream from the registry.
     libp2p_stream_t* removeStream(uint64_t id);
-
-    /// Checks if a stream exists.
     bool hasStream(uint64_t id) const;
 
-    /// Gossipsub messages map
-    QMutex m_queueMutex;
-    QWaitCondition m_queueCond;
-    // topic queues: map topic -> shared pointer queue
-    QMap<QString, QSharedPointer<QQueue<QByteArray>>> m_topicQueues;
+    /* ----------- Gossipsub Message Queue ----------- */
 
-    /* ----------- libp2p Callbacks ----------- */
+    std::mutex m_queueMutex;
+    std::condition_variable m_queueCond;
+    std::unordered_map<std::string, std::queue<std::string>> m_topicQueues;
 
-    static void topicHandler(
-        const char *topic,
-        uint8_t *data,
-        size_t len,
-        void *userData
-    );
+    /* ----------- Promise-based Callbacks ----------- */
 
-    static void libp2pCallback(
-        int callerRet,
-        const char *msg,
-        size_t len,
-        void *userData
-    );
+    static void promiseCallback(int ret, const char* msg, size_t len, void* userData);
+    static void promiseBufferCallback(int ret, const uint8_t* data, size_t dataLen,
+                                      const char* msg, size_t len, void* userData);
+    static void promisePeerInfoCallback(int ret, const Libp2pPeerInfo* info,
+                                        const char* msg, size_t len, void* userData);
+    static void promisePeersCallback(int ret, const char** peerIds, size_t peerIdsLen,
+                                     const char* msg, size_t len, void* userData);
+    static void promiseProvidersCallback(int ret, const Libp2pPeerInfo* providers,
+                                         size_t providersLen, const char* msg,
+                                         size_t len, void* userData);
+    static void promiseConnectionCallback(int ret, libp2p_stream_t* stream,
+                                          const char* msg, size_t len, void* userData);
+    static void promiseReservationCallback(int ret, const char** addrs, size_t addrsLen,
+                                           uint64_t expireTime, const char* msg,
+                                           size_t len, void* userData);
+    static void promiseRandomRecordsCallback(int ret, const Libp2pExtendedPeerRecord* records,
+                                             size_t recordsLen, const char* msg,
+                                             size_t len, void* userData);
 
-    static void randomRecordsCallback(
-        int callerRet,
-        const Libp2pExtendedPeerRecord *records,
-        size_t recordsLen,
-        const char *msg,
-        size_t len,
-        void *userData
-    );
+    static void topicHandler(const char* topic, uint8_t* data, size_t len, void* userData);
+    static void eventCallback(int ret, const char* msg, size_t len, void* userData);
 
-    static void peersCallback(
-        int callerRet,
-        const char **peerIds,
-        size_t peerIdsLen,
-        const char *msg,
-        size_t len,
-        void *userData
-    );
+    /* ----------- Helpers ----------- */
 
-    static void libp2pBufferCallback(
-        int callerRet,
-        const uint8_t *data,
-        size_t dataLen,
-        const char *msg,
-        size_t len,
-        void *userData
-    );
+    void emitEventSafe(const std::string& name, const std::string& data) const;
 
-    static void getProvidersCallback(
-        int callerRet,
-        const Libp2pPeerInfo *providers,
-        size_t providersLen,
-        const char *msg,
-        size_t len,
-        void *userData
-    );
-
-    static void peerInfoCallback(
-        int callerRet,
-        const Libp2pPeerInfo *info,
-        const char *msg,
-        size_t len,
-        void *userData
-    );
-
-    static void connectionCallback(
-        int callerRet,
-        libp2p_stream_t *stream,
-        const char *msg,
-        size_t len,
-        void *userData
-    );
-
-    static void reservationCallback(
-        int callerRet,
-        const char **addrs,
-        size_t addrsLen,
-        uint64_t expireTime,
-        const char *msg,
-        size_t len,
-        void *userData
-    );
+    // Gossipsub subscribe contexts need to persist for the lifetime of the subscription
+    struct SubscribeCtx {
+        Libp2pModuleImpl* instance;
+    };
+    std::vector<std::unique_ptr<SubscribeCtx>> m_subscribeContexts;
 };
-
-/**
- * Context passed to async callbacks to map responses back
- * to the originating request.
- */
-struct CallbackContext {
-    QString caller;
-    QString reqId;
-    Libp2pModulePlugin *instance;
-};
-

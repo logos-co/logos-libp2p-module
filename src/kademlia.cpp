@@ -1,202 +1,130 @@
 #include "plugin.h"
 
-#include <QtCore/QJsonDocument>
-#include <QtCore/QJsonObject>
-#include <QDebug>
+#include <cstring>
 
-QString Libp2pModulePlugin::kadFindNode(const QString &peerId)
-{
-    qDebug() << "Libp2pModulePlugin::kadFindNode called:" << peerId;
+using json = nlohmann::json;
 
-    if (!ctx) {
-        qDebug() << "kadFindNode called without a context";
-        return {};
-    }
+// ---------------------------------------------------------------------------
+// Kademlia
+// ---------------------------------------------------------------------------
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "kadFindNode", uuid, this };
+StdLogosResult Libp2pModuleImpl::kadFindNode(const std::string& peerId) {
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-    int ret = libp2p_kad_find_node(
-        ctx,
-        peerId.toUtf8().constData(),
-        &Libp2pModulePlugin::peersCallback,
-        callbackCtx
-    );
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_kad_find_node(ctx, peerId.c_str(),
+                                   &Libp2pModuleImpl::promisePeersCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to find node"}; }
 
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    if (r.message.empty()) return {true, json::array(), ""};
+    return {true, json::parse(r.message), ""};
 }
 
+StdLogosResult Libp2pModuleImpl::kadPutValue(const std::string& key, const std::string& value) {
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-QString Libp2pModulePlugin::kadPutValue(const QByteArray &key, const QByteArray &value)
-{
-    qDebug() << "Libp2pModulePlugin::kadPutValue called";
-
-    if (!ctx)
-        return {};
-
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "kadPutValue", uuid, this };
-
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
     int ret = libp2p_kad_put_value(
         ctx,
-        reinterpret_cast<const uint8_t *>(key.constData()),
-        key.size(),
-        reinterpret_cast<const uint8_t *>(value.constData()),
-        value.size(),
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
+        reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+        reinterpret_cast<const uint8_t*>(value.data()), value.size(),
+        &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to put value"}; }
 
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-QString Libp2pModulePlugin::kadGetValue(const QByteArray &key, int quorum)
-{
-    if (!ctx)
-        return {};
+StdLogosResult Libp2pModuleImpl::kadGetValue(const std::string& key, int quorum) {
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "kadGetValue", uuid, this };
-
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
     int ret = libp2p_kad_get_value(
         ctx,
-        reinterpret_cast<const uint8_t *>(key.constData()),
-        key.size(),
+        reinterpret_cast<const uint8_t*>(key.data()), key.size(),
         quorum,
-        &Libp2pModulePlugin::libp2pBufferCallback,
-        callbackCtx
-    );
+        &Libp2pModuleImpl::promiseBufferCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get value"}; }
 
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
 }
 
-QString Libp2pModulePlugin::kadAddProvider(const QString &cid)
-{
-    if (!ctx)
-        return {};
+StdLogosResult Libp2pModuleImpl::kadAddProvider(const std::string& cid) {
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "kadAddProvider", uuid, this };
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_kad_add_provider(ctx, cid.c_str(),
+                                      &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to add provider"}; }
 
-    int ret = libp2p_kad_add_provider(
-        ctx,
-        cid.toUtf8().constData(),
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-QString Libp2pModulePlugin::kadGetProviders(const QString &cid)
-{
-    if (!ctx)
-        return {};
+StdLogosResult Libp2pModuleImpl::kadStartProviding(const std::string& cid) {
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "kadGetProviders", uuid, this };
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_kad_start_providing(ctx, cid.c_str(),
+                                         &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to start providing"}; }
 
-    int ret = libp2p_kad_get_providers(
-        ctx,
-        cid.toUtf8().constData(),
-        &Libp2pModulePlugin::getProvidersCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-QString Libp2pModulePlugin::kadStartProviding(const QString &cid)
-{
-    if (!ctx)
-        return {};
+StdLogosResult Libp2pModuleImpl::kadStopProviding(const std::string& cid) {
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "kadStartProviding", uuid, this };
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_kad_stop_providing(ctx, cid.c_str(),
+                                        &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to stop providing"}; }
 
-    int ret = libp2p_kad_start_providing(
-        ctx,
-        cid.toUtf8().constData(),
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    return {true, {}, ""};
 }
 
-QString Libp2pModulePlugin::kadStopProviding(const QString &cid)
-{
-    if (!ctx)
-        return {};
+StdLogosResult Libp2pModuleImpl::kadGetProviders(const std::string& cid) {
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx = new CallbackContext{ "kadStopProviding", uuid, this };
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_kad_get_providers(ctx, cid.c_str(),
+                                       &Libp2pModuleImpl::promiseProvidersCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get providers"}; }
 
-    int ret = libp2p_kad_stop_providing(
-        ctx,
-        cid.toUtf8().constData(),
-        &Libp2pModulePlugin::libp2pCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    if (r.message.empty()) return {true, json::array(), ""};
+    return {true, json::parse(r.message), ""};
 }
 
-QString Libp2pModulePlugin::kadGetRandomRecords()
-{
-    if (!ctx)
-        return {};
+StdLogosResult Libp2pModuleImpl::kadGetRandomRecords() {
+    if (!ctx) return {false, {}, "No libp2p context"};
 
-    QString uuid = QUuid::createUuid().toString();
-    auto *callbackCtx =
-        new CallbackContext{ "kadGetRandomRecords", uuid, this };
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_kad_random_records(ctx,
+                                        &Libp2pModuleImpl::promiseRandomRecordsCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get random records"}; }
 
-    int ret = libp2p_kad_random_records(
-        ctx,
-        &Libp2pModulePlugin::randomRecordsCallback,
-        callbackCtx
-    );
-
-    if (ret != RET_OK) {
-        delete callbackCtx;
-        return {};
-    }
-
-    return uuid;
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+    if (r.message.empty()) return {true, json::array(), ""};
+    return {true, json::parse(r.message), ""};
 }
-

@@ -1,114 +1,128 @@
 #include <logos_test.h>
 #include <plugin.h>
-#include <QThread>
 #include <vector>
 #include <memory>
+#include <thread>
+#include <chrono>
+
+static std::pair<std::string, std::vector<std::string>> getPeerInfoPair(Libp2pModuleImpl& node) {
+    auto res = node.peerInfo();
+    auto info = res.value;
+    std::string peerId = info["peerId"].get<std::string>();
+    std::vector<std::string> addrs;
+    for (const auto& a : info["addrs"]) {
+        addrs.push_back(a.get<std::string>());
+    }
+    return {peerId, addrs};
+}
 
 LOGOS_TEST(gossipsub_subscribe_and_publish) {
-    Libp2pModulePlugin nodeA;
-    Libp2pModulePlugin nodeB;
+    Libp2pModuleImpl nodeA;
+    Libp2pModuleImpl nodeB;
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
 
-    PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
-    LOGOS_ASSERT_TRUE(nodeB.syncConnectPeer(infoA.peerId, infoA.addrs, 500).ok);
+    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
+    LOGOS_ASSERT_TRUE(nodeB.connectPeer(peerIdA, addrsA, 500).success);
 
-    QString topic = "integration-topic";
-    LOGOS_ASSERT_TRUE(nodeB.syncGossipsubSubscribe(topic).ok);
-    LOGOS_ASSERT_TRUE(nodeA.syncGossipsubSubscribe(topic).ok);
-    QThread::msleep(2000);
+    std::string topic = "integration-topic";
+    LOGOS_ASSERT_TRUE(nodeB.gossipsubSubscribe(topic).success);
+    LOGOS_ASSERT_TRUE(nodeA.gossipsubSubscribe(topic).success);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    QByteArray payload = "Hello from Node A";
-    LOGOS_ASSERT_TRUE(nodeA.syncGossipsubPublish(topic, payload).ok);
+    std::string payload = "Hello from Node A";
+    LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, payload).success);
 
-    QByteArray received = nodeB.syncGossipsubNextMessage(topic).data.value<QByteArray>();
-    LOGOS_ASSERT_TRUE(received == payload);
+    auto res = nodeB.gossipsubNextMessage(topic);
+    LOGOS_ASSERT_TRUE(res.success);
+    LOGOS_ASSERT_TRUE(res.value.get<std::string>() == payload);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
 
 LOGOS_TEST(gossipsub_multiple_subscribers) {
-    Libp2pModulePlugin nodeA;
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
+    Libp2pModuleImpl nodeA;
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
 
-    QString topic = "multi-topic";
-    LOGOS_ASSERT_TRUE(nodeA.syncGossipsubSubscribe(topic).ok);
+    std::string topic = "multi-topic";
+    LOGOS_ASSERT_TRUE(nodeA.gossipsubSubscribe(topic).success);
 
     const int NUM_SUBS = 3;
-    std::vector<std::unique_ptr<Libp2pModulePlugin>> subscribers;
+    std::vector<std::unique_ptr<Libp2pModuleImpl>> subscribers;
 
     for (int i = 0; i < NUM_SUBS; ++i) {
-        subscribers.emplace_back(std::make_unique<Libp2pModulePlugin>());
-        LOGOS_ASSERT_TRUE(subscribers.back()->syncLibp2pStart().ok);
+        subscribers.emplace_back(std::make_unique<Libp2pModuleImpl>());
+        LOGOS_ASSERT_TRUE(subscribers.back()->start().success);
 
-        PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
-        LOGOS_ASSERT_TRUE(subscribers.back()->syncConnectPeer(infoA.peerId, infoA.addrs, 500).ok);
-        LOGOS_ASSERT_TRUE(subscribers.back()->syncGossipsubSubscribe(topic).ok);
+        auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
+        LOGOS_ASSERT_TRUE(subscribers.back()->connectPeer(peerIdA, addrsA, 500).success);
+        LOGOS_ASSERT_TRUE(subscribers.back()->gossipsubSubscribe(topic).success);
     }
 
-    QThread::msleep(2000);
-    QByteArray payload = "Broadcast message";
-    LOGOS_ASSERT_TRUE(nodeA.syncGossipsubPublish(topic, payload).ok);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    std::string payload = "Broadcast message";
+    LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, payload).success);
 
-    for (auto &sub : subscribers) {
-        QByteArray received = sub->syncGossipsubNextMessage(topic).data.value<QByteArray>();
-        LOGOS_ASSERT_TRUE(received == payload);
-        LOGOS_ASSERT_TRUE(sub->syncLibp2pStop().ok);
+    for (auto& sub : subscribers) {
+        auto res = sub->gossipsubNextMessage(topic);
+        LOGOS_ASSERT_TRUE(res.success);
+        LOGOS_ASSERT_TRUE(res.value.get<std::string>() == payload);
+        LOGOS_ASSERT_TRUE(sub->stop().success);
     }
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
 }
 
 LOGOS_TEST(gossipsub_subscribe_unsubscribe) {
-    Libp2pModulePlugin node;
-    LOGOS_ASSERT_TRUE(node.syncLibp2pStart().ok);
+    Libp2pModuleImpl node;
+    LOGOS_ASSERT_TRUE(node.start().success);
 
-    QString topic = "temp-topic";
-    LOGOS_ASSERT_TRUE(node.syncGossipsubSubscribe(topic).ok);
-    LOGOS_ASSERT_TRUE(node.syncGossipsubUnsubscribe(topic).ok);
+    std::string topic = "temp-topic";
+    LOGOS_ASSERT_TRUE(node.gossipsubSubscribe(topic).success);
+    LOGOS_ASSERT_TRUE(node.gossipsubUnsubscribe(topic).success);
 
-    QByteArray payload = "Test after unsubscribe";
-    LOGOS_ASSERT_TRUE(node.syncGossipsubPublish(topic, payload).ok);
+    std::string payload = "Test after unsubscribe";
+    LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, payload).success);
 
-    LOGOS_ASSERT_FALSE(node.syncGossipsubNextMessage(topic).ok);
+    LOGOS_ASSERT_FALSE(node.gossipsubNextMessage(topic, 500).success);
 
-    LOGOS_ASSERT_TRUE(node.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(node.stop().success);
 }
 
 LOGOS_TEST(gossipsub_binary_payload) {
-    Libp2pModulePlugin nodeA;
-    Libp2pModulePlugin nodeB;
+    Libp2pModuleImpl nodeA;
+    Libp2pModuleImpl nodeB;
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStart().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStart().ok);
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
 
-    PeerInfo infoA = nodeA.syncPeerInfo().data.value<PeerInfo>();
-    LOGOS_ASSERT_TRUE(nodeB.syncConnectPeer(infoA.peerId, infoA.addrs, 500).ok);
+    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
+    LOGOS_ASSERT_TRUE(nodeB.connectPeer(peerIdA, addrsA, 500).success);
 
-    QString topic = "binary-topic";
-    LOGOS_ASSERT_TRUE(nodeB.syncGossipsubSubscribe(topic).ok);
-    LOGOS_ASSERT_TRUE(nodeA.syncGossipsubSubscribe(topic).ok);
-    QThread::msleep(2000);
+    std::string topic = "binary-topic";
+    LOGOS_ASSERT_TRUE(nodeB.gossipsubSubscribe(topic).success);
+    LOGOS_ASSERT_TRUE(nodeA.gossipsubSubscribe(topic).success);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    QByteArray payload;
-    payload.append('\x01');
-    payload.append('\x00');
-    payload.append('\x02');
-    payload.append('\x00');
-    payload.append('\x03');
-    LOGOS_ASSERT_EQ(payload.size(), qsizetype(5));
+    std::string payload;
+    payload += '\x01';
+    payload += '\x00';
+    payload += '\x02';
+    payload += '\x00';
+    payload += '\x03';
+    LOGOS_ASSERT_EQ(payload.size(), size_t(5));
 
-    LOGOS_ASSERT_TRUE(nodeA.syncGossipsubPublish(topic, payload).ok);
+    LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, payload).success);
 
-    Libp2pResult res = nodeB.syncGossipsubNextMessage(topic);
-    LOGOS_ASSERT_TRUE(res.ok);
-    QByteArray received = res.data.value<QByteArray>();
+    auto res = nodeB.gossipsubNextMessage(topic);
+    LOGOS_ASSERT_TRUE(res.success);
+    std::string received = res.value.get<std::string>();
 
-    LOGOS_ASSERT_EQ(received.size(), qsizetype(5));
+    LOGOS_ASSERT_EQ(received.size(), size_t(5));
     LOGOS_ASSERT_TRUE(received == payload);
 
-    LOGOS_ASSERT_TRUE(nodeA.syncLibp2pStop().ok);
-    LOGOS_ASSERT_TRUE(nodeB.syncLibp2pStop().ok);
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
