@@ -239,6 +239,7 @@ LOGOS_TEST(sync_kad_random_records) {
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
 
+#if 0  // mix temporarily disabled — extracted to separate repo, no cbindings yet
 LOGOS_TEST(sync_mix_dial) {
     Libp2pModuleImpl plugin;
     LOGOS_ASSERT_TRUE(plugin.start().success);
@@ -315,3 +316,4 @@ LOGOS_TEST(sync_mix_nodepool_add) {
 
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
+#endif
