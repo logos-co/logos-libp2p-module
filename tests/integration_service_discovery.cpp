@@ -50,7 +50,7 @@ LOGOS_TEST(disco_advertise_and_lookup) {
 
     std::string serviceId = "test-service";
     LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId).success);
-    LOGOS_ASSERT_TRUE(nodeB.discoStartDiscovering(serviceId).success);
+    LOGOS_ASSERT_TRUE(nodeB.discoRegisterInterest(serviceId).success);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
@@ -96,7 +96,7 @@ LOGOS_TEST(disco_advertise_with_data) {
     std::string serviceData = "version=2;proto=test";
 
     LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId, serviceData).success);
-    LOGOS_ASSERT_TRUE(nodeB.discoStartDiscovering(serviceId).success);
+    LOGOS_ASSERT_TRUE(nodeB.discoRegisterInterest(serviceId).success);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
