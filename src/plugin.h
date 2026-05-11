@@ -155,8 +155,8 @@ public:
     StdLogosResult discoStartAdvertising(const std::string& serviceId,
                                          const std::string& serviceData = {});
     StdLogosResult discoStopAdvertising(const std::string& serviceId);
-    StdLogosResult discoStartDiscovering(const std::string& serviceId);
-    StdLogosResult discoStopDiscovering(const std::string& serviceId);
+    StdLogosResult discoRegisterInterest(const std::string& serviceId);
+    StdLogosResult discoUnregisterInterest(const std::string& serviceId);
     StdLogosResult discoLookup(const std::string& serviceId,
                                const std::string& serviceData = {});
     StdLogosResult discoRandomLookup();

@@ -49,9 +49,9 @@ int main()
         return 1;
     }
 
-    printf("Node B: starting discovering %s\n", serviceId.c_str());
-    if (!nodeB.discoStartDiscovering(serviceId).success) {
-        fprintf(stderr, "Node B: discoStartDiscovering failed\n");
+    printf("Node B: registering interest in %s\n", serviceId.c_str());
+    if (!nodeB.discoRegisterInterest(serviceId).success) {
+        fprintf(stderr, "Node B: discoRegisterInterest failed\n");
         return 1;
     }
 
@@ -79,8 +79,8 @@ int main()
         printf("Random lookup returned %zu peer(s)\n", randRes.value.size());
     }
 
-    printf("Node B: stopping discovering %s\n", serviceId.c_str());
-    nodeB.discoStopDiscovering(serviceId);
+    printf("Node B: unregistering interest in %s\n", serviceId.c_str());
+    nodeB.discoUnregisterInterest(serviceId);
 
     printf("Node A: stopping advertising %s\n", serviceId.c_str());
     nodeA.discoStopAdvertising(serviceId);
