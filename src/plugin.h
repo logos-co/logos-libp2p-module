@@ -126,6 +126,7 @@ public:
     StdLogosResult kadGetProviders(const std::string& cid);
     StdLogosResult kadGetRandomRecords();
 
+#if 0  // mix temporarily disabled — extracted to separate repo, no cbindings yet
     /* ----------- Mix Network ----------- */
 
     StdLogosResult mixGeneratePrivKey();
@@ -147,6 +148,7 @@ public:
                                   const std::string& multiaddr,
                                   const std::string& mixPubKey,
                                   const std::string& libp2pPubKey);
+#endif
 
     /* ----------- Service Discovery ----------- */
 
