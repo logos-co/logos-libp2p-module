@@ -68,17 +68,19 @@ LOGOS_TEST(peerstore_get_peer_info) {
 }
 
 LOGOS_TEST(peerstore_add_peer_explicit) {
-    Libp2pModuleImpl node;
-    LOGOS_ASSERT_TRUE(node.start().success);
+    Libp2pModuleImpl nodeA;
+    Libp2pModuleImpl nodeB;
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
 
-    std::string fakePeerId = "12D3KooWTestPeerForPeerstore1234567890";
-    std::vector<std::string> addrs = { "/ip4/127.0.0.1/tcp/4001" };
+    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
     std::vector<std::string> protos = { "/test/1.0.0" };
 
-    auto res = node.peerstoreAddPeer(fakePeerId, addrs, protos);
+    auto res = nodeB.peerstoreAddPeer(peerIdA, addrsA, protos);
     LOGOS_ASSERT_TRUE(res.success);
 
-    LOGOS_ASSERT_TRUE(node.stop().success);
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
 
 LOGOS_TEST(peerstore_set_peer_addresses) {

@@ -29,7 +29,7 @@ StdLogosResult Libp2pModuleImpl::peerstoreGetPeerInfo(const std::string& peerId)
     auto* p = new SyncPromise();
     auto f = p->get_future();
     int ret = libp2p_peerstore_get_peer_info(ctx, peerId.c_str(),
-                                              &Libp2pModuleImpl::promisePeerInfoCallback, p);
+                                              &Libp2pModuleImpl::promisePeerStoreEntryCallback, p);
     if (ret != RET_OK) { delete p; return {false, {}, "Failed to get peer info"}; }
 
     auto r = awaitResult(f);

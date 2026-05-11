@@ -224,6 +224,8 @@ private:
                                       const char* msg, size_t len, void* userData);
     static void promisePeerInfoCallback(int ret, const Libp2pPeerInfo* info,
                                         const char* msg, size_t len, void* userData);
+    static void promisePeerStoreEntryCallback(int ret, const Libp2pPeerStoreEntry* entry,
+                                              const char* msg, size_t len, void* userData);
     static void promisePeersCallback(int ret, const char** peerIds, size_t peerIdsLen,
                                      const char* msg, size_t len, void* userData);
     static void promiseProvidersCallback(int ret, const Libp2pPeerInfo* providers,
