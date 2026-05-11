@@ -106,7 +106,8 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
 
     m_libp2pConfig.mount_kad = options.mountKad ? 1 : 0;
     m_libp2pConfig.mount_service_discovery = options.mountServiceDiscovery ? 1 : 0;
-    m_libp2pConfig.mount_mix = options.mountMix ? 1 : 0;
+    // m_libp2pConfig.mount_mix = options.mountMix ? 1 : 0; # temporarily disabled — extracted to separate repo, no cbindings yet
+    
 
     // Generate private key
     auto keyResult = newPrivateKey();

@@ -70,28 +70,28 @@ StdLogosResult Libp2pModuleImpl::discoStopAdvertising(const std::string& service
     return {true, {}, ""};
 }
 
-StdLogosResult Libp2pModuleImpl::discoStartDiscovering(const std::string& serviceId) {
+StdLogosResult Libp2pModuleImpl::discoRegisterInterest(const std::string& serviceId) {
     if (!ctx) return {false, {}, "No libp2p context"};
 
     auto* p = new SyncPromise();
     auto f = p->get_future();
-    int ret = libp2p_service_disco_start_discovering(ctx, serviceId.c_str(),
-                                                     &Libp2pModuleImpl::promiseCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to start discovering"}; }
+    int ret = libp2p_service_disco_register_interest(ctx, serviceId.c_str(),
+                                                    &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to register interest"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     return {true, {}, ""};
 }
 
-StdLogosResult Libp2pModuleImpl::discoStopDiscovering(const std::string& serviceId) {
+StdLogosResult Libp2pModuleImpl::discoUnregisterInterest(const std::string& serviceId) {
     if (!ctx) return {false, {}, "No libp2p context"};
 
     auto* p = new SyncPromise();
     auto f = p->get_future();
-    int ret = libp2p_service_disco_stop_discovering(ctx, serviceId.c_str(),
-                                                    &Libp2pModuleImpl::promiseCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to stop discovering"}; }
+    int ret = libp2p_service_disco_unregister_interest(ctx, serviceId.c_str(),
+                                                      &Libp2pModuleImpl::promiseCallback, p);
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to unregister interest"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};

@@ -126,6 +126,7 @@ public:
     StdLogosResult kadGetProviders(const std::string& cid);
     StdLogosResult kadGetRandomRecords();
 
+#if 0  // mix temporarily disabled — extracted to separate repo, no cbindings yet
     /* ----------- Mix Network ----------- */
 
     StdLogosResult mixGeneratePrivKey();
@@ -147,6 +148,7 @@ public:
                                   const std::string& multiaddr,
                                   const std::string& mixPubKey,
                                   const std::string& libp2pPubKey);
+#endif
 
     /* ----------- Service Discovery ----------- */
 
@@ -155,8 +157,8 @@ public:
     StdLogosResult discoStartAdvertising(const std::string& serviceId,
                                          const std::string& serviceData = {});
     StdLogosResult discoStopAdvertising(const std::string& serviceId);
-    StdLogosResult discoStartDiscovering(const std::string& serviceId);
-    StdLogosResult discoStopDiscovering(const std::string& serviceId);
+    StdLogosResult discoRegisterInterest(const std::string& serviceId);
+    StdLogosResult discoUnregisterInterest(const std::string& serviceId);
     StdLogosResult discoLookup(const std::string& serviceId,
                                const std::string& serviceData = {});
     StdLogosResult discoRandomLookup();
