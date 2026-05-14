@@ -34,7 +34,7 @@ StdLogosResult Libp2pModuleImpl::peerstoreGetPeerInfo(const std::string& peerId)
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
-    if (r.message.empty()) return {true, {}, ""};
+    if (r.message.empty()) return {true, json::object(), ""};
     return {true, json::parse(r.message), ""};
 }
 
