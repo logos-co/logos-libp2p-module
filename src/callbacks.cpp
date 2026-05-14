@@ -60,6 +60,17 @@ void Libp2pModuleImpl::promisePeerStoreEntryCallback(
             }
         }
         j["protocols"] = protocols;
+        std::string publicKey;
+        if (entry->publicKey && entry->publicKeyLen > 0) {
+            static constexpr char digits[] = "0123456789abcdef";
+            publicKey.resize(entry->publicKeyLen * 2);
+            for (size_t i = 0; i < entry->publicKeyLen; ++i) {
+                uint8_t b = entry->publicKey[i];
+                publicKey[2 * i]     = digits[b >> 4];
+                publicKey[2 * i + 1] = digits[b & 0x0f];
+            }
+        }
+        j["publicKey"] = publicKey;
         j["agentVersion"] = entry->agentVersion ? entry->agentVersion : "";
         j["protoVersion"] = entry->protoVersion ? entry->protoVersion : "";
         r.message = j.dump();
