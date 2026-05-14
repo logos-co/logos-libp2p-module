@@ -18,6 +18,7 @@ logos_module(
         # src/mix.cpp  # temporarily disabled — extracted to separate repo, no cbindings yet
         src/gossipsub.cpp
         src/service_discovery.cpp
+        src/peerstore.cpp
     EXTERNAL_LIBS
         libp2p
 )

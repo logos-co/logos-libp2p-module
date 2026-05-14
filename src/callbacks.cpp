@@ -35,6 +35,53 @@ void Libp2pModuleImpl::promisePeerInfoCallback(
     delete p;
 }
 
+void Libp2pModuleImpl::promisePeerStoreEntryCallback(
+    int ret, const Libp2pPeerStoreEntry* entry,
+    const char* msg, size_t len, void* userData)
+{
+    auto* p = static_cast<SyncPromise*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
+
+    if (ret == RET_OK && entry) {
+        json j;
+        j["peerId"] = entry->peerId ? entry->peerId : "";
+        json addrs = json::array();
+        if (entry->addrs) {
+            for (size_t i = 0; i < entry->addrsLen; ++i) {
+                if (entry->addrs[i]) addrs.push_back(entry->addrs[i]);
+            }
+        }
+        j["addrs"] = addrs;
+        json protocols = json::array();
+        if (entry->protocols) {
+            for (size_t i = 0; i < entry->protocolsLen; ++i) {
+                if (entry->protocols[i]) protocols.push_back(entry->protocols[i]);
+            }
+        }
+        j["protocols"] = protocols;
+        std::string publicKey;
+        if (entry->publicKey && entry->publicKeyLen > 0) {
+            static constexpr char digits[] = "0123456789abcdef";
+            publicKey.resize(entry->publicKeyLen * 2);
+            for (size_t i = 0; i < entry->publicKeyLen; ++i) {
+                uint8_t b = entry->publicKey[i];
+                publicKey[2 * i]     = digits[b >> 4];
+                publicKey[2 * i + 1] = digits[b & 0x0f];
+            }
+        }
+        j["publicKey"] = publicKey;
+        j["agentVersion"] = entry->agentVersion ? entry->agentVersion : "";
+        j["protoVersion"] = entry->protoVersion ? entry->protoVersion : "";
+        r.message = j.dump();
+    } else {
+        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    }
+
+    p->set_value(std::move(r));
+    delete p;
+}
+
 void Libp2pModuleImpl::promisePeersCallback(
     int ret, const char** peerIds, size_t peerIdsLen,
     const char* msg, size_t len, void* userData)
