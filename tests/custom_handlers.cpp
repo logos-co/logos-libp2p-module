@@ -8,6 +8,7 @@ using json = nlohmann::json;
 
 static std::pair<std::string, std::vector<std::string>> getPeerInfoPair(Libp2pModuleImpl& node) {
     auto res = node.peerInfo();
+    LOGOS_ASSERT_TRUE(res.success);
     auto info = res.value;
     std::string peerId = info["peerId"].get<std::string>();
     std::vector<std::string> addrs;
@@ -16,15 +17,20 @@ static std::pair<std::string, std::vector<std::string>> getPeerInfoPair(Libp2pMo
     return {peerId, addrs};
 }
 
-LOGOS_TEST(custom_handlers_mount_no_context) {
+static auto noopEmitEvent = [](const std::string&, const std::string&) {};
+
+LOGOS_TEST(custom_handlers_mount_requires_emit_event) {
     Libp2pModuleImpl node;
+    LOGOS_ASSERT_TRUE(node.start().success);
     auto res = node.mountProtocol("/test/proto/1.0.0");
     LOGOS_ASSERT_FALSE(res.success);
-    LOGOS_ASSERT_TRUE(res.error == "No libp2p context");
+    LOGOS_ASSERT_CONTAINS(res.error, "emitEvent");
+    LOGOS_ASSERT_TRUE(node.stop().success);
 }
 
 LOGOS_TEST(custom_handlers_mount_empty_proto) {
     Libp2pModuleImpl node;
+    node.emitEvent = noopEmitEvent;
     LOGOS_ASSERT_TRUE(node.start().success);
     auto res = node.mountProtocol("");
     LOGOS_ASSERT_FALSE(res.success);
@@ -34,6 +40,7 @@ LOGOS_TEST(custom_handlers_mount_empty_proto) {
 
 LOGOS_TEST(custom_handlers_mount_valid_proto) {
     Libp2pModuleImpl node;
+    node.emitEvent = noopEmitEvent;
     LOGOS_ASSERT_TRUE(node.start().success);
     LOGOS_ASSERT_TRUE(node.mountProtocol("/test/proto/1.0.0").success);
     LOGOS_ASSERT_TRUE(node.stop().success);
@@ -41,6 +48,7 @@ LOGOS_TEST(custom_handlers_mount_valid_proto) {
 
 LOGOS_TEST(custom_handlers_mount_multiple_protocols) {
     Libp2pModuleImpl node;
+    node.emitEvent = noopEmitEvent;
     LOGOS_ASSERT_TRUE(node.start().success);
     LOGOS_ASSERT_TRUE(node.mountProtocol("/test/proto/1.0.0").success);
     LOGOS_ASSERT_TRUE(node.mountProtocol("/test/proto/2.0.0").success);

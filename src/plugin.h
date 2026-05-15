@@ -243,10 +243,15 @@ private:
     };
     std::vector<std::unique_ptr<SubscribeCtx>> m_subscribeContexts;
 
-    // Protocol handler contexts need to persist for the lifetime of the mounted protocol
+    // Protocol handler contexts need to persist for the lifetime of the mounted protocol.
+    // libp2p has no unmount API, so contexts live until ~Libp2pModuleImpl() and are not
+    // cleared across stop()/start() cycles. m_protocolHandlersLock guards push_back so
+    // concurrent mountProtocol calls (and visibility to the libp2p worker thread that
+    // invokes protocolHandler) are well-defined.
     struct ProtocolHandlerCtx {
         Libp2pModuleImpl* instance;
         std::string proto;
     };
+    std::mutex m_protocolHandlersLock;
     std::vector<std::unique_ptr<ProtocolHandlerCtx>> m_protocolHandlerContexts;
 };

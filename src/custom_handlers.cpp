@@ -6,10 +6,6 @@ using json = nlohmann::json;
 // Custom Protocol Handlers
 // ---------------------------------------------------------------------------
 
-static void mountProtocolResultCallback(int ret, const char* msg, size_t len, void* userData) {
-    (void)ret; (void)msg; (void)len; (void)userData;
-}
-
 void Libp2pModuleImpl::protocolHandler(
     libp2p_ctx_t* /*ctx*/, libp2p_stream_t* stream,
     const char* proto, size_t protoLen, void* userData)
@@ -18,7 +14,9 @@ void Libp2pModuleImpl::protocolHandler(
     if (!handlerCtx || !handlerCtx->instance || !stream) return;
 
     auto* self = handlerCtx->instance;
-    std::string protoStr = (proto && protoLen > 0) ? std::string(proto, protoLen) : std::string();
+    std::string protoStr = (proto && protoLen > 0)
+        ? std::string(proto, protoLen)
+        : handlerCtx->proto;
 
     uint64_t streamId = self->addStream(stream);
 
@@ -29,23 +27,32 @@ void Libp2pModuleImpl::protocolHandler(
 }
 
 StdLogosResult Libp2pModuleImpl::mountProtocol(const std::string& proto) {
-    if (!ctx || !m_started) return {false, {}, "No libp2p context"};
+    if (!ctx) return {false, {}, "No libp2p context"};
     if (proto.empty()) return {false, {}, "Protocol string is empty"};
+    // Without emitEvent, protocolHandler would register a stream that no caller
+    // could ever read, close, or release — leaking the stream.
+    if (!emitEvent) return {false, {}, "emitEvent must be set before mounting a protocol"};
 
     auto handlerCtx = std::make_unique<ProtocolHandlerCtx>();
     handlerCtx->instance = this;
     handlerCtx->proto = proto;
 
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
     int ret = libp2p_mount_protocol(
         ctx, proto.c_str(),
         &Libp2pModuleImpl::protocolHandler,
-        &mountProtocolResultCallback,
+        &Libp2pModuleImpl::promiseCallback,
         handlerCtx.get());
 
-    if (ret != RET_OK) {
-        return {false, {}, "Failed to mount protocol"};
-    }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to mount protocol"}; }
 
-    m_protocolHandlerContexts.push_back(std::move(handlerCtx));
+    auto r = awaitResult(f);
+    if (!r.ok) return {false, {}, r.message};
+
+    {
+        std::lock_guard<std::mutex> lock(m_protocolHandlersLock);
+        m_protocolHandlerContexts.push_back(std::move(handlerCtx));
+    }
     return {true, {}, ""};
 }
