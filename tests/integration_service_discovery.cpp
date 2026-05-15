@@ -2,20 +2,10 @@
 #include <plugin.h>
 #include <thread>
 #include <chrono>
+#include "test_helpers.h"
 
 static Libp2pModuleOptions discoOptions() {
     return Libp2pModuleOptions{ .mountServiceDiscovery = true };
-}
-
-static std::pair<std::string, std::vector<std::string>> getPeerInfoPair(Libp2pModuleImpl& node) {
-    auto res = node.peerInfo();
-    auto info = res.value;
-    std::string peerId = info["peerId"].get<std::string>();
-    std::vector<std::string> addrs;
-    for (const auto& a : info["addrs"]) {
-        addrs.push_back(a.get<std::string>());
-    }
-    return {peerId, addrs};
 }
 
 LOGOS_TEST(disco_start_stop) {
@@ -50,7 +40,7 @@ LOGOS_TEST(disco_advertise_and_lookup) {
 
     std::string serviceId = "test-service";
     LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId).success);
-    LOGOS_ASSERT_TRUE(nodeB.discoStartDiscovering(serviceId).success);
+    LOGOS_ASSERT_TRUE(nodeB.discoRegisterInterest(serviceId).success);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
@@ -96,7 +86,7 @@ LOGOS_TEST(disco_advertise_with_data) {
     std::string serviceData = "version=2;proto=test";
 
     LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId, serviceData).success);
-    LOGOS_ASSERT_TRUE(nodeB.discoStartDiscovering(serviceId).success);
+    LOGOS_ASSERT_TRUE(nodeB.discoRegisterInterest(serviceId).success);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 

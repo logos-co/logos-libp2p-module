@@ -20,10 +20,11 @@ if(LIBP2P_PATH)
             ../src/callbacks.cpp
             ../src/kademlia.cpp
             ../src/stream.cpp
-            ../src/mix.cpp
+            # ../src/mix.cpp  # temporarily disabled — extracted to separate repo, no cbindings yet
             ../src/gossipsub.cpp
             ../src/service_discovery.cpp
             ../src/custom_handlers.cpp
+            ../src/peerstore.cpp
         TEST_SOURCES
             main.cpp
             sync.cpp
@@ -31,9 +32,10 @@ if(LIBP2P_PATH)
             integration.cpp
             integration_gossipsub.cpp
             integration_kad.cpp
-            integration_mix.cpp
+            # integration_mix.cpp  # temporarily disabled — extracted to separate repo, no cbindings yet
             integration_service_discovery.cpp
             custom_handlers.cpp
+            integration_peerstore.cpp
         EXTRA_INCLUDES
             ../lib
         EXTRA_LINK_LIBS

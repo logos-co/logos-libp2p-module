@@ -4,17 +4,7 @@
 #include <memory>
 #include <thread>
 #include <chrono>
-
-static std::pair<std::string, std::vector<std::string>> getPeerInfoPair(Libp2pModuleImpl& node) {
-    auto res = node.peerInfo();
-    auto info = res.value;
-    std::string peerId = info["peerId"].get<std::string>();
-    std::vector<std::string> addrs;
-    for (const auto& a : info["addrs"]) {
-        addrs.push_back(a.get<std::string>());
-    }
-    return {peerId, addrs};
-}
+#include "test_helpers.h"
 
 LOGOS_TEST(gossipsub_subscribe_and_publish) {
     Libp2pModuleImpl nodeA;

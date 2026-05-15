@@ -130,6 +130,7 @@ public:
     StdLogosResult kadGetProviders(const std::string& cid);
     StdLogosResult kadGetRandomRecords();
 
+#if 0  // mix temporarily disabled — extracted to separate repo, no cbindings yet
     /* ----------- Mix Network ----------- */
 
     StdLogosResult mixGeneratePrivKey();
@@ -151,6 +152,7 @@ public:
                                   const std::string& multiaddr,
                                   const std::string& mixPubKey,
                                   const std::string& libp2pPubKey);
+#endif
 
     /* ----------- Service Discovery ----------- */
 
@@ -159,11 +161,24 @@ public:
     StdLogosResult discoStartAdvertising(const std::string& serviceId,
                                          const std::string& serviceData = {});
     StdLogosResult discoStopAdvertising(const std::string& serviceId);
-    StdLogosResult discoStartDiscovering(const std::string& serviceId);
-    StdLogosResult discoStopDiscovering(const std::string& serviceId);
+    StdLogosResult discoRegisterInterest(const std::string& serviceId);
+    StdLogosResult discoUnregisterInterest(const std::string& serviceId);
     StdLogosResult discoLookup(const std::string& serviceId,
                                const std::string& serviceData = {});
     StdLogosResult discoRandomLookup();
+
+    /* ----------- Peerstore ----------- */
+
+    StdLogosResult peerstoreGetPeers();
+    StdLogosResult peerstoreGetPeerInfo(const std::string& peerId);
+    StdLogosResult peerstoreAddPeer(const std::string& peerId,
+                                    const std::vector<std::string>& addrs,
+                                    const std::vector<std::string>& protos = {});
+    StdLogosResult peerstoreSetPeerAddresses(const std::string& peerId,
+                                             const std::vector<std::string>& addrs);
+    StdLogosResult peerstoreSetPeerProtocols(const std::string& peerId,
+                                             const std::vector<std::string>& protos);
+    StdLogosResult peerstoreDeletePeer(const std::string& peerId);
 
     /* ----------- Event Callback ----------- */
 
@@ -214,6 +229,8 @@ private:
                                       const char* msg, size_t len, void* userData);
     static void promisePeerInfoCallback(int ret, const Libp2pPeerInfo* info,
                                         const char* msg, size_t len, void* userData);
+    static void promisePeerStoreEntryCallback(int ret, const Libp2pPeerStoreEntry* entry,
+                                              const char* msg, size_t len, void* userData);
     static void promisePeersCallback(int ret, const char** peerIds, size_t peerIdsLen,
                                      const char* msg, size_t len, void* userData);
     static void promiseProvidersCallback(int ret, const Libp2pPeerInfo* providers,
