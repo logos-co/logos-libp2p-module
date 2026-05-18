@@ -248,6 +248,7 @@ private:
     static void topicHandler(const char* topic, uint8_t* data, size_t len, void* userData);
     static void protocolHandler(libp2p_ctx_t* ctx, libp2p_stream_t* stream,
                                 const char* proto, size_t protoLen, void* userData);
+    static void mountCompleteCallback(int ret, const char* msg, size_t len, void* userData);
     static void eventCallback(int ret, const char* msg, size_t len, void* userData);
 
     /* ----------- Helpers ----------- */
@@ -268,6 +269,7 @@ private:
     struct ProtocolHandlerCtx {
         Libp2pModuleImpl* instance;
         std::string proto;
+        SyncPromise* mountPromise = nullptr;
     };
     std::mutex m_protocolHandlersLock;
     std::vector<std::unique_ptr<ProtocolHandlerCtx>> m_protocolHandlerContexts;

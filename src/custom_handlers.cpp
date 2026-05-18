@@ -26,6 +26,17 @@ void Libp2pModuleImpl::protocolHandler(
     self->emitEventSafe("protocolStream", j.dump());
 }
 
+void Libp2pModuleImpl::mountCompleteCallback(int ret, const char* msg, size_t len,
+                                              void* userData) {
+    auto* hCtx = static_cast<ProtocolHandlerCtx*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
+    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    hCtx->mountPromise->set_value(std::move(r));
+    delete hCtx->mountPromise;
+    hCtx->mountPromise = nullptr;
+}
+
 StdLogosResult Libp2pModuleImpl::mountProtocol(const std::string& proto) {
     if (!ctx) return {false, {}, "No libp2p context"};
     if (proto.empty()) return {false, {}, "Protocol string is empty"};
@@ -36,16 +47,20 @@ StdLogosResult Libp2pModuleImpl::mountProtocol(const std::string& proto) {
     auto handlerCtx = std::make_unique<ProtocolHandlerCtx>();
     handlerCtx->instance = this;
     handlerCtx->proto = proto;
+    handlerCtx->mountPromise = new SyncPromise();
+    auto f = handlerCtx->mountPromise->get_future();
 
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
     int ret = libp2p_mount_protocol(
         ctx, proto.c_str(),
         &Libp2pModuleImpl::protocolHandler,
-        &Libp2pModuleImpl::promiseCallback,
+        &Libp2pModuleImpl::mountCompleteCallback,
         handlerCtx.get());
 
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to mount protocol"}; }
+    if (ret != RET_OK) {
+        delete handlerCtx->mountPromise;
+        handlerCtx->mountPromise = nullptr;
+        return {false, {}, "Failed to mount protocol"};
+    }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
