@@ -97,6 +97,10 @@ public:
                                     const std::string& multiaddr,
                                     const std::string& proto);
 
+    /* ----------- Custom Protocol Handlers ----------- */
+
+    StdLogosResult mountProtocol(const std::string& proto);
+
     /* ----------- Streams ----------- */
 
     StdLogosResult streamReadExactly(uint64_t streamId, size_t len);
@@ -186,6 +190,7 @@ private:
 
     std::atomic<bool> m_destroyDone{false};
     std::atomic<bool> m_newDone{false};
+    std::atomic<bool> m_started{false};
 
     // Address storage (kept alive for libp2p_config_t pointers)
     std::vector<std::string> m_addrs;
@@ -241,6 +246,9 @@ private:
                                              size_t len, void* userData);
 
     static void topicHandler(const char* topic, uint8_t* data, size_t len, void* userData);
+    static void protocolHandler(libp2p_ctx_t* ctx, libp2p_stream_t* stream,
+                                const char* proto, size_t protoLen, void* userData);
+    static void mountCompleteCallback(int ret, const char* msg, size_t len, void* userData);
     static void eventCallback(int ret, const char* msg, size_t len, void* userData);
 
     /* ----------- Helpers ----------- */
@@ -252,4 +260,17 @@ private:
         Libp2pModuleImpl* instance;
     };
     std::vector<std::unique_ptr<SubscribeCtx>> m_subscribeContexts;
+
+    // Protocol handler contexts need to persist for the lifetime of the mounted protocol.
+    // libp2p has no unmount API, so contexts live until ~Libp2pModuleImpl() and are not
+    // cleared across stop()/start() cycles. m_protocolHandlersLock guards push_back so
+    // concurrent mountProtocol calls (and visibility to the libp2p worker thread that
+    // invokes protocolHandler) are well-defined.
+    struct ProtocolHandlerCtx {
+        Libp2pModuleImpl* instance;
+        std::string proto;
+        SyncPromise* mountPromise = nullptr;
+    };
+    std::mutex m_protocolHandlersLock;
+    std::vector<std::unique_ptr<ProtocolHandlerCtx>> m_protocolHandlerContexts;
 };
