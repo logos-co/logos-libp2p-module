@@ -182,6 +182,7 @@ StdLogosResult Libp2pModuleImpl::start() {
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
+    m_started = true;
     return {true, {}, ""};
 }
 
@@ -195,6 +196,7 @@ StdLogosResult Libp2pModuleImpl::stop() {
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
+    m_started = false;
     return {true, {}, ""};
 }
 
