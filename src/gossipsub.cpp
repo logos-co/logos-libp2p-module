@@ -21,8 +21,8 @@ StdLogosResult Libp2pModuleImpl::gossipsubPublish(
 }
 
 // Surface async (un)subscribe outcomes as gossipsubResult events.
-static void gossipsubResultCallback(int ret, const char* msg, size_t len, void* userData) {
-    auto* subCtx = static_cast<Libp2pModuleImpl::SubscribeCtx*>(userData);
+void Libp2pModuleImpl::gossipsubResultCallback(int ret, const char* msg, size_t len, void* userData) {
+    auto* subCtx = static_cast<SubscribeCtx*>(userData);
     if (!subCtx || !subCtx->instance) return;
     nlohmann::json j;
     j["topic"] = subCtx->topic;
@@ -41,7 +41,7 @@ StdLogosResult Libp2pModuleImpl::gossipsubSubscribe(const std::string& topic) {
     int ret = libp2p_gossipsub_subscribe(
         ctx, topic.c_str(),
         &Libp2pModuleImpl::topicHandler,
-        &gossipsubResultCallback,
+        &Libp2pModuleImpl::gossipsubResultCallback,
         subCtx.get());
 
     if (ret != RET_OK) {
@@ -73,7 +73,7 @@ StdLogosResult Libp2pModuleImpl::gossipsubUnsubscribe(const std::string& topic) 
     int ret = libp2p_gossipsub_unsubscribe(
         ctx, topic.c_str(),
         &Libp2pModuleImpl::topicHandler,
-        &gossipsubResultCallback,
+        &Libp2pModuleImpl::gossipsubResultCallback,
         ctxPtr);
 
     if (ret != RET_OK) {

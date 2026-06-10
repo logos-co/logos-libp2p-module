@@ -259,6 +259,7 @@ private:
                                              size_t len, void* userData);
 
     static void topicHandler(const char* topic, uint8_t* data, size_t len, void* userData);
+    static void gossipsubResultCallback(int ret, const char* msg, size_t len, void* userData);
     static void protocolHandler(libp2p_ctx_t* ctx, libp2p_stream_t* stream,
                                 const char* proto, size_t protoLen, void* userData);
     static void mountCompleteCallback(int ret, const char* msg, size_t len, void* userData);
