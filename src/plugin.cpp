@@ -140,17 +140,23 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
 // ---------------------------------------------------------------------------
 
 Libp2pModuleImpl::~Libp2pModuleImpl() {
-    // Release all streams
+    // Release all streams in parallel — each streamRelease awaits up to 10s,
+    // so a serial loop is O(N×10s) worst case at teardown.
     std::vector<uint64_t> streamIds;
     {
         std::shared_lock<std::shared_mutex> lock(m_streamsLock);
+        streamIds.reserve(m_streams.size());
         for (const auto& [id, _] : m_streams) {
             streamIds.push_back(id);
         }
     }
+    std::vector<std::future<StdLogosResult>> releases;
+    releases.reserve(streamIds.size());
     for (uint64_t sid : streamIds) {
-        streamRelease(sid);
+        releases.push_back(std::async(std::launch::async,
+                                      [this, sid] { return streamRelease(sid); }));
     }
+    for (auto& fut : releases) fut.wait();
 
     // Destroy libp2p context
     if (ctx) {
@@ -169,51 +175,37 @@ Libp2pModuleImpl::~Libp2pModuleImpl() {
 // ---------------------------------------------------------------------------
 
 StdLogosResult Libp2pModuleImpl::start() {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_start(ctx, &Libp2pModuleImpl::promiseCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to start libp2p"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-    return {true, {}, ""};
+    return callSync("Failed to start libp2p", [&](SyncPromise* p) {
+        return libp2p_start(ctx, &Libp2pModuleImpl::promiseCallback, p);
+    });
 }
 
 StdLogosResult Libp2pModuleImpl::stop() {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_stop(ctx, &Libp2pModuleImpl::promiseCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to stop libp2p"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-    return {true, {}, ""};
+    return callSync("Failed to stop libp2p", [&](SyncPromise* p) {
+        return libp2p_stop(ctx, &Libp2pModuleImpl::promiseCallback, p);
+    });
 }
 
 StdLogosResult Libp2pModuleImpl::publicKey() {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_public_key(ctx, &Libp2pModuleImpl::promiseBufferCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get public key"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-    return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
+    return callSyncWith("Failed to get public key",
+        [&](SyncPromise* p) {
+            return libp2p_public_key(ctx, &Libp2pModuleImpl::promiseBufferCallback, p);
+        },
+        [](const SyncResult& r) -> StdLogosResult {
+            return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
+        });
 }
 
 StdLogosResult Libp2pModuleImpl::newPrivateKey() {
+    // Doesn't need a ctx, so it bypasses callSync's ctx check.
     auto* p = new SyncPromise();
     auto f = p->get_future();
     int ret = libp2p_new_private_key(LIBP2P_PK_SECP256K1,
                                      &Libp2pModuleImpl::promiseBufferCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to generate private key"}; }
-
+    if (ret != RET_OK) {
+        delete p;
+        return {false, {}, "Failed to generate private key (ret=" + std::to_string(ret) + ")"};
+    }
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
@@ -225,19 +217,16 @@ StdLogosResult Libp2pModuleImpl::newPrivateKey() {
 
 StdLogosResult Libp2pModuleImpl::toCid(const std::string& key) {
     if (key.empty()) return {false, {}, "Key is empty"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_create_cid(
-        1, "dag-pb", "sha2-256",
-        reinterpret_cast<const uint8_t*>(key.data()), key.size(),
-        &Libp2pModuleImpl::promiseCallback, p
-    );
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to create CID"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-    return {true, r.message, ""};
+    return callSyncWith("Failed to create CID",
+        [&](SyncPromise* p) {
+            return libp2p_create_cid(
+                1, "dag-pb", "sha2-256",
+                reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                &Libp2pModuleImpl::promiseCallback, p);
+        },
+        [](const SyncResult& r) -> StdLogosResult {
+            return {true, r.message, ""};
+        });
 }
 
 // ---------------------------------------------------------------------------
@@ -270,86 +259,56 @@ StdLogosResult Libp2pModuleImpl::connectPeer(
     const std::vector<std::string>& multiaddrs,
     int64_t timeoutMs)
 {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
     std::vector<const char*> addrPtrs;
     addrPtrs.reserve(multiaddrs.size());
     for (const auto& addr : multiaddrs) {
         addrPtrs.push_back(addr.c_str());
     }
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_connect(ctx, peerId.c_str(), addrPtrs.data(),
-                             static_cast<int>(addrPtrs.size()), timeoutMs,
-                             &Libp2pModuleImpl::promiseCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to connect"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-    return {true, {}, ""};
+    return callSync("Failed to connect", [&](SyncPromise* p) {
+        return libp2p_connect(ctx, peerId.c_str(), addrPtrs.data(),
+                              static_cast<int>(addrPtrs.size()), timeoutMs,
+                              &Libp2pModuleImpl::promiseCallback, p);
+    });
 }
 
 StdLogosResult Libp2pModuleImpl::disconnectPeer(const std::string& peerId) {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_disconnect(ctx, peerId.c_str(),
-                                &Libp2pModuleImpl::promiseCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to disconnect"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-    return {true, {}, ""};
+    return callSync("Failed to disconnect", [&](SyncPromise* p) {
+        return libp2p_disconnect(ctx, peerId.c_str(),
+                                 &Libp2pModuleImpl::promiseCallback, p);
+    });
 }
 
 StdLogosResult Libp2pModuleImpl::peerInfo() {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_peerinfo(ctx, &Libp2pModuleImpl::promisePeerInfoCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get peer info (ret=" + std::to_string(ret) + ")"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-    return parseJsonResponse(r.message, "peerInfo");
+    return callSyncWith("Failed to get peer info",
+        [&](SyncPromise* p) {
+            return libp2p_peerinfo(ctx, &Libp2pModuleImpl::promisePeerInfoCallback, p);
+        },
+        [](const SyncResult& r) { return parseJsonResponse(r.message, "peerInfo"); });
 }
 
 StdLogosResult Libp2pModuleImpl::connectedPeers(int direction) {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_connected_peers(ctx, direction,
-                                     &Libp2pModuleImpl::promisePeersCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get connected peers (ret=" + std::to_string(ret) + ")"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-    if (r.message.empty()) return {true, json::array(), ""};
-    return parseJsonResponse(r.message, "connectedPeers");
+    return callSyncWith("Failed to get connected peers",
+        [&](SyncPromise* p) {
+            return libp2p_connected_peers(ctx, direction,
+                                          &Libp2pModuleImpl::promisePeersCallback, p);
+        },
+        [](const SyncResult& r) -> StdLogosResult {
+            if (r.message.empty()) return {true, json::array(), ""};
+            return parseJsonResponse(r.message, "connectedPeers");
+        });
 }
 
 StdLogosResult Libp2pModuleImpl::dial(const std::string& peerId, const std::string& proto) {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_dial(ctx, peerId.c_str(), proto.c_str(),
-                          &Libp2pModuleImpl::promiseConnectionCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to dial"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-
-    auto* stream = static_cast<libp2p_stream_t*>(r.extra);
-    if (stream) {
-        uint64_t streamId = addStream(stream);
-        return {true, streamId, ""};
-    }
-    return {true, 0, ""};
+    return callSyncWith("Failed to dial",
+        [&](SyncPromise* p) {
+            return libp2p_dial(ctx, peerId.c_str(), proto.c_str(),
+                               &Libp2pModuleImpl::promiseConnectionCallback, p);
+        },
+        [this](const SyncResult& r) -> StdLogosResult {
+            auto* stream = static_cast<libp2p_stream_t*>(r.extra);
+            if (stream) return {true, addStream(stream), ""};
+            return {true, 0, ""};
+        });
 }
 
 // ---------------------------------------------------------------------------
@@ -360,26 +319,22 @@ StdLogosResult Libp2pModuleImpl::circuitRelayReserve(
     const std::string& relayPeerId,
     const std::vector<std::string>& relayAddrs)
 {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
     std::vector<const char*> addrPtrs;
     addrPtrs.reserve(relayAddrs.size());
     for (const auto& addr : relayAddrs) {
         addrPtrs.push_back(addr.c_str());
     }
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_circuit_relay_reserve(ctx, relayPeerId.c_str(),
-                                           addrPtrs.data(),
-                                           static_cast<int>(addrPtrs.size()),
-                                           &Libp2pModuleImpl::promiseReservationCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to reserve relay (ret=" + std::to_string(ret) + ")"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-    if (r.message.empty()) return {true, json::array(), ""};
-    return parseJsonResponse(r.message, "circuitRelayReserve");
+    return callSyncWith("Failed to reserve relay",
+        [&](SyncPromise* p) {
+            return libp2p_circuit_relay_reserve(ctx, relayPeerId.c_str(),
+                                                addrPtrs.data(),
+                                                static_cast<int>(addrPtrs.size()),
+                                                &Libp2pModuleImpl::promiseReservationCallback, p);
+        },
+        [](const SyncResult& r) -> StdLogosResult {
+            if (r.message.empty()) return {true, json::array(), ""};
+            return parseJsonResponse(r.message, "circuitRelayReserve");
+        });
 }
 
 StdLogosResult Libp2pModuleImpl::dialCircuitRelay(
@@ -387,22 +342,15 @@ StdLogosResult Libp2pModuleImpl::dialCircuitRelay(
     const std::string& multiaddr,
     const std::string& proto)
 {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_dial_circuit_relay(ctx, dstPeerId.c_str(),
-                                        multiaddr.c_str(), proto.c_str(),
-                                        &Libp2pModuleImpl::promiseConnectionCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to dial circuit relay"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-
-    auto* stream = static_cast<libp2p_stream_t*>(r.extra);
-    if (stream) {
-        uint64_t streamId = addStream(stream);
-        return {true, streamId, ""};
-    }
-    return {true, 0, ""};
+    return callSyncWith("Failed to dial circuit relay",
+        [&](SyncPromise* p) {
+            return libp2p_dial_circuit_relay(ctx, dstPeerId.c_str(),
+                                             multiaddr.c_str(), proto.c_str(),
+                                             &Libp2pModuleImpl::promiseConnectionCallback, p);
+        },
+        [this](const SyncResult& r) -> StdLogosResult {
+            auto* stream = static_cast<libp2p_stream_t*>(r.extra);
+            if (stream) return {true, addStream(stream), ""};
+            return {true, 0, ""};
+        });
 }

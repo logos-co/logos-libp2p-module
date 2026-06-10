@@ -10,20 +10,14 @@
 StdLogosResult Libp2pModuleImpl::gossipsubPublish(
     const std::string& topic, const std::string& data)
 {
-    if (!ctx) return {false, {}, "No libp2p context"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_gossipsub_publish(
-        ctx, topic.c_str(),
-        reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())),
-        data.size(),
-        &Libp2pModuleImpl::promiseCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to publish"}; }
-
-    auto r = awaitResult(f);
-    if (!r.ok) return {false, {}, r.message};
-    return {true, {}, ""};
+    return callSync("Failed to publish", [&](SyncPromise* p) {
+        // cbinding signature is non-const but data is copied before enqueue.
+        return libp2p_gossipsub_publish(
+            ctx, topic.c_str(),
+            reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())),
+            data.size(),
+            &Libp2pModuleImpl::promiseCallback, p);
+    });
 }
 
 // Surface async (un)subscribe outcomes as gossipsubResult events.

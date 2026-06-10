@@ -268,6 +268,54 @@ private:
 
     void emitEventSafe(const std::string& name, const std::string& data) const;
 
+    // Wraps the new-promise / invoke / await / clean-up dance shared by every
+    // sync-over-async libp2p op. `invoke(SyncPromise*)` calls the cbinding and
+    // returns its sync ret. The Transform overload maps the resolved SyncResult
+    // into the final StdLogosResult.
+    template <class Invoke>
+    StdLogosResult callSync(const char* errPrefix, Invoke&& invoke) {
+        return callSyncWith(errPrefix, std::forward<Invoke>(invoke),
+            [](const SyncResult&) -> StdLogosResult { return {true, {}, ""}; });
+    }
+
+    template <class Invoke, class Transform>
+    StdLogosResult callSyncWith(const char* errPrefix, Invoke&& invoke, Transform&& transform) {
+        if (!ctx) return {false, {}, "No libp2p context"};
+        auto* p = new SyncPromise();
+        auto f = p->get_future();
+        int ret = invoke(p);
+        if (ret != RET_OK) {
+            delete p;
+            return {false, {}, std::string(errPrefix) +
+                " (ret=" + std::to_string(ret) + ")"};
+        }
+        auto r = awaitResult(f);
+        if (!r.ok) return {false, {}, r.message};
+        return transform(r);
+    }
+
+    // Stream-op variant: looks up the entry, holds its shared lock across the
+    // whole sync-over-async call so a concurrent streamRelease can't free
+    // entry->ptr mid-flight. `invoke(libp2p_stream_t*, SyncPromise*)`.
+    template <class Invoke>
+    StdLogosResult callSyncStream(uint64_t streamId, const char* errPrefix, Invoke&& invoke) {
+        return callSyncStreamWith(streamId, errPrefix, std::forward<Invoke>(invoke),
+            [](const SyncResult&) -> StdLogosResult { return {true, {}, ""}; });
+    }
+
+    template <class Invoke, class Transform>
+    StdLogosResult callSyncStreamWith(uint64_t streamId, const char* errPrefix,
+                                       Invoke&& invoke, Transform&& transform) {
+        if (!ctx || streamId == 0) return {false, {}, "Invalid stream"};
+        auto entry = getStream(streamId);
+        if (!entry) return {false, {}, "Stream not found"};
+        std::shared_lock<std::shared_mutex> opLock(entry->mtx);
+        if (entry->released) return {false, {}, "Stream released"};
+        return callSyncWith(errPrefix,
+            [&](SyncPromise* p) { return invoke(entry->ptr, p); },
+            std::forward<Transform>(transform));
+    }
+
     // Subscribe contexts live for the subscription's lifetime; the lock guards
     // concurrent push/lookup and the libp2p worker thread's view of the vector.
     struct SubscribeCtx {
