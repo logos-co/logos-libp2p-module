@@ -180,6 +180,8 @@ public:
                                              const std::vector<std::string>& protos);
     StdLogosResult peerstoreDeletePeer(const std::string& peerId);
 
+    StdLogosResult collectMetrics();
+
     /* ----------- Event Callback ----------- */
 
     bool setEventCallback();

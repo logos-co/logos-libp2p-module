@@ -20,6 +20,7 @@ logos_module(
         src/service_discovery.cpp
         src/custom_handlers.cpp
         src/peerstore.cpp
+        src/metrics.cpp
     EXTERNAL_LIBS
         libp2p
 )
