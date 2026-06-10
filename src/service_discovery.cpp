@@ -111,12 +111,12 @@ StdLogosResult Libp2pModuleImpl::discoLookup(
         serviceData.empty() ? nullptr : reinterpret_cast<const uint8_t*>(serviceData.data()),
         serviceData.size(),
         &Libp2pModuleImpl::promiseRandomRecordsCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to lookup"}; }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to lookup (ret=" + std::to_string(ret) + ")"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     if (r.message.empty()) return {true, json::array(), ""};
-    return {true, json::parse(r.message), ""};
+    return parseJsonResponse(r.message, "discoLookup");
 }
 
 StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
@@ -126,10 +126,10 @@ StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
     auto f = p->get_future();
     int ret = libp2p_service_disco_random_lookup(ctx,
                                                  &Libp2pModuleImpl::promiseRandomRecordsCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to random lookup"}; }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to random lookup (ret=" + std::to_string(ret) + ")"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     if (r.message.empty()) return {true, json::array(), ""};
-    return {true, json::parse(r.message), ""};
+    return parseJsonResponse(r.message, "discoRandomLookup");
 }

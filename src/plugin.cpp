@@ -106,8 +106,6 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
 
     m_libp2pConfig.mount_kad = options.mountKad ? 1 : 0;
     m_libp2pConfig.mount_service_discovery = options.mountServiceDiscovery ? 1 : 0;
-    // m_libp2pConfig.mount_mix = options.mountMix ? 1 : 0; # temporarily disabled — extracted to separate repo, no cbindings yet
-    
 
     // Generate private key
     auto keyResult = newPrivateKey();
@@ -118,19 +116,19 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     std::string keyStr = keyResult.value.get<std::string>();
     m_privKey.assign(keyStr.begin(), keyStr.end());
 
-    m_libp2pConfig.priv_key.data = static_cast<uint8_t*>(malloc(m_privKey.size()));
-    memcpy(m_libp2pConfig.priv_key.data, m_privKey.data(), m_privKey.size());
+    m_libp2pConfig.priv_key.data = m_privKey.data();
     m_libp2pConfig.priv_key.dataLen = static_cast<int>(m_privKey.size());
 
     // Call libp2p_new
     auto* p = new SyncPromise();
     auto f = p->get_future();
-    m_newDone = false;
 
     ctx = libp2p_new(&m_libp2pConfig, &Libp2pModuleImpl::promiseCallback, p);
 
-    f.wait_for(std::chrono::milliseconds(5000));
-    m_newDone = true;
+    auto r = awaitResult(f, 5000);
+    if (!r.ok) {
+        fprintf(stderr, "libp2p_new failed: %s\n", r.message.c_str());
+    }
 
     if (!ctx) {
         fprintf(stderr, "libp2p_new returned null context\n");
@@ -158,12 +156,10 @@ Libp2pModuleImpl::~Libp2pModuleImpl() {
     if (ctx) {
         auto* p = new SyncPromise();
         auto f = p->get_future();
-        m_destroyDone = false;
 
         libp2p_destroy(ctx, &Libp2pModuleImpl::promiseCallback, p);
 
-        f.wait_for(std::chrono::milliseconds(5000));
-        m_destroyDone = true;
+        awaitResult(f, 5000);
         ctx = nullptr;
     }
 }
@@ -182,7 +178,6 @@ StdLogosResult Libp2pModuleImpl::start() {
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
-    m_started = true;
     return {true, {}, ""};
 }
 
@@ -196,7 +191,6 @@ StdLogosResult Libp2pModuleImpl::stop() {
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
-    m_started = false;
     return {true, {}, ""};
 }
 
@@ -316,11 +310,11 @@ StdLogosResult Libp2pModuleImpl::peerInfo() {
     auto* p = new SyncPromise();
     auto f = p->get_future();
     int ret = libp2p_peerinfo(ctx, &Libp2pModuleImpl::promisePeerInfoCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get peer info"}; }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get peer info (ret=" + std::to_string(ret) + ")"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
-    return {true, json::parse(r.message), ""};
+    return parseJsonResponse(r.message, "peerInfo");
 }
 
 StdLogosResult Libp2pModuleImpl::connectedPeers(int direction) {
@@ -330,12 +324,12 @@ StdLogosResult Libp2pModuleImpl::connectedPeers(int direction) {
     auto f = p->get_future();
     int ret = libp2p_connected_peers(ctx, direction,
                                      &Libp2pModuleImpl::promisePeersCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get connected peers"}; }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get connected peers (ret=" + std::to_string(ret) + ")"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     if (r.message.empty()) return {true, json::array(), ""};
-    return {true, json::parse(r.message), ""};
+    return parseJsonResponse(r.message, "connectedPeers");
 }
 
 StdLogosResult Libp2pModuleImpl::dial(const std::string& peerId, const std::string& proto) {
@@ -380,12 +374,12 @@ StdLogosResult Libp2pModuleImpl::circuitRelayReserve(
                                            addrPtrs.data(),
                                            static_cast<int>(addrPtrs.size()),
                                            &Libp2pModuleImpl::promiseReservationCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to reserve relay"}; }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to reserve relay (ret=" + std::to_string(ret) + ")"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     if (r.message.empty()) return {true, json::array(), ""};
-    return {true, json::parse(r.message), ""};
+    return parseJsonResponse(r.message, "circuitRelayReserve");
 }
 
 StdLogosResult Libp2pModuleImpl::dialCircuitRelay(

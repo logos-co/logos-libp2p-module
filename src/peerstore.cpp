@@ -15,12 +15,12 @@ StdLogosResult Libp2pModuleImpl::peerstoreGetPeers() {
     auto f = p->get_future();
     int ret = libp2p_peerstore_get_peers(ctx,
                                           &Libp2pModuleImpl::promisePeersCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get peers"}; }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get peers (ret=" + std::to_string(ret) + ")"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     if (r.message.empty()) return {true, json::array(), ""};
-    return {true, json::parse(r.message), ""};
+    return parseJsonResponse(r.message, "peerstoreGetPeers");
 }
 
 StdLogosResult Libp2pModuleImpl::peerstoreGetPeerInfo(const std::string& peerId) {
@@ -30,12 +30,12 @@ StdLogosResult Libp2pModuleImpl::peerstoreGetPeerInfo(const std::string& peerId)
     auto f = p->get_future();
     int ret = libp2p_peerstore_get_peer_info(ctx, peerId.c_str(),
                                               &Libp2pModuleImpl::promisePeerStoreEntryCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get peer info"}; }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get peer info (ret=" + std::to_string(ret) + ")"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     if (r.message.empty()) return {true, json::object(), ""};
-    return {true, json::parse(r.message), ""};
+    return parseJsonResponse(r.message, "peerstoreGetPeerInfo");
 }
 
 StdLogosResult Libp2pModuleImpl::peerstoreAddPeer(

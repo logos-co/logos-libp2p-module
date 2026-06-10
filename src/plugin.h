@@ -43,7 +43,6 @@ struct Libp2pModuleOptions {
     bool gossipsubTriggerSelf = true;
     bool mountGossipsub = true;
     bool mountKad = true;
-    bool mountMix = false;
     bool mountServiceDiscovery = false;
 };
 
@@ -63,6 +62,16 @@ inline SyncResult awaitResult(std::future<SyncResult>& f, int timeoutMs = 10000)
         return f.get();
     }
     return {false, "timeout", {}, nullptr};
+}
+
+// Non-throwing JSON parse — malformed cbinding output yields a failed result
+// instead of propagating an exception.
+inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPrefix) {
+    auto j = nlohmann::json::parse(s, nullptr, false);
+    if (j.is_discarded()) {
+        return {false, {}, std::string(errPrefix) + ": invalid JSON"};
+    }
+    return {true, j, ""};
 }
 
 class Libp2pModuleImpl {
@@ -188,10 +197,6 @@ private:
     libp2p_ctx_t* ctx = nullptr;
     libp2p_config_t m_libp2pConfig = {};
 
-    std::atomic<bool> m_destroyDone{false};
-    std::atomic<bool> m_newDone{false};
-    std::atomic<bool> m_started{false};
-
     // Address storage (kept alive for libp2p_config_t pointers)
     std::vector<std::string> m_addrs;
     std::vector<const char*> m_addrsPtr;
@@ -207,14 +212,22 @@ private:
 
     /* ----------- Stream Registry ----------- */
 
+    // Map guards lookup; entry->mtx guards the pointee. Ops take shared,
+    // release takes exclusive and flips `released`.
+    struct StreamEntry {
+        libp2p_stream_t* ptr;
+        mutable std::shared_mutex mtx;
+        bool released = false;
+        explicit StreamEntry(libp2p_stream_t* p) : ptr(p) {}
+    };
+
     mutable std::shared_mutex m_streamsLock;
-    std::unordered_map<uint64_t, libp2p_stream_t*> m_streams;
+    std::unordered_map<uint64_t, std::shared_ptr<StreamEntry>> m_streams;
     std::atomic<uint64_t> m_nextStreamId{1};
 
     uint64_t addStream(libp2p_stream_t* stream);
-    libp2p_stream_t* getStream(uint64_t id) const;
-    libp2p_stream_t* removeStream(uint64_t id);
-    bool hasStream(uint64_t id) const;
+    std::shared_ptr<StreamEntry> getStream(uint64_t id) const;
+    std::shared_ptr<StreamEntry> removeStream(uint64_t id);
 
     /* ----------- Gossipsub Message Queue ----------- */
 
@@ -255,10 +268,13 @@ private:
 
     void emitEventSafe(const std::string& name, const std::string& data) const;
 
-    // Gossipsub subscribe contexts need to persist for the lifetime of the subscription
+    // Subscribe contexts live for the subscription's lifetime; the lock guards
+    // concurrent push/lookup and the libp2p worker thread's view of the vector.
     struct SubscribeCtx {
         Libp2pModuleImpl* instance;
+        std::string topic;
     };
+    std::mutex m_subscribeContextsLock;
     std::vector<std::unique_ptr<SubscribeCtx>> m_subscribeContexts;
 
     // Protocol handler contexts need to persist for the lifetime of the mounted protocol.

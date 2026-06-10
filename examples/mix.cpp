@@ -18,8 +18,7 @@ int main()
     printf("Starting mix nodes...\n");
 
     for (int i = 0; i < NUM_NODES; ++i) {
-        nodes.push_back(std::make_unique<Libp2pModuleImpl>(
-            Libp2pModuleOptions{ .mountMix = true }));
+        nodes.push_back(std::make_unique<Libp2pModuleImpl>(Libp2pModuleOptions{}));
 
         if (!nodes[i]->start().success) {
             fprintf(stderr, "Node failed to start\n");

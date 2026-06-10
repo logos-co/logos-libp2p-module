@@ -15,12 +15,12 @@ StdLogosResult Libp2pModuleImpl::kadFindNode(const std::string& peerId) {
     auto f = p->get_future();
     int ret = libp2p_kad_find_node(ctx, peerId.c_str(),
                                    &Libp2pModuleImpl::promisePeersCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to find node"}; }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to find node (ret=" + std::to_string(ret) + ")"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     if (r.message.empty()) return {true, json::array(), ""};
-    return {true, json::parse(r.message), ""};
+    return parseJsonResponse(r.message, "kadFindNode");
 }
 
 StdLogosResult Libp2pModuleImpl::kadPutValue(const std::string& key, const std::string& value) {
@@ -106,12 +106,12 @@ StdLogosResult Libp2pModuleImpl::kadGetProviders(const std::string& cid) {
     auto f = p->get_future();
     int ret = libp2p_kad_get_providers(ctx, cid.c_str(),
                                        &Libp2pModuleImpl::promiseProvidersCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get providers"}; }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get providers (ret=" + std::to_string(ret) + ")"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     if (r.message.empty()) return {true, json::array(), ""};
-    return {true, json::parse(r.message), ""};
+    return parseJsonResponse(r.message, "kadGetProviders");
 }
 
 StdLogosResult Libp2pModuleImpl::kadGetRandomRecords() {
@@ -121,10 +121,10 @@ StdLogosResult Libp2pModuleImpl::kadGetRandomRecords() {
     auto f = p->get_future();
     int ret = libp2p_kad_random_records(ctx,
                                         &Libp2pModuleImpl::promiseRandomRecordsCallback, p);
-    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get random records"}; }
+    if (ret != RET_OK) { delete p; return {false, {}, "Failed to get random records (ret=" + std::to_string(ret) + ")"}; }
 
     auto r = awaitResult(f);
     if (!r.ok) return {false, {}, r.message};
     if (r.message.empty()) return {true, json::array(), ""};
-    return {true, json::parse(r.message), ""};
+    return parseJsonResponse(r.message, "kadGetRandomRecords");
 }
