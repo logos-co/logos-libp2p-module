@@ -5,17 +5,10 @@
     logos-module-builder.url = "github:logos-co/logos-module-builder/fix/codegen-explicit-ctor";
     libp2p.url = "github:vacp2p/nim-libp2p";
 
-    # Share our module builder so openmetrics-module doesn't lock a second,
-    # near-identical copy of the whole builder tree.
     openmetrics-module = {
       url = "github:logos-co/openmetrics-module";
       inputs.logos-module-builder.follows = "logos-module-builder";
     };
-    # NOTE: logoscore-cli and lgpm are intentionally NOT inputs. Their upstream
-    # locks aren't deduped, so vendoring them adds ~1.8k nodes (tens of
-    # thousands of lines) to this flake.lock. The e2e gets those two binaries
-    # via LOGOSCORE_BIN / LGPM_BIN instead; CI builds them from their own
-    # pinned flakes (see .github/workflows/ci.yml).
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
