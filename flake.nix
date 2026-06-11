@@ -5,8 +5,23 @@
     logos-module-builder.url = "github:logos-co/logos-module-builder/fix/codegen-explicit-ctor";
     libp2p.url = "github:vacp2p/nim-libp2p";
     openmetrics-module.url = "github:logos-co/openmetrics-module";
-    logoscore-cli.url = "github:logos-co/logos-logoscore-cli";
-    lgpm.url = "github:logos-co/logos-package-manager";
+
+    # logoscore-cli and lgpm pull the same logos-nix / nixpkgs tree as the
+    # module builder; without these follows each drags in a full duplicate
+    # (the flake.lock balloons by tens of thousands of lines).
+    logoscore-cli = {
+      url = "github:logos-co/logos-logoscore-cli";
+      inputs.nixpkgs.follows = "logos-module-builder/nixpkgs";
+      inputs.logos-nix.follows = "logos-module-builder/logos-nix";
+      inputs.logos-cpp-sdk.follows = "logos-module-builder/logos-cpp-sdk";
+      inputs.nix-bundle-logos-module-install.follows = "logos-module-builder/nix-bundle-logos-module-install";
+    };
+
+    lgpm = {
+      url = "github:logos-co/logos-package-manager";
+      inputs.nixpkgs.follows = "logos-module-builder/nixpkgs";
+      inputs.logos-nix.follows = "logos-module-builder/logos-nix";
+    };
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
@@ -34,7 +49,7 @@
         value = f system;
       }) systems);
 
-      # Pre-resolved store paths so the e2e is hermetic under `nix flake check`.
+      # Pre-resolved store paths so the e2e runs against pinned module/CLI builds.
       e2eEnv = system: {
         LIBP2P_LGX_DIR     = "${module.packages.${system}.lgx}";
         OPENMETRICS_LGX_DIR = "${inputs.openmetrics-module.packages.${system}.lgx}";
@@ -69,6 +84,10 @@
           e2eRuntime = [ pkgs.curl pkgs.coreutils pkgs.gnugrep pkgs.bash ];
           e2eScript = ./tests/integration_e2e/openmetrics_e2e.sh;
 
+          # Exposed as `nix run .#openmetrics-e2e`, driven by a dedicated CI
+          # step. It spins up a live logoscore daemon (TCP + IPC socket), which
+          # can't run inside the hermetic `nix flake check` sandbox, so it is
+          # deliberately not a flake check.
           openmetricsE2eApp = pkgs.writeShellScript "openmetrics-e2e" ''
             export PATH=${pkgs.lib.makeBinPath e2eRuntime}:$PATH
             export LIBP2P_LGX_DIR=${env.LIBP2P_LGX_DIR}
@@ -77,34 +96,22 @@
             export LGPM_BIN=${env.LGPM_BIN}
             exec ${e2eScript} "$@"
           '';
-
-          openmetricsE2eCheck = pkgs.runCommand "openmetrics-e2e" ({
-            nativeBuildInputs = e2eRuntime;
-          } // env) ''
-            bash ${e2eScript}
-            touch $out
-          '';
         in {
           apps = {
             tests = { type = "app"; program = toString runner; };
             openmetrics-e2e = { type = "app"; program = toString openmetricsE2eApp; };
           };
-          checks = { openmetrics-e2e = openmetricsE2eCheck; };
         }
       );
 
       existingApps = module.apps or {};
-      existingChecks = module.checks or {};
 
       mergedApps = forEachSystem (system:
         (existingApps.${system} or {}) // (perSystem.${system}.apps or {})
       );
-      mergedChecks = forEachSystem (system:
-        (existingChecks.${system} or {}) // (perSystem.${system}.checks or {})
-      );
 
     in module // {
       apps = mergedApps;
-      checks = mergedChecks;
+      checks = module.checks or {};
     };
 }

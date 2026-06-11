@@ -64,6 +64,33 @@ jobs:
             --print-build-logs \
             --show-trace
 
+  openmetrics-e2e:
+    name: OpenMetrics e2e (x86_64-linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v5
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: nix-community
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        continue-on-error: true
+
+      # Spins up a live logoscore daemon, so it needs the real environment
+      # (network + writable $HOME) rather than the flake-check build sandbox.
+      - name: Run openmetrics e2e
+        run: nix run .#openmetrics-e2e
+
   windows-wsl:
     name: Windows (WSL x86_64-linux)
     runs-on: windows-latest
