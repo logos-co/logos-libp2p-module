@@ -16,15 +16,29 @@ StdLogosResult Libp2pModuleImpl::gossipsubPublish(
     });
 }
 
-// Surface async (un)subscribe outcomes as gossipsubResult events.
+// Surface async (un)subscribe outcomes as gossipsubResult events. Drops the
+// ctx from the registry when the ack fires for an unsubscribing ctx.
 void Libp2pModuleImpl::gossipsubResultCallback(int ret, const char* msg, size_t len, void* userData) {
     auto* subCtx = static_cast<SubscribeCtx*>(userData);
     if (!subCtx || !subCtx->instance) return;
+
+    auto* instance = subCtx->instance;
+    const std::string topic = subCtx->topic;
+    const bool unsubscribing = subCtx->unsubscribing.load(std::memory_order_acquire);
+
     nlohmann::json j;
-    j["topic"] = subCtx->topic;
+    j["topic"] = topic;
     j["result"] = ret;
     j["message"] = (msg && len > 0) ? std::string(msg, len) : std::string();
-    subCtx->instance->emitEventSafe("gossipsubResult", j.dump());
+    instance->emitEventSafe("gossipsubResult", j.dump());
+
+    if (unsubscribing && ret == RET_OK) {
+        std::lock_guard<std::mutex> lock(instance->m_subscribeContextsLock);
+        auto& vec = instance->m_subscribeContexts;
+        vec.erase(std::remove_if(vec.begin(), vec.end(),
+            [subCtx](const std::unique_ptr<SubscribeCtx>& c) { return c.get() == subCtx; }),
+            vec.end());
+    }
 }
 
 StdLogosResult Libp2pModuleImpl::gossipsubSubscribe(const std::string& topic) {
@@ -54,16 +68,19 @@ StdLogosResult Libp2pModuleImpl::gossipsubSubscribe(const std::string& topic) {
 StdLogosResult Libp2pModuleImpl::gossipsubUnsubscribe(const std::string& topic) {
     if (!ctx) return {false, {}, "No libp2p context"};
 
-    // Ctx lives until destructor — the async result callback still uses it.
     SubscribeCtx* ctxPtr = nullptr;
     {
         std::lock_guard<std::mutex> lock(m_subscribeContextsLock);
         auto it = std::find_if(m_subscribeContexts.begin(), m_subscribeContexts.end(),
-            [&](const std::unique_ptr<SubscribeCtx>& c) { return c->topic == topic; });
+            [&](const std::unique_ptr<SubscribeCtx>& c) {
+                return c->topic == topic
+                    && !c->unsubscribing.load(std::memory_order_acquire);
+            });
         if (it == m_subscribeContexts.end()) {
             return {false, {}, "Not subscribed to topic"};
         }
         ctxPtr = it->get();
+        ctxPtr->unsubscribing.store(true, std::memory_order_release);
     }
 
     int ret = libp2p_gossipsub_unsubscribe(
@@ -73,6 +90,7 @@ StdLogosResult Libp2pModuleImpl::gossipsubUnsubscribe(const std::string& topic) 
         ctxPtr);
 
     if (ret != RET_OK) {
+        ctxPtr->unsubscribing.store(false, std::memory_order_release);
         return {false, {}, "Failed to unsubscribe (ret=" + std::to_string(ret) + ")"};
     }
     return {true, {}, ""};

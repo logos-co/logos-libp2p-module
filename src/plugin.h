@@ -291,6 +291,7 @@ private:
     struct SubscribeCtx {
         Libp2pModuleImpl* instance;
         std::string topic;
+        std::atomic<bool> unsubscribing{false};
     };
     std::mutex m_subscribeContextsLock;
     std::vector<std::unique_ptr<SubscribeCtx>> m_subscribeContexts;

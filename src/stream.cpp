@@ -44,7 +44,7 @@ StdLogosResult Libp2pModuleImpl::streamCloseWithEOF(uint64_t streamId) {
 StdLogosResult Libp2pModuleImpl::streamRelease(uint64_t streamId) {
     if (!ctx || streamId == 0) return {false, {}, "Invalid stream"};
 
-    auto entry = removeStream(streamId);
+    auto entry = getStream(streamId);
     if (!entry) return {false, {}, "Stream not found"};
 
     std::unique_lock<std::shared_mutex> opLock(entry->mtx);
@@ -61,6 +61,10 @@ StdLogosResult Libp2pModuleImpl::streamRelease(uint64_t streamId) {
     entry->released = true;
 
     auto r = awaitResult(f);
+
+    opLock.unlock();
+    removeStream(streamId);
+
     if (!r.ok) return {false, {}, r.message};
     return {true, {}, ""};
 }

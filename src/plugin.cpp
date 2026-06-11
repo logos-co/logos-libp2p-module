@@ -124,33 +124,51 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
 }
 
 Libp2pModuleImpl::~Libp2pModuleImpl() {
-    // Release all streams in parallel — each streamRelease awaits up to 10s,
-    // so a serial loop is O(N×10s) worst case at teardown.
-    std::vector<uint64_t> streamIds;
-    {
-        std::shared_lock<std::shared_mutex> lock(m_streamsLock);
-        streamIds.reserve(m_streams.size());
-        for (const auto& [id, _] : m_streams) {
-            streamIds.push_back(id);
+    try {
+        std::vector<uint64_t> streamIds;
+        {
+            std::shared_lock<std::shared_mutex> lock(m_streamsLock);
+            streamIds.reserve(m_streams.size());
+            for (const auto& [id, _] : m_streams) {
+                streamIds.push_back(id);
+            }
         }
-    }
-    std::vector<std::future<StdLogosResult>> releases;
-    releases.reserve(streamIds.size());
-    for (uint64_t sid : streamIds) {
-        releases.push_back(std::async(std::launch::async,
-                                      [this, sid] { return streamRelease(sid); }));
-    }
-    for (auto& fut : releases) fut.wait();
 
-    if (ctx) {
-        auto* p = new SyncPromise();
-        auto f = p->get_future();
+        // Bounded worker pool — each streamRelease awaits up to 10s.
+        if (!streamIds.empty()) {
+            const size_t workers = std::min<size_t>(
+                streamIds.size(),
+                std::max<unsigned>(std::thread::hardware_concurrency(), 4u));
 
-        libp2p_destroy(ctx, &Libp2pModuleImpl::promiseCallback, p);
+            std::atomic<size_t> next{0};
+            std::vector<std::thread> pool;
+            pool.reserve(workers);
+            for (size_t i = 0; i < workers; ++i) {
+                pool.emplace_back([this, &streamIds, &next] {
+                    try {
+                        for (;;) {
+                            size_t idx = next.fetch_add(1, std::memory_order_relaxed);
+                            if (idx >= streamIds.size()) return;
+                            streamRelease(streamIds[idx]);
+                        }
+                    } catch (...) {}
+                });
+            }
+            for (auto& t : pool) {
+                if (t.joinable()) t.join();
+            }
+        }
 
-        awaitResult(f, 5000);
-        ctx = nullptr;
-    }
+        if (ctx) {
+            auto* p = new SyncPromise();
+            auto f = p->get_future();
+
+            libp2p_destroy(ctx, &Libp2pModuleImpl::promiseCallback, p);
+
+            awaitResult(f, 5000);
+            ctx = nullptr;
+        }
+    } catch (...) {}
 }
 
 StdLogosResult Libp2pModuleImpl::start() {
