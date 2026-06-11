@@ -61,3 +61,15 @@ sandbox — as its own CI step and locally via:
 ```bash
 nix run .#openmetrics-e2e
 ```
+
+The `logoscore` and `lgpm` binaries are not vendored into this flake (their
+upstream locks would bloat ours). The e2e picks them up from `$PATH`, or from
+`LOGOSCORE_BIN` / `LGPM_BIN` if set:
+
+```bash
+LOGOSCORE_BIN=$(nix build --no-link --print-out-paths \
+  github:logos-co/logos-logoscore-cli)/bin/logoscore \
+LGPM_BIN=$(nix build --no-link --print-out-paths \
+  'github:logos-co/logos-package-manager#cli')/bin/lgpm \
+  nix run .#openmetrics-e2e
+```

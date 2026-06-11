@@ -86,6 +86,18 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
         continue-on-error: true
 
+      # logoscore and lgpm are not vendored into this flake.lock (their upstream
+      # locks aren't deduped and would bloat ours). Build them from their own
+      # pinned flakes and hand the binaries to the e2e.
+      - name: Build logoscore + lgpm
+        run: |
+          nix build --print-build-logs --out-link result-logoscore \
+            'github:logos-co/logos-logoscore-cli/7fa0d891aecb033c208c7ac326a3800019484f09'
+          nix build --print-build-logs --out-link result-lgpm \
+            'github:logos-co/logos-package-manager/8a6b72f28b1e73b6d753eaabe7eba13bf425f04e#cli'
+          echo "LOGOSCORE_BIN=$PWD/result-logoscore/bin/logoscore" >> "$GITHUB_ENV"
+          echo "LGPM_BIN=$PWD/result-lgpm/bin/lgpm" >> "$GITHUB_ENV"
+
       # Spins up a live logoscore daemon, so it needs the real environment
       # (network + writable $HOME) rather than the flake-check build sandbox.
       - name: Run openmetrics e2e

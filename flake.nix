@@ -4,24 +4,18 @@
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder/fix/codegen-explicit-ctor";
     libp2p.url = "github:vacp2p/nim-libp2p";
-    openmetrics-module.url = "github:logos-co/openmetrics-module";
 
-    # logoscore-cli and lgpm pull the same logos-nix / nixpkgs tree as the
-    # module builder; without these follows each drags in a full duplicate
-    # (the flake.lock balloons by tens of thousands of lines).
-    logoscore-cli = {
-      url = "github:logos-co/logos-logoscore-cli";
-      inputs.nixpkgs.follows = "logos-module-builder/nixpkgs";
-      inputs.logos-nix.follows = "logos-module-builder/logos-nix";
-      inputs.logos-cpp-sdk.follows = "logos-module-builder/logos-cpp-sdk";
-      inputs.nix-bundle-logos-module-install.follows = "logos-module-builder/nix-bundle-logos-module-install";
+    # Share our module builder so openmetrics-module doesn't lock a second,
+    # near-identical copy of the whole builder tree.
+    openmetrics-module = {
+      url = "github:logos-co/openmetrics-module";
+      inputs.logos-module-builder.follows = "logos-module-builder";
     };
-
-    lgpm = {
-      url = "github:logos-co/logos-package-manager";
-      inputs.nixpkgs.follows = "logos-module-builder/nixpkgs";
-      inputs.logos-nix.follows = "logos-module-builder/logos-nix";
-    };
+    # NOTE: logoscore-cli and lgpm are intentionally NOT inputs. Their upstream
+    # locks aren't deduped, so vendoring them adds ~1.8k nodes (tens of
+    # thousands of lines) to this flake.lock. The e2e gets those two binaries
+    # via LOGOSCORE_BIN / LGPM_BIN instead; CI builds them from their own
+    # pinned flakes (see .github/workflows/ci.yml).
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
@@ -49,12 +43,10 @@
         value = f system;
       }) systems);
 
-      # Pre-resolved store paths so the e2e runs against pinned module/CLI builds.
+      # Pre-resolved store paths for the two .lgx bundles the e2e installs.
       e2eEnv = system: {
-        LIBP2P_LGX_DIR     = "${module.packages.${system}.lgx}";
+        LIBP2P_LGX_DIR      = "${module.packages.${system}.lgx}";
         OPENMETRICS_LGX_DIR = "${inputs.openmetrics-module.packages.${system}.lgx}";
-        LOGOSCORE_BIN      = "${inputs.logoscore-cli.packages.${system}.default}/bin/logoscore";
-        LGPM_BIN           = "${inputs.lgpm.packages.${system}.cli}/bin/lgpm";
       };
 
       perSystem = forEachSystem (system:
@@ -88,12 +80,16 @@
           # step. It spins up a live logoscore daemon (TCP + IPC socket), which
           # can't run inside the hermetic `nix flake check` sandbox, so it is
           # deliberately not a flake check.
+          #
+          # The .lgx bundles are pinned via flake inputs; logoscore and lgpm
+          # are supplied by the caller (LOGOSCORE_BIN / LGPM_BIN), falling back
+          # to $PATH, since they are not vendored into this flake.lock.
           openmetricsE2eApp = pkgs.writeShellScript "openmetrics-e2e" ''
             export PATH=${pkgs.lib.makeBinPath e2eRuntime}:$PATH
             export LIBP2P_LGX_DIR=${env.LIBP2P_LGX_DIR}
             export OPENMETRICS_LGX_DIR=${env.OPENMETRICS_LGX_DIR}
-            export LOGOSCORE_BIN=${env.LOGOSCORE_BIN}
-            export LGPM_BIN=${env.LGPM_BIN}
+            export LOGOSCORE_BIN="''${LOGOSCORE_BIN:-logoscore}"
+            export LGPM_BIN="''${LGPM_BIN:-lgpm}"
             exec ${e2eScript} "$@"
           '';
         in {
