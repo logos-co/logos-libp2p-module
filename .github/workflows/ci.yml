@@ -48,13 +48,6 @@ jobs:
       - name: Setup Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@v5
 
-      - name: Setup Cachix
-        uses: cachix/cachix-action@v15
-        with:
-          name: nix-community
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-        continue-on-error: true
-
       - name: Run flake checks
         env:
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_target }}
@@ -97,6 +90,34 @@ jobs:
 
       - name: Run openmetrics e2e
         run: nix run .#openmetrics-e2e
+
+  sanitizers:
+    name: Sanitizers (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [asan, tsan]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v5
+
+      - name: Build + run tests under ${{ matrix.sanitizer }}
+        run: |
+          nix build \
+            ".#unit-tests-${{ matrix.sanitizer }}" \
+            --system x86_64-linux \
+            --print-build-logs \
+            --show-trace
 
   windows-wsl:
     name: Windows (WSL x86_64-linux)
