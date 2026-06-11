@@ -14,6 +14,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "logos_json.h"
 #include "logos_result.h"
 
 extern "C" {
@@ -173,7 +174,7 @@ public:
                                              const std::vector<std::string>& protos);
     StdLogosResult peerstoreDeletePeer(const std::string& peerId);
 
-    StdLogosResult collectMetrics();
+    LogosMap collectMetrics();
 
     /* ----------- Event Callback ----------- */
 

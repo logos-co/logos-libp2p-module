@@ -5,24 +5,18 @@
 #include <string>
 
 namespace {
-StdLogosResult collect() {
+LogosMap collect() {
     Libp2pModuleImpl plugin;
     return plugin.collectMetrics();
 }
 }
 
-LOGOS_TEST(collect_metrics_returns_success) {
-    auto res = collect();
-    LOGOS_ASSERT_TRUE(res.success);
-    LOGOS_ASSERT_TRUE(res.error.empty());
-}
-
 LOGOS_TEST(collect_metrics_payload_has_metrics_array) {
     auto res = collect();
-    LOGOS_ASSERT_TRUE(res.value.is_object());
-    LOGOS_ASSERT_TRUE(res.value.contains("metrics"));
-    LOGOS_ASSERT_TRUE(res.value["metrics"].is_array());
-    LOGOS_ASSERT_TRUE(res.value["metrics"].size() > 0);
+    LOGOS_ASSERT_TRUE(res.is_object());
+    LOGOS_ASSERT_TRUE(res.contains("metrics"));
+    LOGOS_ASSERT_TRUE(res["metrics"].is_array());
+    LOGOS_ASSERT_TRUE(res["metrics"].size() > 0);
 }
 
 LOGOS_TEST(collect_metrics_entries_match_openmetrics_schema) {
@@ -32,7 +26,7 @@ LOGOS_TEST(collect_metrics_entries_match_openmetrics_schema) {
         "counter", "gauge", "histogram", "summary"
     };
 
-    for (const auto& m : res.value["metrics"]) {
+    for (const auto& m : res["metrics"]) {
         LOGOS_ASSERT_TRUE(m.is_object());
 
         LOGOS_ASSERT_TRUE(m.contains("name"));
@@ -58,7 +52,7 @@ LOGOS_TEST(collect_metrics_entries_match_openmetrics_schema) {
 LOGOS_TEST(collect_metrics_counter_names_carry_total_suffix) {
     auto res = collect();
 
-    for (const auto& m : res.value["metrics"]) {
+    for (const auto& m : res["metrics"]) {
         if (m["type"].get<std::string>() != "counter") continue;
         const auto name = m["name"].get<std::string>();
         const std::string suffix = "_total";
@@ -73,7 +67,7 @@ LOGOS_TEST(collect_metrics_includes_expected_libp2p_series) {
     auto res = collect();
 
     std::set<std::string> names;
-    for (const auto& m : res.value["metrics"]) {
+    for (const auto& m : res["metrics"]) {
         names.insert(m["name"].get<std::string>());
     }
 

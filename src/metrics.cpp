@@ -2,7 +2,7 @@
 
 using json = nlohmann::json;
 
-StdLogosResult Libp2pModuleImpl::collectMetrics() {
+LogosMap Libp2pModuleImpl::collectMetrics() {
     struct Series {
         const char* name;
         const char* type;
@@ -31,5 +31,5 @@ StdLogosResult Libp2pModuleImpl::collectMetrics() {
 
     json payload;
     payload["metrics"] = std::move(metrics);
-    return {true, payload, ""};
+    return payload;
 }
