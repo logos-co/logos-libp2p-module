@@ -2,10 +2,6 @@
 
 #include <cstring>
 
-// ---------------------------------------------------------------------------
-// Mix Network
-// ---------------------------------------------------------------------------
-
 StdLogosResult Libp2pModuleImpl::mixGeneratePrivKey() {
     if (!ctx) return {false, {}, "No libp2p context"};
 

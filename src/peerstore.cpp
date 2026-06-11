@@ -4,10 +4,6 @@
 
 using json = nlohmann::json;
 
-// ---------------------------------------------------------------------------
-// Peerstore
-// ---------------------------------------------------------------------------
-
 StdLogosResult Libp2pModuleImpl::peerstoreGetPeers() {
     return callSyncWith("Failed to get peers",
         [&](SyncPromise* p) {

@@ -7,10 +7,6 @@
 
 using json = nlohmann::json;
 
-// ---------------------------------------------------------------------------
-// Promise-based callbacks — each resolves a heap-allocated SyncPromise
-// ---------------------------------------------------------------------------
-
 void Libp2pModuleImpl::promiseCallback(int ret, const char* msg, size_t len, void* userData) {
     auto* p = static_cast<SyncPromise*>(userData);
     SyncResult r;
@@ -39,10 +35,6 @@ void Libp2pModuleImpl::emitEventSafe(const std::string& name, const std::string&
     }
 }
 
-// ---------------------------------------------------------------------------
-// Constructor
-// ---------------------------------------------------------------------------
-
 Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     : ctx(nullptr)
 {
@@ -64,7 +56,6 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
 
     m_libp2pConfig.transport = options.transport;
 
-    // Listen addresses
     m_addrs = options.addrs;
     if (!m_addrs.empty()) {
         m_addrsPtr.reserve(m_addrs.size());
@@ -75,7 +66,6 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
         m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
     }
 
-    // Bootstrap nodes
     if (!options.bootstrapNodes.empty()) {
         m_peerIdStorage.reserve(options.bootstrapNodes.size());
         m_addrStorage.reserve(options.bootstrapNodes.size());
@@ -107,7 +97,6 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     m_libp2pConfig.mount_kad = options.mountKad ? 1 : 0;
     m_libp2pConfig.mount_service_discovery = options.mountServiceDiscovery ? 1 : 0;
 
-    // Generate private key
     auto keyResult = newPrivateKey();
     if (!keyResult.success) {
         fprintf(stderr, "libp2p_new_private_key failed: %s\n", keyResult.error.c_str());
@@ -119,7 +108,6 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     m_libp2pConfig.priv_key.data = m_privKey.data();
     m_libp2pConfig.priv_key.dataLen = static_cast<int>(m_privKey.size());
 
-    // Call libp2p_new
     auto* p = new SyncPromise();
     auto f = p->get_future();
 
@@ -134,10 +122,6 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
         fprintf(stderr, "libp2p_new returned null context\n");
     }
 }
-
-// ---------------------------------------------------------------------------
-// Destructor
-// ---------------------------------------------------------------------------
 
 Libp2pModuleImpl::~Libp2pModuleImpl() {
     // Release all streams in parallel — each streamRelease awaits up to 10s,
@@ -158,7 +142,6 @@ Libp2pModuleImpl::~Libp2pModuleImpl() {
     }
     for (auto& fut : releases) fut.wait();
 
-    // Destroy libp2p context
     if (ctx) {
         auto* p = new SyncPromise();
         auto f = p->get_future();
@@ -169,10 +152,6 @@ Libp2pModuleImpl::~Libp2pModuleImpl() {
         ctx = nullptr;
     }
 }
-
-// ---------------------------------------------------------------------------
-// Lifecycle
-// ---------------------------------------------------------------------------
 
 StdLogosResult Libp2pModuleImpl::start() {
     return callSync("Failed to start libp2p", [&](SyncPromise* p) {
@@ -211,10 +190,6 @@ StdLogosResult Libp2pModuleImpl::newPrivateKey() {
     return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
 }
 
-// ---------------------------------------------------------------------------
-// Helper: toCid
-// ---------------------------------------------------------------------------
-
 StdLogosResult Libp2pModuleImpl::toCid(const std::string& key) {
     if (key.empty()) return {false, {}, "Key is empty"};
     return callSyncWith("Failed to create CID",
@@ -228,10 +203,6 @@ StdLogosResult Libp2pModuleImpl::toCid(const std::string& key) {
             return {true, r.message, ""};
         });
 }
-
-// ---------------------------------------------------------------------------
-// Event Callback
-// ---------------------------------------------------------------------------
 
 void Libp2pModuleImpl::eventCallback(int ret, const char* msg, size_t len, void* userData) {
     auto* self = static_cast<Libp2pModuleImpl*>(userData);
@@ -249,10 +220,6 @@ bool Libp2pModuleImpl::setEventCallback() {
     libp2p_set_event_callback(ctx, &Libp2pModuleImpl::eventCallback, this);
     return true;
 }
-
-// ---------------------------------------------------------------------------
-// Connectivity
-// ---------------------------------------------------------------------------
 
 StdLogosResult Libp2pModuleImpl::connectPeer(
     const std::string& peerId,
@@ -310,10 +277,6 @@ StdLogosResult Libp2pModuleImpl::dial(const std::string& peerId, const std::stri
             return {true, 0, ""};
         });
 }
-
-// ---------------------------------------------------------------------------
-// Circuit Relay
-// ---------------------------------------------------------------------------
 
 StdLogosResult Libp2pModuleImpl::circuitRelayReserve(
     const std::string& relayPeerId,

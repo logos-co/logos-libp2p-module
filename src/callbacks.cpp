@@ -4,10 +4,6 @@
 
 using json = nlohmann::json;
 
-// ---------------------------------------------------------------------------
-// Typed promise callbacks — convert C struct data to JSON, resolve promise
-// ---------------------------------------------------------------------------
-
 void Libp2pModuleImpl::promisePeerInfoCallback(
     int ret, const Libp2pPeerInfo* info,
     const char* msg, size_t len, void* userData)
@@ -223,10 +219,6 @@ void Libp2pModuleImpl::promiseRandomRecordsCallback(
     p->set_value(std::move(r));
     delete p;
 }
-
-// ---------------------------------------------------------------------------
-// Gossipsub topic handler — push messages into the queue
-// ---------------------------------------------------------------------------
 
 void Libp2pModuleImpl::topicHandler(
     const char* topic, uint8_t* data, size_t len, void* userData)

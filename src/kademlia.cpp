@@ -4,10 +4,6 @@
 
 using json = nlohmann::json;
 
-// ---------------------------------------------------------------------------
-// Kademlia
-// ---------------------------------------------------------------------------
-
 StdLogosResult Libp2pModuleImpl::kadFindNode(const std::string& peerId) {
     return callSyncWith("Failed to find node",
         [&](SyncPromise* p) {

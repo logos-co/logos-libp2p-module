@@ -3,10 +3,6 @@
 #include <algorithm>
 #include <cstring>
 
-// ---------------------------------------------------------------------------
-// Gossipsub
-// ---------------------------------------------------------------------------
-
 StdLogosResult Libp2pModuleImpl::gossipsubPublish(
     const std::string& topic, const std::string& data)
 {

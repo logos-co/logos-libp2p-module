@@ -4,10 +4,6 @@
 
 using json = nlohmann::json;
 
-// ---------------------------------------------------------------------------
-// Service Discovery
-// ---------------------------------------------------------------------------
-
 StdLogosResult Libp2pModuleImpl::discoStart() {
     return callSync("Failed to start discovery", [&](SyncPromise* p) {
         return libp2p_service_disco_start(ctx,

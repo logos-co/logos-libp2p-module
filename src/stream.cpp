@@ -2,10 +2,6 @@
 
 #include <cstring>
 
-// ---------------------------------------------------------------------------
-// Stream registry helpers
-// ---------------------------------------------------------------------------
-
 uint64_t Libp2pModuleImpl::addStream(libp2p_stream_t* stream) {
     auto id = m_nextStreamId.fetch_add(1);
     auto entry = std::make_shared<StreamEntry>(stream);
@@ -30,10 +26,6 @@ Libp2pModuleImpl::removeStream(uint64_t id) {
     m_streams.erase(it);
     return entry;
 }
-
-// ---------------------------------------------------------------------------
-// Stream operations
-// ---------------------------------------------------------------------------
 
 StdLogosResult Libp2pModuleImpl::streamClose(uint64_t streamId) {
     return callSyncStream(streamId, "Failed to close stream",
