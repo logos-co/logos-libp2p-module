@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Runs openmetrics + libp2p_module under logoscore, scrapes /metrics, asserts.
-# Required env: LIBP2P_LGX_DIR OPENMETRICS_LGX_DIR LOGOSCORE_BIN LGPM_BIN
+# Required env: LIBP2P_LGX_DIR OPENMETRICS_LGX_DIR
+# Optional env: LOGOSCORE_BIN (default: logoscore), LGPM_BIN (default: lgpm)
 
 set -euo pipefail
 shopt -s nullglob
 
-for v in LIBP2P_LGX_DIR OPENMETRICS_LGX_DIR LOGOSCORE_BIN LGPM_BIN; do
+for v in LIBP2P_LGX_DIR OPENMETRICS_LGX_DIR; do
     [[ -n "${!v:-}" ]] || { echo "missing env: $v" >&2; exit 1; }
 done
+: "${LOGOSCORE_BIN:=logoscore}"
+: "${LGPM_BIN:=lgpm}"
 
 pick_lgx() {
     local dir="$1" matches=("$1"/*.lgx)
