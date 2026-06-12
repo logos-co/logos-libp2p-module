@@ -50,7 +50,7 @@ int main()
         return 1;
     }
 
-    auto res = nodeB.gossipsubNextMessage(topic);
+    auto res = nodeB.gossipsubNextMessage(topic, 1000);
     if (!res.success) {
         fprintf(stderr, "Node B did not receive any messages\n");
         return 1;

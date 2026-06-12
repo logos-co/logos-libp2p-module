@@ -24,7 +24,7 @@ LOGOS_TEST(gossipsub_subscribe_and_publish) {
     std::string payload = "Hello from Node A";
     LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, payload).success);
 
-    auto res = nodeB.gossipsubNextMessage(topic);
+    auto res = nodeB.gossipsubNextMessage(topic, 1000);
     LOGOS_ASSERT_TRUE(res.success);
     LOGOS_ASSERT_TRUE(res.value.get<std::string>() == payload);
 
@@ -56,7 +56,7 @@ LOGOS_TEST(gossipsub_multiple_subscribers) {
     LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, payload).success);
 
     for (auto& sub : subscribers) {
-        auto res = sub->gossipsubNextMessage(topic);
+        auto res = sub->gossipsubNextMessage(topic, 1000);
         LOGOS_ASSERT_TRUE(res.success);
         LOGOS_ASSERT_TRUE(res.value.get<std::string>() == payload);
         LOGOS_ASSERT_TRUE(sub->stop().success);
@@ -106,7 +106,7 @@ LOGOS_TEST(gossipsub_binary_payload) {
 
     LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, payload).success);
 
-    auto res = nodeB.gossipsubNextMessage(topic);
+    auto res = nodeB.gossipsubNextMessage(topic, 1000);
     LOGOS_ASSERT_TRUE(res.success);
     std::string received = res.value.get<std::string>();
 

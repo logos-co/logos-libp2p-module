@@ -25,6 +25,7 @@ if(LIBP2P_PATH)
             ../src/service_discovery.cpp
             ../src/custom_handlers.cpp
             ../src/peerstore.cpp
+            ../src/metrics.cpp
         TEST_SOURCES
             main.cpp
             sync.cpp
@@ -36,6 +37,7 @@ if(LIBP2P_PATH)
             integration_service_discovery.cpp
             custom_handlers.cpp
             integration_peerstore.cpp
+            metrics.cpp
         EXTRA_INCLUDES
             ../lib
         EXTRA_LINK_LIBS
