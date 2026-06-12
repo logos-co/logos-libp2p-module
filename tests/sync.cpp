@@ -30,7 +30,7 @@ LOGOS_TEST(sync_connected_peers) {
     Libp2pModuleImpl plugin;
     LOGOS_ASSERT_TRUE(plugin.start().success);
 
-    auto res = plugin.connectedPeers();
+    auto res = plugin.connectedPeers(0);
     LOGOS_ASSERT_TRUE(res.success);
 
     auto peers = res.value;

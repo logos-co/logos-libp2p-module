@@ -7650,6 +7650,26 @@
         "type": "github"
       }
     },
+    "openmetrics-module": {
+      "inputs": {
+        "logos-module-builder": [
+          "logos-module-builder"
+        ]
+      },
+      "locked": {
+        "lastModified": 1780954572,
+        "narHash": "sha256-JPa5FPbZrjcyJNzae/97dG5NulfWqGuieJRaH7VZFNU=",
+        "owner": "logos-co",
+        "repo": "openmetrics-module",
+        "rev": "af0a81d07d91926802d2f8e2b3dfe8ad9f5eb767",
+        "type": "github"
+      },
+      "original": {
+        "owner": "logos-co",
+        "repo": "openmetrics-module",
+        "type": "github"
+      }
+    },
     "process-stats": {
       "inputs": {
         "logos-nix": "logos-nix_30",
@@ -7738,7 +7758,8 @@
     "root": {
       "inputs": {
         "libp2p": "libp2p",
-        "logos-module-builder": "logos-module-builder"
+        "logos-module-builder": "logos-module-builder",
+        "openmetrics-module": "openmetrics-module"
       }
     }
   },

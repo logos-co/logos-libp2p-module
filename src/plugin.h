@@ -14,14 +14,8 @@
 
 #include <nlohmann/json.hpp>
 
-#ifndef LOGOS_RESULT_H_INCLUDED
-#define LOGOS_RESULT_H_INCLUDED
-struct StdLogosResult {
-    bool success = false;
-    nlohmann::json value;
-    std::string error;
-};
-#endif
+#include "logos_json.h"
+#include "logos_result.h"
 
 extern "C" {
 #include "lib/libp2p.h"
@@ -76,7 +70,7 @@ inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPre
 
 class Libp2pModuleImpl {
 public:
-    explicit Libp2pModuleImpl(const Libp2pModuleOptions& options = {});
+    Libp2pModuleImpl(const Libp2pModuleOptions& options = {});
     ~Libp2pModuleImpl();
 
     std::function<void(const std::string& eventName, const std::string& data)> emitEvent;
@@ -91,7 +85,7 @@ public:
                                int64_t timeoutMs = -1);
     StdLogosResult disconnectPeer(const std::string& peerId);
     StdLogosResult peerInfo();
-    StdLogosResult connectedPeers(int direction = 0);
+    StdLogosResult connectedPeers(int direction);
     StdLogosResult dial(const std::string& peerId, const std::string& proto);
 
     StdLogosResult circuitRelayReserve(const std::string& relayPeerId,
@@ -113,12 +107,12 @@ public:
     StdLogosResult gossipsubPublish(const std::string& topic, const std::string& data);
     StdLogosResult gossipsubSubscribe(const std::string& topic);
     StdLogosResult gossipsubUnsubscribe(const std::string& topic);
-    StdLogosResult gossipsubNextMessage(const std::string& topic, int timeoutMs = 1000);
+    StdLogosResult gossipsubNextMessage(const std::string& topic, int timeoutMs);
 
     StdLogosResult toCid(const std::string& key);
     StdLogosResult kadFindNode(const std::string& peerId);
     StdLogosResult kadPutValue(const std::string& key, const std::string& value);
-    StdLogosResult kadGetValue(const std::string& key, int quorum = -1);
+    StdLogosResult kadGetValue(const std::string& key, int quorum);
     StdLogosResult kadAddProvider(const std::string& cid);
     StdLogosResult kadStartProviding(const std::string& cid);
     StdLogosResult kadStopProviding(const std::string& cid);
@@ -169,6 +163,10 @@ public:
     StdLogosResult peerstoreSetPeerProtocols(const std::string& peerId,
                                              const std::vector<std::string>& protos);
     StdLogosResult peerstoreDeletePeer(const std::string& peerId);
+
+    LogosMap collectMetrics();
+
+    /* ----------- Event Callback ----------- */
 
     bool setEventCallback();
 

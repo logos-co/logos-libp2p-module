@@ -48,6 +48,30 @@ jobs:
       - name: Setup Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@v5
 
+      - name: Run flake checks
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_target }}
+        run: |
+          nix flake check \
+            --system ${{ matrix.system }} \
+            --print-build-logs \
+            --show-trace
+
+  openmetrics-e2e:
+    name: OpenMetrics e2e (x86_64-linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v5
+
       - name: Setup Cachix
         uses: cachix/cachix-action@v15
         with:
@@ -55,12 +79,43 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
         continue-on-error: true
 
-      - name: Run flake checks
-        env:
-          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_target }}
+      - name: Build logoscore + lgpm
         run: |
-          nix flake check \
-            --system ${{ matrix.system }} \
+          nix build --print-build-logs --out-link result-logoscore \
+            'github:logos-co/logos-logoscore-cli/7fa0d891aecb033c208c7ac326a3800019484f09'
+          nix build --print-build-logs --out-link result-lgpm \
+            'github:logos-co/logos-package-manager/8a6b72f28b1e73b6d753eaabe7eba13bf425f04e#cli'
+          echo "LOGOSCORE_BIN=$PWD/result-logoscore/bin/logoscore" >> "$GITHUB_ENV"
+          echo "LGPM_BIN=$PWD/result-lgpm/bin/lgpm" >> "$GITHUB_ENV"
+
+      - name: Run openmetrics e2e
+        run: nix run .#openmetrics-e2e
+
+  sanitizers:
+    name: Sanitizers (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [asan, tsan]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v5
+
+      - name: Build + run tests under ${{ matrix.sanitizer }}
+        run: |
+          nix build \
+            ".#unit-tests-${{ matrix.sanitizer }}" \
+            --system x86_64-linux \
             --print-build-logs \
             --show-trace
 
