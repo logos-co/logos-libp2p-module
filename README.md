@@ -6,8 +6,7 @@ It provides:
 - Peer connectivity
 - Stream management
 - Kademlia DHT operations
-- Mix operaions
-- Gossipsub operaions
+- Gossipsub operations
 - Sync and async APIs compatible with Qt
 
 Check the examples/ directory for complete usage demonstrations.

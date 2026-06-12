@@ -97,10 +97,8 @@ LOGOS_TEST(custom_handlers_protocol_stream_event) {
     uint64_t serverStreamId = j["streamId"].get<uint64_t>();
     LOGOS_ASSERT_NE(serverStreamId, static_cast<uint64_t>(0));
 
-    // nodeB must release its server stream first: the Nim protocol handler
-    // awaits a releaseWaiter that only fires on streamRelease. Until it fires,
-    // nodeB holds its write side open, so nodeA's closeWithEOF (which waits for
-    // the remote EOF) would deadlock.
+    // nodeB must release its server stream first, else its write side stays open
+    // and nodeA's closeWithEOF deadlocks waiting for the remote EOF.
     LOGOS_ASSERT_TRUE(nodeB.streamRelease(serverStreamId).success);
     LOGOS_ASSERT_TRUE(nodeA.streamCloseWithEOF(clientStreamId).success);
     LOGOS_ASSERT_TRUE(nodeA.streamRelease(clientStreamId).success);
