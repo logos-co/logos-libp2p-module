@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -67,6 +68,17 @@ inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPre
     }
     return {true, j, ""};
 }
+
+// One metrics series, mirroring the JSON that nim-libp2p's libp2p_collect_metrics
+// emits (one object per series). Deserialized automatically by nlohmann.
+struct Metric {
+    std::string name;
+    std::string type;
+    std::string help;
+    std::map<std::string, std::string> labels;
+    double value = 0.0;
+};
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Metric, name, type, help, labels, value)
 
 class Libp2pModuleImpl {
 public:
