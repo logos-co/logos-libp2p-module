@@ -16,7 +16,7 @@ LOGOS_TEST(mix_dial_and_reply) {
 
     for (int i = 0; i < NUM_NODES; ++i) {
         nodes.push_back(std::make_unique<Libp2pModuleImpl>(
-            Libp2pModuleOptions{ .mountMix = true }));
+            Libp2pModuleOptions{}));
         LOGOS_ASSERT_TRUE(nodes[i]->start().success);
 
         infos[i] = getPeerInfoPair(*nodes[i]);
@@ -82,9 +82,9 @@ LOGOS_TEST(mix_dial_and_reply) {
 }
 
 LOGOS_TEST(mix_nodepool_routing) {
-    Libp2pModuleImpl nodeA(Libp2pModuleOptions{ .mountMix = true });
-    Libp2pModuleImpl nodeB(Libp2pModuleOptions{ .mountMix = true });
-    Libp2pModuleImpl nodeC(Libp2pModuleOptions{ .mountMix = true });
+    Libp2pModuleImpl nodeA(Libp2pModuleOptions{});
+    Libp2pModuleImpl nodeB(Libp2pModuleOptions{});
+    Libp2pModuleImpl nodeC(Libp2pModuleOptions{});
 
     LOGOS_ASSERT_TRUE(nodeA.start().success);
     LOGOS_ASSERT_TRUE(nodeB.start().success);

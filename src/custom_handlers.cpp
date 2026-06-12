@@ -2,10 +2,6 @@
 
 using json = nlohmann::json;
 
-// ---------------------------------------------------------------------------
-// Custom Protocol Handlers
-// ---------------------------------------------------------------------------
-
 void Libp2pModuleImpl::protocolHandler(
     libp2p_ctx_t* /*ctx*/, libp2p_stream_t* stream,
     const char* proto, size_t protoLen, void* userData)
