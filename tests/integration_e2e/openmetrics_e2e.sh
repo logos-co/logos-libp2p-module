@@ -77,16 +77,17 @@ fail=0
 need_line()   { grep -qxF -- "$1" <<<"$out" || { echo "FAIL: missing line: $1"   >&2; fail=1; }; }
 need_substr() { grep -qF  -- "$1" <<<"$out" || { echo "FAIL: missing substr: $1" >&2; fail=1; }; }
 
+# Only label-less series are asserted: nim-libp2p emits a sample per label
+# child, so labeled metrics (e.g. libp2p_open_streams) are absent on an idle
+# node with no streams/peers.
 need_line   '# TYPE libp2p_peers gauge'
 need_substr 'libp2p_peers{module="libp2p_module"}'
-need_line   '# TYPE libp2p_open_streams gauge'
-need_substr 'libp2p_open_streams{module="libp2p_module"}'
 need_line   '# TYPE libp2p_successful_dials counter'
 need_substr 'libp2p_successful_dials_total{module="libp2p_module"}'
 need_line   '# TYPE libp2p_failed_dials counter'
 need_substr 'libp2p_failed_dials_total{module="libp2p_module"}'
-need_line   '# TYPE libp2p_dial_attempts counter'
-need_substr 'libp2p_dial_attempts_total{module="libp2p_module"}'
+need_line   '# TYPE libp2p_total_dial_attempts counter'
+need_substr 'libp2p_total_dial_attempts_total{module="libp2p_module"}'
 need_line   '# EOF'
 
 if [[ "$fail" -ne 0 ]]; then
