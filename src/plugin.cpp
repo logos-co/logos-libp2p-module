@@ -57,14 +57,20 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     m_libp2pConfig.transport = options.transport;
 
     m_addrs = options.addrs;
-    if (!m_addrs.empty()) {
-        m_addrsPtr.reserve(m_addrs.size());
-        for (const auto& addr : m_addrs) {
-            m_addrsPtr.push_back(addr.c_str());
-        }
-        m_libp2pConfig.addrs = m_addrsPtr.data();
-        m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
+    if (m_addrs.empty()) {
+        // nim-libp2p's switch.start() requires at least one listen address;
+        // pick a loopback wildcard-port default matching the transport so
+        // dial-only tests don't have to construct one themselves.
+        m_addrs.push_back(options.transport == LIBP2P_TRANSPORT_QUIC
+                              ? "/ip4/127.0.0.1/udp/0/quic-v1"
+                              : "/ip4/127.0.0.1/tcp/0");
     }
+    m_addrsPtr.reserve(m_addrs.size());
+    for (const auto& addr : m_addrs) {
+        m_addrsPtr.push_back(addr.c_str());
+    }
+    m_libp2pConfig.addrs = m_addrsPtr.data();
+    m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
 
     if (!options.bootstrapNodes.empty()) {
         m_peerIdStorage.reserve(options.bootstrapNodes.size());
