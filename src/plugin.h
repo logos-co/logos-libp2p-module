@@ -37,7 +37,7 @@ struct Libp2pModuleOptions {
     bool gossipsubTriggerSelf = true;
     bool mountGossipsub = true;
     bool mountKad = true;
-    bool mountServiceDiscovery = false;
+    bool mountServiceDiscovery = true;
 };
 
 // Result type for internal sync-over-async operations.
