@@ -70,15 +70,48 @@ inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPre
 }
 
 // One metrics series, mirroring the JSON that nim-libp2p's libp2p_collect_metrics
-// emits (one object per series). Deserialized automatically by nlohmann.
+// emits. Cbind sends labels as `[{"name":..,"value":..}, ...]`; we flatten into
+// a map because openmetrics-module's renderer expects `labels` as a flat
+// `{key:value}` object (openmetrics_format.cpp:82). `timestamp` is the Unix-
+// seconds float from the registry; 0.0 means "unset" and is dropped on output.
 struct Metric {
     std::string name;
     std::string type;
     std::string help;
     std::map<std::string, std::string> labels;
     double value = 0.0;
+    double timestamp = 0.0;
 };
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Metric, name, type, help, labels, value)
+
+inline void from_json(const nlohmann::json& j, Metric& m) {
+    j.at("name").get_to(m.name);
+    j.at("type").get_to(m.type);
+    j.at("help").get_to(m.help);
+    j.at("value").get_to(m.value);
+    m.labels.clear();
+    if (auto it = j.find("labels"); it != j.end() && it->is_array()) {
+        for (const auto& lp : *it) {
+            m.labels.emplace(lp.at("name").get<std::string>(),
+                             lp.at("value").get<std::string>());
+        }
+    }
+    if (auto it = j.find("timestamp"); it != j.end() && it->is_number()) {
+        m.timestamp = it->get<double>();
+    } else {
+        m.timestamp = 0.0;
+    }
+}
+
+inline void to_json(nlohmann::json& j, const Metric& m) {
+    j = nlohmann::json{
+        {"name", m.name},
+        {"type", m.type},
+        {"help", m.help},
+        {"labels", m.labels},
+        {"value", m.value},
+    };
+    if (m.timestamp != 0.0) j["timestamp"] = m.timestamp;
+}
 
 class Libp2pModuleImpl {
 public:
