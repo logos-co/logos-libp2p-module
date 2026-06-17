@@ -9,6 +9,10 @@
       url = "github:logos-co/openmetrics-module";
       inputs.logos-module-builder.follows = "logos-module-builder";
     };
+
+    # logoscore + lgpm binaries the openmetrics e2e drives.
+    logoscore-cli.url = "github:logos-co/logos-logoscore-cli";
+    package-manager.url = "github:logos-co/logos-package-manager";
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
@@ -135,20 +139,17 @@
           e2eRuntime = [ pkgs.curl pkgs.coreutils pkgs.gnugrep pkgs.bash pkgs.iproute2 ];
           e2eScript = ./tests/integration_e2e/openmetrics_e2e.sh;
 
-          # Exposed as `nix run .#openmetrics-e2e`, driven by a dedicated CI
-          # step. It spins up a live logoscore daemon (TCP + IPC socket), which
-          # can't run inside the hermetic `nix flake check` sandbox, so it is
-          # deliberately not a flake check.
-          #
-          # The .lgx bundles are pinned via flake inputs; logoscore and lgpm
-          # are supplied by the caller (LOGOSCORE_BIN / LGPM_BIN), falling back
-          # to $PATH, since they are not vendored into this flake.lock.
+          # `nix run .#openmetrics-e2e`: standalone, runs a live logoscore
+          # daemon so it can't be a hermetic flake check. LOGOSCORE_BIN /
+          # LGPM_BIN override the vendored binaries when set.
+          logoscoreBin = "${inputs.logoscore-cli.packages.${system}.default}/bin/logoscore";
+          lgpmBin = "${inputs.package-manager.packages.${system}.cli}/bin/lgpm";
           openmetricsE2eApp = pkgs.writeShellScript "openmetrics-e2e" ''
             export PATH=${pkgs.lib.makeBinPath e2eRuntime}:$PATH
             export LIBP2P_LGX_DIR=${env.LIBP2P_LGX_DIR}
             export OPENMETRICS_LGX_DIR=${env.OPENMETRICS_LGX_DIR}
-            export LOGOSCORE_BIN="''${LOGOSCORE_BIN:-logoscore}"
-            export LGPM_BIN="''${LGPM_BIN:-lgpm}"
+            export LOGOSCORE_BIN="''${LOGOSCORE_BIN:-${logoscoreBin}}"
+            export LGPM_BIN="''${LGPM_BIN:-${lgpmBin}}"
             exec ${e2eScript} "$@"
           '';
         in {
