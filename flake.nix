@@ -3,7 +3,7 @@
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
-    libp2p.url = "github:vacp2p/nim-libp2p";
+    libp2p.url = "github:vacp2p/nim-libp2p/fix/ci/unused-chronicles";
 
     openmetrics-module = {
       url = "github:logos-co/openmetrics-module";

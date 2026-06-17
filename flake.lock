@@ -5,17 +5,18 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1781703525,
-        "narHash": "sha256-lJiiDmLZuLyssK2HeMbNfZGkGObiMmQP3dJTQ26KdtU=",
+        "lastModified": 1781717562,
+        "narHash": "sha256-KkCLP1Tix2bRoUFePLoPzXqrzYtovolFI8ke08GDGvk=",
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "994523ec425f643d3a3a20c03857eadfc0a33a82",
+        "rev": "24fab972b6364719346de10a4d016481a0c53725",
         "type": "github"
       },
       "original": {
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "type": "github"
+        "type": "github",
+        "ref": "fix/ci/unused-chronicles"
       }
     },
     "logos-capability-module": {
