@@ -69,22 +69,23 @@ wait_until "logoscore daemon ready" \
 "$LOGOSCORE_BIN" load-module openmetrics
 "$LOGOSCORE_BIN" call openmetrics start "{\"port\":$PORT,\"modules\":[\"libp2p_module\"]}"
 
-# Pre-scrape probes: openmetrics' own view of its state and any listener on
-# $PORT in the daemon's namespace. Diagnoses cases where `start` reports
-# success but MHD didn't actually bind (or bound to a different interface).
 echo "----- openmetrics getInfo -----"
 "$LOGOSCORE_BIN" call openmetrics getInfo || true
 echo "----- listeners on :$PORT -----"
 ss -tlnp 2>/dev/null | grep -E ":$PORT( |\$)" || echo "(no listener on :$PORT)"
 echo "-------------------------------"
 
-wait_until "scraper on :$PORT" \
-    curl -sSf --max-time 2 "http://127.0.0.1:$PORT/metrics"
+# `scrape` collects on the main thread; the HTTP /metrics endpoint deadlocks
+# off-thread (see openmetrics-e2e-upstream-bug.md).
+scrape() { "$LOGOSCORE_BIN" call openmetrics scrape 2>/dev/null | jq -r '.result // empty'; }
+scrape_ready() { local o; o="$(scrape)" && [[ -n "$o" ]] && grep -q '# EOF' <<<"$o"; }
 
-out="$(curl -sS --max-time 15 "http://127.0.0.1:$PORT/metrics")"
-echo "----- /metrics -----"
+wait_until "openmetrics scrape" scrape_ready
+
+out="$(scrape)"
+echo "----- metrics (via scrape) -----"
 echo "$out"
-echo "--------------------"
+echo "--------------------------------"
 
 # openmetrics renders `_total` on samples but strips it from HELP/TYPE.
 fail=0

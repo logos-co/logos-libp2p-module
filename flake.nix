@@ -136,7 +136,7 @@
           '';
 
           env = e2eEnv system;
-          e2eRuntime = [ pkgs.curl pkgs.coreutils pkgs.gnugrep pkgs.bash pkgs.iproute2 ];
+          e2eRuntime = [ pkgs.coreutils pkgs.gnugrep pkgs.bash pkgs.iproute2 pkgs.jq ];
           e2eScript = ./tests/integration_e2e/openmetrics_e2e.sh;
 
           # `nix run .#openmetrics-e2e`: standalone, runs a live logoscore
