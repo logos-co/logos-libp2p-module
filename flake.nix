@@ -152,8 +152,10 @@
             exec ${e2eScript} "$@"
           '';
         in {
+          # openmetrics-e2e pulls in Linux-only iproute2; omit it on Darwin.
           apps = {
             tests = { type = "app"; program = toString runner; };
+          } // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
             openmetrics-e2e = { type = "app"; program = toString openmetricsE2eApp; };
           };
         }
