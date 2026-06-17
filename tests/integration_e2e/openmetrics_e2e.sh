@@ -28,6 +28,11 @@ DAEMON_PID=""
 PORT=$(( 49152 + RANDOM % 16384 ))
 
 cleanup() {
+    local rc=$?
+    if [[ "$rc" -ne 0 && -f "$WORK/logs.txt" ]]; then
+        echo "----- daemon log tail -----" >&2
+        tail -n 200 "$WORK/logs.txt" >&2 || true
+    fi
     if [[ -n "$DAEMON_PID" ]]; then
         "$LOGOSCORE_BIN" call openmetrics stop >/dev/null 2>&1 || true
         "$LOGOSCORE_BIN" stop              >/dev/null 2>&1 || true
@@ -64,6 +69,15 @@ wait_until "logoscore daemon ready" \
 "$LOGOSCORE_BIN" load-module openmetrics
 "$LOGOSCORE_BIN" call openmetrics start "{\"port\":$PORT,\"modules\":[\"libp2p_module\"]}"
 
+# Pre-scrape probes: openmetrics' own view of its state and any listener on
+# $PORT in the daemon's namespace. Diagnoses cases where `start` reports
+# success but MHD didn't actually bind (or bound to a different interface).
+echo "----- openmetrics getInfo -----"
+"$LOGOSCORE_BIN" call openmetrics getInfo || true
+echo "----- listeners on :$PORT -----"
+ss -tlnp 2>/dev/null | grep -E ":$PORT( |\$)" || echo "(no listener on :$PORT)"
+echo "-------------------------------"
+
 wait_until "scraper on :$PORT" \
     curl -sSf --max-time 2 "http://127.0.0.1:$PORT/metrics"
 
@@ -91,8 +105,6 @@ need_substr 'libp2p_total_dial_attempts_total{module="libp2p_module"}'
 need_line   '# EOF'
 
 if [[ "$fail" -ne 0 ]]; then
-    echo "----- daemon log tail -----" >&2
-    tail -n 50 logs.txt >&2 || true
     exit 1
 fi
 echo "PASS"
