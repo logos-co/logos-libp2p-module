@@ -119,29 +119,6 @@ public:
     StdLogosResult kadGetProviders(const std::string& cid);
     StdLogosResult kadGetRandomRecords();
 
-#if 0  // mix temporarily disabled — extracted to separate repo, no cbindings yet
-
-    StdLogosResult mixGeneratePrivKey();
-    StdLogosResult mixPublicKey(const std::string& privKey);
-    StdLogosResult mixDial(const std::string& peerId,
-                           const std::string& multiaddr,
-                           const std::string& proto);
-    StdLogosResult mixDialWithReply(const std::string& peerId,
-                                    const std::string& multiaddr,
-                                    const std::string& proto,
-                                    int expectReply,
-                                    uint8_t numSurbs);
-    StdLogosResult mixRegisterDestReadBehavior(const std::string& proto,
-                                               int behavior,
-                                               uint32_t sizeParam);
-    StdLogosResult mixSetNodeInfo(const std::string& multiaddr,
-                                  const std::string& mixPrivKey);
-    StdLogosResult mixNodepoolAdd(const std::string& peerId,
-                                  const std::string& multiaddr,
-                                  const std::string& mixPubKey,
-                                  const std::string& libp2pPubKey);
-#endif
-
     StdLogosResult discoStart();
     StdLogosResult discoStop();
     StdLogosResult discoStartAdvertising(const std::string& serviceId,

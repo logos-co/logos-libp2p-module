@@ -15,7 +15,6 @@ logos_module(
         src/callbacks.cpp
         src/kademlia.cpp
         src/stream.cpp
-        # src/mix.cpp  # temporarily disabled — extracted to separate repo, no cbindings yet
         src/gossipsub.cpp
         src/service_discovery.cpp
         src/custom_handlers.cpp
