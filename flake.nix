@@ -6,7 +6,7 @@
     libp2p.url = "github:vacp2p/nim-libp2p";
 
     openmetrics-module = {
-      url = "github:logos-co/openmetrics-module";
+      url = "github:logos-co/openmetrics-module/fix/ipc-main-thread";
       inputs.logos-module-builder.follows = "logos-module-builder";
     };
 
