@@ -11,6 +11,7 @@ foreach(example_src ${EXAMPLE_SOURCES})
     )
 
     target_include_directories(${target_name} PRIVATE
+        ${PROJECT_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/lib
