@@ -56,19 +56,20 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
 
     m_libp2pConfig.transport = options.transport;
 
-    m_addrs = options.addrs;
-    if (m_addrs.empty()) {
-        // nim-libp2p's switch.start() requires at least one listen address;
-        // pick a loopback wildcard-port default matching the transport so
-        // dial-only tests don't have to construct one themselves.
-        m_addrs.push_back(options.transport == LIBP2P_TRANSPORT_QUIC
-                              ? "/ip4/127.0.0.1/udp/0/quic-v1"
-                              : "/ip4/127.0.0.1/tcp/0");
-    }
+    // nim-libp2p no longer supplies an implicit listen address, so fall back to
+    // a localhost address matching the selected transport when none is given.
+    m_addrs = options.addrs.empty()
+        ? std::vector<std::string>{
+              options.transport == LIBP2P_TRANSPORT_QUIC
+                  ? "/ip4/127.0.0.1/udp/0/quic-v1"
+                  : "/ip4/127.0.0.1/tcp/0"}
+        : options.addrs;
+
     m_addrsPtr.reserve(m_addrs.size());
     for (const auto& addr : m_addrs) {
         m_addrsPtr.push_back(addr.c_str());
     }
+
     m_libp2pConfig.addrs = m_addrsPtr.data();
     m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
 
