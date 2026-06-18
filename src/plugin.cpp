@@ -72,9 +72,6 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     m_libp2pConfig.addrs = m_addrsPtr.data();
     m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
 
-    m_libp2pConfig.addrs = m_addrsPtr.data();
-    m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
-
     if (!options.bootstrapNodes.empty()) {
         m_peerIdStorage.reserve(options.bootstrapNodes.size());
         m_addrStorage.reserve(options.bootstrapNodes.size());

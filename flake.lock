@@ -5,11 +5,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1781799303,
-        "narHash": "sha256-etv25Os+GF3auf0zpXnWIXg/2V5ocfh5wZyhxfianeM=",
+        "lastModified": 1781803559,
+        "narHash": "sha256-tfiGo3dP8hu9Q1IA34xxv1HFf40HVSnZ8SbdZUMSJcc=",
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "e480f8654fc6b09082f9a5a9978ad59399351719",
+        "rev": "0a123b03ee7d1d60f7e4eef10a4b6185948b5e8c",
         "type": "github"
       },
       "original": {
@@ -46585,16 +46585,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1781715878,
+        "lastModified": 1780954572,
         "narHash": "sha256-JPa5FPbZrjcyJNzae/97dG5NulfWqGuieJRaH7VZFNU=",
         "owner": "logos-co",
         "repo": "openmetrics-module",
-        "rev": "562eb8171cbcfa921497a1b614a29807ca7298c4",
+        "rev": "af0a81d07d91926802d2f8e2b3dfe8ad9f5eb767",
         "type": "github"
       },
       "original": {
         "owner": "logos-co",
-        "ref": "fix/ipc-main-thread",
         "repo": "openmetrics-module",
         "type": "github"
       }
