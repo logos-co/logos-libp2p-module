@@ -17,12 +17,6 @@ use cases using the `logos-libp2p-module`.
   - `GetProviders`
   - `StartProviding`
 
-- [Mix](mix.cpp) — Demonstrates usage of the [Mix](https://github.com/vacp2p/nim-libp2p/blob/master/docs/protocols_mix.md) protocol for private messaging:
-  - Generating private and public keys
-  - Setting node info
-  - Populating mix pools
-  - Dialing through mix
-
 - [Gossipsub](gossipsub.cpp) — Demonstrates usage of the [Gossipsub](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/README.md) protocol for messaging:
   - Connecting to a peer
   - Subscribing to a topic
@@ -48,7 +42,6 @@ After building, run the executable from the build directory:
 ```bash
 ./build/examples/example_ping
 ./build/examples/example_kademlia
-./build/examples/example_mix
 ./build/examples/example_gossipsub
 ```
 

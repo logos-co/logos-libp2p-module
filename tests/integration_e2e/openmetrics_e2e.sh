@@ -44,7 +44,9 @@ cleanup() {
 trap cleanup EXIT
 
 dump_daemon_log() {
-    if [[ -n "$DAEMON_PID" ]] && kill -0 "$DAEMON_PID" 2>/dev/null; then
+    if [[ -z "$DAEMON_PID" ]]; then
+        echo "daemon never started" >&2
+    elif kill -0 "$DAEMON_PID" 2>/dev/null; then
         echo "daemon (pid $DAEMON_PID) still alive" >&2
     else
         echo "daemon (pid $DAEMON_PID) NOT alive" >&2
