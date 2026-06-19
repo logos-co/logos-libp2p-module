@@ -69,7 +69,7 @@ StdLogosResult Libp2pModuleImpl::streamRelease(uint64_t streamId) {
     return {true, {}, ""};
 }
 
-StdLogosResult Libp2pModuleImpl::streamReadExactly(uint64_t streamId, size_t len) {
+StdLogosResult Libp2pModuleImpl::streamReadExactly(uint64_t streamId, uint64_t len) {
     return callSyncStreamWith(streamId, "Failed to read from stream",
         [&](libp2p_stream_t* s, SyncPromise* p) {
             return libp2p_stream_readExactly(ctx, s, len,
@@ -80,7 +80,7 @@ StdLogosResult Libp2pModuleImpl::streamReadExactly(uint64_t streamId, size_t len
         });
 }
 
-StdLogosResult Libp2pModuleImpl::streamReadLp(uint64_t streamId, size_t maxSize) {
+StdLogosResult Libp2pModuleImpl::streamReadLp(uint64_t streamId, uint64_t maxSize) {
     return callSyncStreamWith(streamId, "Failed to read LP from stream",
         [&](libp2p_stream_t* s, SyncPromise* p) {
             return libp2p_stream_readLp(ctx, s, maxSize,

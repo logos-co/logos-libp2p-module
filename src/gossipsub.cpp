@@ -96,7 +96,7 @@ StdLogosResult Libp2pModuleImpl::gossipsubUnsubscribe(const std::string& topic) 
     return {true, {}, ""};
 }
 
-StdLogosResult Libp2pModuleImpl::gossipsubNextMessage(const std::string& topic, int timeoutMs) {
+StdLogosResult Libp2pModuleImpl::gossipsubNextMessage(const std::string& topic, int64_t timeoutMs) {
     std::unique_lock<std::mutex> lock(m_queueMutex);
 
     // .find() avoids inserting an empty queue for every polled topic.

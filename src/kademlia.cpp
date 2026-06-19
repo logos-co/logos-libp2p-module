@@ -26,7 +26,7 @@ StdLogosResult Libp2pModuleImpl::kadPutValue(const std::string& key, const std::
     });
 }
 
-StdLogosResult Libp2pModuleImpl::kadGetValue(const std::string& key, int quorum) {
+StdLogosResult Libp2pModuleImpl::kadGetValue(const std::string& key, int64_t quorum) {
     return callSyncWith("Failed to get value",
         [&](SyncPromise* p) {
             return libp2p_kad_get_value(

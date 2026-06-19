@@ -8,7 +8,7 @@ LOGOS_TEST(sync_connect_disconnect_peer) {
     std::string fakePeer = "12D3KooWInvalidPeerForTest";
     std::vector<std::string> fakeAddrs = { "/ip4/127.0.0.1/tcp/9999" };
 
-    LOGOS_ASSERT_FALSE(plugin.connectPeer(fakePeer, fakeAddrs).success);
+    LOGOS_ASSERT_FALSE(plugin.connectPeer(fakePeer, fakeAddrs, -1).success);
     LOGOS_ASSERT_FALSE(plugin.disconnectPeer(fakePeer).success);
 
     LOGOS_ASSERT_TRUE(plugin.stop().success);

@@ -271,7 +271,7 @@ StdLogosResult Libp2pModuleImpl::peerInfo() {
         [](const SyncResult& r) { return parseJsonResponse(r.message, "peerInfo"); });
 }
 
-StdLogosResult Libp2pModuleImpl::connectedPeers(int direction) {
+StdLogosResult Libp2pModuleImpl::connectedPeers(int64_t direction) {
     return callSyncWith("Failed to get connected peers",
         [&](SyncPromise* p) {
             return libp2p_connected_peers(ctx, direction,
