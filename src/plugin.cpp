@@ -7,6 +7,15 @@
 
 using json = nlohmann::json;
 
+namespace {
+std::string defaultListenAddr(int transport) {
+    if (transport == LIBP2P_TRANSPORT_QUIC) {
+        return "/ip4/127.0.0.1/udp/0/quic-v1";
+    }
+    return "/ip4/127.0.0.1/tcp/0";
+}
+}
+
 void Libp2pModuleImpl::promiseCallback(int ret, const char* msg, size_t len, void* userData) {
     auto* p = static_cast<SyncPromise*>(userData);
     SyncResult r;
@@ -57,14 +66,16 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     m_libp2pConfig.transport = options.transport;
 
     m_addrs = options.addrs;
-    if (!m_addrs.empty()) {
-        m_addrsPtr.reserve(m_addrs.size());
-        for (const auto& addr : m_addrs) {
-            m_addrsPtr.push_back(addr.c_str());
-        }
-        m_libp2pConfig.addrs = m_addrsPtr.data();
-        m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
+    if (m_addrs.empty()) {
+        m_addrs.push_back(defaultListenAddr(options.transport));
     }
+
+    m_addrsPtr.reserve(m_addrs.size());
+    for (const auto& addr : m_addrs) {
+        m_addrsPtr.push_back(addr.c_str());
+    }
+    m_libp2pConfig.addrs = m_addrsPtr.data();
+    m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
 
     if (!options.bootstrapNodes.empty()) {
         m_peerIdStorage.reserve(options.bootstrapNodes.size());
@@ -271,7 +282,7 @@ StdLogosResult Libp2pModuleImpl::peerInfo() {
         [](const SyncResult& r) { return parseJsonResponse(r.message, "peerInfo"); });
 }
 
-StdLogosResult Libp2pModuleImpl::connectedPeers(int direction) {
+StdLogosResult Libp2pModuleImpl::connectedPeers(int64_t direction) {
     return callSyncWith("Failed to get connected peers",
         [&](SyncPromise* p) {
             return libp2p_connected_peers(ctx, direction,

@@ -80,24 +80,19 @@ public:
     StdLogosResult publicKey();
     StdLogosResult newPrivateKey();
 
-    StdLogosResult connectPeer(const std::string& peerId,
-                               const std::vector<std::string>& multiaddrs,
-                               int64_t timeoutMs = -1);
+    StdLogosResult connectPeer(const std::string& peerId, const std::vector<std::string>& multiaddrs, int64_t timeoutMs);
     StdLogosResult disconnectPeer(const std::string& peerId);
     StdLogosResult peerInfo();
-    StdLogosResult connectedPeers(int direction);
+    StdLogosResult connectedPeers(int64_t direction);
     StdLogosResult dial(const std::string& peerId, const std::string& proto);
 
-    StdLogosResult circuitRelayReserve(const std::string& relayPeerId,
-                                       const std::vector<std::string>& relayAddrs);
-    StdLogosResult dialCircuitRelay(const std::string& dstPeerId,
-                                    const std::string& multiaddr,
-                                    const std::string& proto);
+    StdLogosResult circuitRelayReserve(const std::string& relayPeerId, const std::vector<std::string>& relayAddrs);
+    StdLogosResult dialCircuitRelay(const std::string& dstPeerId, const std::string& multiaddr, const std::string& proto);
 
     StdLogosResult mountProtocol(const std::string& proto);
 
-    StdLogosResult streamReadExactly(uint64_t streamId, size_t len);
-    StdLogosResult streamReadLp(uint64_t streamId, size_t maxSize);
+    StdLogosResult streamReadExactly(uint64_t streamId, uint64_t len);
+    StdLogosResult streamReadLp(uint64_t streamId, uint64_t maxSize);
     StdLogosResult streamWrite(uint64_t streamId, const std::string& data);
     StdLogosResult streamWriteLp(uint64_t streamId, const std::string& data);
     StdLogosResult streamClose(uint64_t streamId);
@@ -107,59 +102,32 @@ public:
     StdLogosResult gossipsubPublish(const std::string& topic, const std::string& data);
     StdLogosResult gossipsubSubscribe(const std::string& topic);
     StdLogosResult gossipsubUnsubscribe(const std::string& topic);
-    StdLogosResult gossipsubNextMessage(const std::string& topic, int timeoutMs);
+    StdLogosResult gossipsubNextMessage(const std::string& topic, int64_t timeoutMs);
 
     StdLogosResult toCid(const std::string& key);
     StdLogosResult kadFindNode(const std::string& peerId);
     StdLogosResult kadPutValue(const std::string& key, const std::string& value);
-    StdLogosResult kadGetValue(const std::string& key, int quorum);
+    StdLogosResult kadGetValue(const std::string& key, int64_t quorum);
     StdLogosResult kadAddProvider(const std::string& cid);
     StdLogosResult kadStartProviding(const std::string& cid);
     StdLogosResult kadStopProviding(const std::string& cid);
     StdLogosResult kadGetProviders(const std::string& cid);
     StdLogosResult kadGetRandomRecords();
 
-#if 0  // mix temporarily disabled — extracted to separate repo, no cbindings yet
-
-    StdLogosResult mixGeneratePrivKey();
-    StdLogosResult mixPublicKey(const std::string& privKey);
-    StdLogosResult mixDial(const std::string& peerId,
-                           const std::string& multiaddr,
-                           const std::string& proto);
-    StdLogosResult mixDialWithReply(const std::string& peerId,
-                                    const std::string& multiaddr,
-                                    const std::string& proto,
-                                    int expectReply,
-                                    uint8_t numSurbs);
-    StdLogosResult mixRegisterDestReadBehavior(const std::string& proto,
-                                               int behavior,
-                                               uint32_t sizeParam);
-    StdLogosResult mixSetNodeInfo(const std::string& multiaddr,
-                                  const std::string& mixPrivKey);
-    StdLogosResult mixNodepoolAdd(const std::string& peerId,
-                                  const std::string& multiaddr,
-                                  const std::string& mixPubKey,
-                                  const std::string& libp2pPubKey);
-#endif
-
     StdLogosResult discoStart();
     StdLogosResult discoStop();
-    StdLogosResult discoStartAdvertising(const std::string& serviceId, const std::string& serviceData = {});
+    StdLogosResult discoStartAdvertising(const std::string& serviceId, const std::string& serviceData);
     StdLogosResult discoStopAdvertising(const std::string& serviceId);
     StdLogosResult discoRegisterInterest(const std::string& serviceId);
     StdLogosResult discoUnregisterInterest(const std::string& serviceId);
-    StdLogosResult discoLookup(const std::string& serviceId, const std::string& serviceData = {});
+    StdLogosResult discoLookup(const std::string& serviceId, const std::string& serviceData);
     StdLogosResult discoRandomLookup();
 
     StdLogosResult peerstoreGetPeers();
     StdLogosResult peerstoreGetPeerInfo(const std::string& peerId);
-    StdLogosResult peerstoreAddPeer(const std::string& peerId,
-                                    const std::vector<std::string>& addrs,
-                                    const std::vector<std::string>& protos = {});
-    StdLogosResult peerstoreSetPeerAddresses(const std::string& peerId,
-                                             const std::vector<std::string>& addrs);
-    StdLogosResult peerstoreSetPeerProtocols(const std::string& peerId,
-                                             const std::vector<std::string>& protos);
+    StdLogosResult peerstoreAddPeer(const std::string& peerId, const std::vector<std::string>& addrs, const std::vector<std::string>& protos);
+    StdLogosResult peerstoreSetPeerAddresses(const std::string& peerId, const std::vector<std::string>& addrs);
+    StdLogosResult peerstoreSetPeerProtocols(const std::string& peerId, const std::vector<std::string>& protos);
     StdLogosResult peerstoreDeletePeer(const std::string& peerId);
 
     LogosMap collectMetrics();

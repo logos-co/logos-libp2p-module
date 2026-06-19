@@ -39,12 +39,12 @@ LOGOS_TEST(disco_advertise_and_lookup) {
     LOGOS_ASSERT_TRUE(nodeB.connectPeer(peerIdC, addrsC, 5000).success);
 
     std::string serviceId = "test-service";
-    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId).success);
+    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId, "").success);
     LOGOS_ASSERT_TRUE(nodeB.discoRegisterInterest(serviceId).success);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    auto res = nodeB.discoLookup(serviceId);
+    auto res = nodeB.discoLookup(serviceId, "");
     LOGOS_ASSERT_TRUE(res.success);
 
     auto records = res.value;
@@ -120,13 +120,13 @@ LOGOS_TEST(disco_start_stop_advertising) {
 
     std::string serviceId = "ephemeral-service";
 
-    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId).success);
+    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId, "").success);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     LOGOS_ASSERT_TRUE(nodeA.discoStopAdvertising(serviceId).success);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    auto res = nodeB.discoLookup(serviceId);
+    auto res = nodeB.discoLookup(serviceId, "");
     LOGOS_ASSERT_TRUE(res.success);
 
     auto records = res.value;

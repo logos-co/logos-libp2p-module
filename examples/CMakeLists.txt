@@ -1,6 +1,4 @@
 file(GLOB EXAMPLE_SOURCES CONFIGURE_DEPENDS *.cpp)
-# mix.cpp temporarily disabled — extracted to separate repo, no cbindings yet
-list(FILTER EXAMPLE_SOURCES EXCLUDE REGEX "/mix\\.cpp$")
 
 foreach(example_src ${EXAMPLE_SOURCES})
     get_filename_component(example_name ${example_src} NAME_WE)
@@ -13,6 +11,7 @@ foreach(example_src ${EXAMPLE_SOURCES})
     )
 
     target_include_directories(${target_name} PRIVATE
+        ${PROJECT_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/lib

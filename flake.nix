@@ -2,7 +2,7 @@
   description = "Logos Libp2p Module";
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder/fix/codegen-explicit-ctor";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/62524bee09b16bfbce2d1b9c4ecc3a51b98cd129";
     libp2p.url = "github:vacp2p/nim-libp2p";
 
     openmetrics-module = {
