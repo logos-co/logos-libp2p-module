@@ -39,13 +39,17 @@ cleanup() {
 trap cleanup EXIT
 
 dump_daemon_log() {
-    if [[ -n "$DAEMON_PID" ]] && kill -0 "$DAEMON_PID" 2>/dev/null; then
+    if [[ -z "$DAEMON_PID" ]]; then
+        echo "daemon never started" >&2
+    elif kill -0 "$DAEMON_PID" 2>/dev/null; then
         echo "daemon (pid $DAEMON_PID) still alive" >&2
     else
         echo "daemon (pid $DAEMON_PID) NOT alive" >&2
     fi
     echo "----- daemon log tail -----" >&2
-    tail -n 80 "$WORK/logs.txt" >&2 2>/dev/null || true
+    if [[ -f "$WORK/logs.txt" ]]; then
+        tail -n 80 "$WORK/logs.txt" >&2
+    fi
     echo "---------------------------" >&2
 }
 
@@ -58,7 +62,7 @@ wait_until() {
     done
     echo "timed out waiting for: $desc" >&2
     echo "----- last attempt output -----" >&2
-    "$@" >&2 2>&1 || true
+    "$@" >&2 || true
     dump_daemon_log
     return 1
 }
