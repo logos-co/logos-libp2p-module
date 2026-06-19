@@ -21,7 +21,11 @@ LogosMap Libp2pModuleImpl::collectMetrics() {
     const auto parsed = json::parse(text, nullptr, false);
     std::vector<Metric> series;
     if (parsed.is_array()) {
-        series = parsed.get<std::vector<Metric>>();
+        try {
+            series = parsed.get<std::vector<Metric>>();
+        } catch (const nlohmann::json::exception&) {
+            series.clear();
+        }
     }
 
     json payload;

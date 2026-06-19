@@ -65,7 +65,7 @@ LOGOS_TEST(metric_from_json_basic_fields) {
     LOGOS_ASSERT_TRUE(m.help == "Number of connected peers");
     LOGOS_ASSERT_EQ(m.value, 3.0);
     LOGOS_ASSERT_TRUE(m.labels.empty());
-    LOGOS_ASSERT_EQ(m.timestamp, 0.0);
+    LOGOS_ASSERT_EQ(m.timestamp, 0);
 }
 
 LOGOS_TEST(metric_from_json_flattens_label_pair_array) {
@@ -94,16 +94,16 @@ LOGOS_TEST(metric_from_json_handles_missing_labels) {
     })");
     const auto m = j.get<Metric>();
     LOGOS_ASSERT_TRUE(m.labels.empty());
-    LOGOS_ASSERT_EQ(m.timestamp, 0.0);
+    LOGOS_ASSERT_EQ(m.timestamp, 0);
 }
 
 LOGOS_TEST(metric_from_json_records_timestamp) {
     const auto j = json::parse(R"({
         "name": "x", "type": "gauge", "help": "",
-        "labels": [], "value": 1, "timestamp": 1700000000.5
+        "labels": [], "value": 1, "timestamp": 1700000000000
     })");
     const auto m = j.get<Metric>();
-    LOGOS_ASSERT_EQ(m.timestamp, 1700000000.5);
+    LOGOS_ASSERT_EQ(m.timestamp, 1700000000000);
 }
 
 LOGOS_TEST(metric_to_json_emits_labels_as_object) {
@@ -125,10 +125,10 @@ LOGOS_TEST(metric_to_json_keeps_nonzero_timestamp) {
     Metric m;
     m.name = "x";
     m.type = "gauge";
-    m.timestamp = 1700000000.0;
+    m.timestamp = 1700000000000;
     const json j = m;
     LOGOS_ASSERT_TRUE(j.contains("timestamp"));
-    LOGOS_ASSERT_EQ(j["timestamp"].get<double>(), 1700000000.0);
+    LOGOS_ASSERT_EQ(j["timestamp"].get<int64_t>(), 1700000000000);
 }
 
 LOGOS_TEST(metric_array_round_trips_through_payload_shape) {

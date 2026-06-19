@@ -72,15 +72,15 @@ inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPre
 // One metrics series, mirroring the JSON that nim-libp2p's libp2p_collect_metrics
 // emits. Cbind sends labels as `[{"name":..,"value":..}, ...]`; we flatten into
 // a map because openmetrics-module's renderer expects `labels` as a flat
-// `{key:value}` object (openmetrics_format.cpp:82). `timestamp` is the Unix-
-// seconds float from the registry; 0.0 means "unset" and is dropped on output.
+// `{key:value}` object (openmetrics_format.cpp:82). `timestamp` is Unix
+// milliseconds from the registry; 0 means "unset" and is dropped on output.
 struct Metric {
     std::string name;
     std::string type;
     std::string help;
     std::map<std::string, std::string> labels;
     double value = 0.0;
-    double timestamp = 0.0;
+    int64_t timestamp = 0;
 };
 
 inline void from_json(const nlohmann::json& j, Metric& m) {
@@ -95,10 +95,10 @@ inline void from_json(const nlohmann::json& j, Metric& m) {
                              lp.at("value").get<std::string>());
         }
     }
-    if (auto it = j.find("timestamp"); it != j.end() && it->is_number()) {
-        m.timestamp = it->get<double>();
+    if (auto it = j.find("timestamp"); it != j.end() && it->is_number_integer()) {
+        m.timestamp = it->get<int64_t>();
     } else {
-        m.timestamp = 0.0;
+        m.timestamp = 0;
     }
 }
 
@@ -110,7 +110,7 @@ inline void to_json(nlohmann::json& j, const Metric& m) {
         {"labels", m.labels},
         {"value", m.value},
     };
-    if (m.timestamp != 0.0) j["timestamp"] = m.timestamp;
+    if (m.timestamp != 0) j["timestamp"] = m.timestamp;
 }
 
 class Libp2pModuleImpl {
@@ -264,7 +264,12 @@ private:
         auto f = p->get_future();
         int ret = invoke(p);
         if (ret != RET_OK) {
-            delete p;
+            // A synchronous failure (failWithMsg) fires the callback, which owns
+            // and deletes p, before returning the error; checkLibParams returns
+            // without firing it. Reclaim p only when the callback didn't run.
+            if (f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+                delete p;
+            }
             return {false, {}, std::string(errPrefix) +
                 " (ret=" + std::to_string(ret) + ")"};
         }
