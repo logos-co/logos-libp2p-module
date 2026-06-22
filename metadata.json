@@ -15,6 +15,29 @@
     "include": ["libp2p.so", "libp2p.dylib", "libp2p.dll"],
     "capabilities": [],
 
+    "config": {
+        "env": "LIBP2P_MODULE_CONFIG",
+        "description": "JSON config — inline, or a path to a JSON file — overlaid onto the default options when the module is loaded. Every key is optional; an omitted key keeps its default.",
+        "schema": {
+            "addrs": "array<multiaddr string> — listen addresses",
+            "bootstrapNodes": "array<{ peerId: string, addrs: array<multiaddr string> }> — DHT bootstrap peers",
+            "transport": "string — \"tcp\" | \"quic\" (\"quic-v1\" accepted as an alias for \"quic\")",
+            "maxConnections": "int",
+            "maxInConnections": "int",
+            "maxOutConnections": "int",
+            "maxConnsPerPeer": "int",
+            "autonat": "bool",
+            "autonatV2": "bool",
+            "autonatV2Server": "bool",
+            "circuitRelay": "bool",
+            "circuitRelayClient": "bool",
+            "gossipsubTriggerSelf": "bool",
+            "mountGossipsub": "bool",
+            "mountKad": "bool",
+            "mountServiceDiscovery": "bool"
+        }
+    },
+
     "nix": {
         "packages": {
             "runtime": ["nlohmann_json"]
