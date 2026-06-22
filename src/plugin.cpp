@@ -69,6 +69,8 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     if (m_addrs.empty()) {
         m_addrs.push_back(defaultListenAddr(options.transport));
     }
+    m_libp2pConfig.addrs = m_addrsPtr.data();
+    m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
 
     m_addrsPtr.reserve(m_addrs.size());
     for (const auto& addr : m_addrs) {
