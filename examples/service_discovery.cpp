@@ -1,97 +1,137 @@
 #include <cstdio>
 #include <thread>
 #include <chrono>
+#include <string>
+#include <utility>
+#include <vector>
 #include "plugin.h"
+
+static std::pair<std::string, std::vector<std::string>> peerInfoOf(Libp2pModuleImpl& node)
+{
+    auto info = node.peerInfo().value;
+    std::string peerId = info["peerId"].get<std::string>();
+    std::vector<std::string> addrs;
+    for (const auto& a : info["addrs"]) addrs.push_back(a.get<std::string>());
+    return {peerId, addrs};
+}
+
+static nlohmann::json lookupUntilFound(Libp2pModuleImpl& node,
+                                       const std::string& serviceId,
+                                       const std::string& serviceData,
+                                       int attempts, int delayMs)
+{
+    for (int i = 0; i < attempts; ++i) {
+        auto res = node.discoLookup(serviceId, serviceData);
+        if (res.success && !res.value.empty()) {
+            return res.value;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
+    }
+    return nlohmann::json::array();
+}
 
 int main()
 {
-    Libp2pModuleImpl nodeA(Libp2pModuleOptions{ .mountServiceDiscovery = true });
-    Libp2pModuleImpl nodeB(Libp2pModuleOptions{ .mountServiceDiscovery = true });
-
     printf("Starting nodes...\n");
 
-    if (!nodeA.start().success) {
-        fprintf(stderr, "Node A failed to start\n");
+    Libp2pModuleImpl bootstrap;
+    if (!bootstrap.start().success) {
+        fprintf(stderr, "Bootstrap node failed to start\n");
+        return 1;
+    }
+    if (!bootstrap.discoStart().success) {
+        fprintf(stderr, "Bootstrap node: discoStart failed\n");
+        return 1;
+    }
+    auto [bootstrapId, bootstrapAddrs] = peerInfoOf(bootstrap);
+
+    // connectPeer below forces an immediate connection instead of waiting on background bootstrap.
+    Libp2pModuleImpl advertiser(Libp2pModuleOptions{
+        .bootstrapNodes = { {bootstrapId, bootstrapAddrs} }
+    });
+    if (!advertiser.start().success) {
+        fprintf(stderr, "Advertiser failed to start\n");
+        return 1;
+    }
+    if (!advertiser.discoStart().success) {
+        fprintf(stderr, "Advertiser: discoStart failed\n");
+        return 1;
+    }
+    if (!advertiser.connectPeer(bootstrapId, bootstrapAddrs, 5000).success) {
+        fprintf(stderr, "Advertiser failed to connect to bootstrap\n");
         return 1;
     }
 
-    if (!nodeB.start().success) {
-        fprintf(stderr, "Node B failed to start\n");
+    Libp2pModuleImpl discoverer(Libp2pModuleOptions{
+        .bootstrapNodes = { {bootstrapId, bootstrapAddrs} }
+    });
+    if (!discoverer.start().success) {
+        fprintf(stderr, "Discoverer failed to start\n");
         return 1;
     }
-
-    if (!nodeA.discoStart().success) {
-        fprintf(stderr, "Node A: discoStart failed\n");
+    if (!discoverer.discoStart().success) {
+        fprintf(stderr, "Discoverer: discoStart failed\n");
         return 1;
     }
-
-    if (!nodeB.discoStart().success) {
-        fprintf(stderr, "Node B: discoStart failed\n");
-        return 1;
-    }
-
-    auto infoA = nodeA.peerInfo().value;
-    std::string peerIdA = infoA["peerId"].get<std::string>();
-    std::vector<std::string> addrsA;
-    for (const auto& a : infoA["addrs"]) addrsA.push_back(a.get<std::string>());
-
-    if (!nodeB.connectPeer(peerIdA, addrsA, 500).success) {
-        fprintf(stderr, "Node B failed to connect to Node A\n");
+    if (!discoverer.connectPeer(bootstrapId, bootstrapAddrs, 5000).success) {
+        fprintf(stderr, "Discoverer failed to connect to bootstrap\n");
         return 1;
     }
 
     std::string serviceId = "demo-service";
     std::string serviceData = "version=1";
 
-    printf("Node A: starting advertising %s\n", serviceId.c_str());
-    if (!nodeA.discoStartAdvertising(serviceId, serviceData).success) {
-        fprintf(stderr, "Node A: discoStartAdvertising failed\n");
+    printf("Advertiser: advertising %s\n", serviceId.c_str());
+    if (!advertiser.discoStartAdvertising(serviceId, serviceData).success) {
+        fprintf(stderr, "Advertiser: discoStartAdvertising failed\n");
         return 1;
     }
 
-    printf("Node B: registering interest in %s\n", serviceId.c_str());
-    if (!nodeB.discoRegisterInterest(serviceId).success) {
-        fprintf(stderr, "Node B: discoRegisterInterest failed\n");
+    printf("Discoverer: registering interest in %s\n", serviceId.c_str());
+    if (!discoverer.discoRegisterInterest(serviceId).success) {
+        fprintf(stderr, "Discoverer: discoRegisterInterest failed\n");
         return 1;
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    printf("Discoverer: looking up %s\n", serviceId.c_str());
+    constexpr int lookupAttempts = 20;
+    constexpr int lookupDelayMs = 250; // ~5s total to let the advertisement propagate
+    auto records = lookupUntilFound(discoverer, serviceId, serviceData, lookupAttempts, lookupDelayMs);
 
-    printf("Node B: looking up %s\n", serviceId.c_str());
-    auto res = nodeB.discoLookup(serviceId, serviceData);
-
-    if (!res.success) {
-        printf("Lookup returned no results\n");
-    } else {
-        auto records = res.value;
-        printf("Node B found %zu peer(s) advertising %s\n", records.size(), serviceId.c_str());
-        for (const auto& rec : records) {
-            printf("  peer: %s seq: %llu addrs: %zu\n",
-                   rec["peerId"].get<std::string>().c_str(),
-                   (unsigned long long)rec["seqNo"].get<uint64_t>(),
-                   rec["addrs"].size());
-        }
+    printf("Discoverer found %zu peer(s) advertising %s\n", records.size(), serviceId.c_str());
+    for (const auto& rec : records) {
+        printf("  peer: %s seq: %llu addrs: %zu\n",
+               rec["peerId"].get<std::string>().c_str(),
+               (unsigned long long)rec["seqNo"].get<uint64_t>(),
+               rec["addrs"].size());
     }
 
-    printf("Node A: random lookup\n");
-    auto randRes = nodeA.discoRandomLookup();
+    std::string advertiserId = peerInfoOf(advertiser).first;
+    bool matched = !records.empty() && records[0]["peerId"].get<std::string>() == advertiserId;
+    printf(matched ? "Discoverer matched the advertiser: %s\n"
+                   : "Discoverer did not find the advertiser (%s) yet\n",
+           advertiserId.c_str());
+
+    printf("Advertiser: random lookup\n");
+    auto randRes = advertiser.discoRandomLookup();
     if (randRes.success) {
         printf("Random lookup returned %zu peer(s)\n", randRes.value.size());
     }
 
-    printf("Node B: unregistering interest in %s\n", serviceId.c_str());
-    nodeB.discoUnregisterInterest(serviceId);
+    printf("Discoverer: unregistering interest in %s\n", serviceId.c_str());
+    discoverer.discoUnregisterInterest(serviceId);
 
-    printf("Node A: stopping advertising %s\n", serviceId.c_str());
-    nodeA.discoStopAdvertising(serviceId);
+    printf("Advertiser: stopping advertising %s\n", serviceId.c_str());
+    advertiser.discoStopAdvertising(serviceId);
 
-    nodeA.discoStop();
-    nodeB.discoStop();
+    discoverer.discoStop();
+    advertiser.discoStop();
+    bootstrap.discoStop();
 
-    nodeA.stop();
-    nodeB.stop();
+    discoverer.stop();
+    advertiser.stop();
+    bootstrap.stop();
 
     printf("Done\n");
-
     return 0;
 }

@@ -13,6 +13,35 @@ Check the examples/ directory for complete usage demonstrations.
 
 ---
 
+# Configuration
+
+When the module is loaded by `logoscore`, it is constructed without arguments, so
+options are supplied through the `LIBP2P_MODULE_CONFIG` environment variable — set
+to either inline JSON or a path to a JSON file. The config is overlaid onto the
+defaults at load time; every key is optional, and an omitted key keeps its default.
+If the config is unset, unreadable, not valid JSON, or has a wrong-typed field, the
+module logs a warning and falls back to the full default options.
+
+```bash
+# inline
+export LIBP2P_MODULE_CONFIG='{
+  "addrs": ["/ip4/0.0.0.0/tcp/9000"],
+  "bootstrapNodes": [
+    { "peerId": "16Uiu2...", "addrs": ["/ip4/1.2.3.4/tcp/9000"] }
+  ],
+  "transport": "tcp"
+}'
+
+# or a file
+export LIBP2P_MODULE_CONFIG=/etc/logos/libp2p.json
+```
+
+See the `config` section of [`metadata.json`](./metadata.json) for the full schema.
+Code that constructs `Libp2pModuleImpl` directly (examples, tests) passes
+`Libp2pModuleOptions` to the constructor and bypasses this path.
+
+---
+
 # Building
 Currently the recommended and supported building way is using Nix
 
