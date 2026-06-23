@@ -81,3 +81,38 @@ StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
             return parseJsonResponse(r.message, "discoRandomLookup");
         });
 }
+
+/// Builds and signs the node's own Extended Peer Record (XPR) with its private
+/// key, returning the protobuf-encoded signed bytes. Empty `addrs` falls back
+/// to the node's listen addresses; `seqNo` of 0 defaults to the current time.
+StdLogosResult Libp2pModuleImpl::createXpr(
+    const std::vector<std::string>& addrs,
+    const std::vector<std::pair<std::string, std::string>>& services,
+    uint64_t seqNo)
+{
+    std::vector<const char*> addrPtrs;
+    addrPtrs.reserve(addrs.size());
+    for (const auto& addr : addrs) {
+        addrPtrs.push_back(addr.c_str());
+    }
+
+    std::vector<Libp2pServiceInfo> serviceInfos;
+    serviceInfos.reserve(services.size());
+    for (const auto& [id, data] : services) {
+        serviceInfos.push_back(Libp2pServiceInfo{
+            .id = const_cast<char*>(id.c_str()),
+            .data = data.empty() ? nullptr : reinterpret_cast<const uint8_t*>(data.data()),
+            .dataLen = data.size()});
+    }
+
+    return callSyncWith("Failed to create XPR",
+        [&](SyncPromise* p) {
+            return libp2p_create_xpr(
+                ctx, addrPtrs.empty() ? nullptr : addrPtrs.data(), addrPtrs.size(),
+                serviceInfos.empty() ? nullptr : serviceInfos.data(), serviceInfos.size(),
+                seqNo, &Libp2pModuleImpl::promiseBufferCallback, p);
+        },
+        [](const SyncResult& r) -> StdLogosResult {
+            return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
+        });
+}

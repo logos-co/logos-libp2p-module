@@ -28,6 +28,7 @@ use cases using the `logos-libp2p-module`.
   - Advertising a named service (`discoStartAdvertising`)
   - Registering interest and looking it up from another node (`discoRegisterInterest` / `discoLookup`)
   - Resolving the advertiser's peer record (peerId, seqNo, addrs)
+  - Building a signed Extended Peer Record for the node's own services (`createXpr`)
 
 ## Building
 Enter the development shell and configure cmake

@@ -262,6 +262,10 @@ public:
     StdLogosResult discoUnregisterInterest(const std::string& serviceId);
     StdLogosResult discoLookup(const std::string& serviceId, const std::string& serviceData);
     StdLogosResult discoRandomLookup();
+    // Builds and signs the node's own Extended Peer Record; returns the encoded bytes.
+    StdLogosResult createXpr(const std::vector<std::string>& addrs,
+                             const std::vector<std::pair<std::string, std::string>>& services,
+                             uint64_t seqNo);
 
     StdLogosResult peerstoreGetPeers();
     StdLogosResult peerstoreGetPeerInfo(const std::string& peerId);

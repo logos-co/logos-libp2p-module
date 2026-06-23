@@ -163,3 +163,30 @@ LOGOS_TEST(disco_random_lookup) {
     LOGOS_ASSERT_TRUE(nodeA.stop().success);
     LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
+
+LOGOS_TEST(create_xpr) {
+    Libp2pModuleImpl node(discoOptions());
+    LOGOS_ASSERT_TRUE(node.start().success);
+
+    auto [peerId, addrs] = getPeerInfoPair(node);
+
+    std::vector<std::pair<std::string, std::string>> services = {
+        {"chat", std::string{0x01, 0x02, 0x03}},
+        {"file-share", ""},
+    };
+
+    // Explicit addrs and a fixed seqNo exercise the address marshalling and the
+    // caller-provided-seqNo branch.
+    auto res = node.createXpr(addrs, services, 42);
+    LOGOS_ASSERT_TRUE(res.success);
+    LOGOS_ASSERT_FALSE(res.value.get<std::string>().empty());
+
+    // Empty addrs falls back to the node's listen addresses; seqNo 0 defaults
+    // to the current unix time. Distinct inputs yield distinct signed bytes.
+    auto resDefaults = node.createXpr({}, {}, 0);
+    LOGOS_ASSERT_TRUE(resDefaults.success);
+    LOGOS_ASSERT_FALSE(resDefaults.value.get<std::string>().empty());
+    LOGOS_ASSERT_TRUE(res.value.get<std::string>() != resDefaults.value.get<std::string>());
+
+    LOGOS_ASSERT_TRUE(node.stop().success);
+}
