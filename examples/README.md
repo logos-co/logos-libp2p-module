@@ -23,6 +23,12 @@ use cases using the `logos-libp2p-module`.
   - Publishing to that topic
   - Receiving the message on the subscribed topic
 
+- [Service Discovery](service_discovery.cpp) — Demonstrates the Service Discovery API over a multi-node DHT with a bootstrap node:
+  - Anchoring a DHT with a bootstrap node
+  - Advertising a named service (`discoStartAdvertising`)
+  - Registering interest and looking it up from another node (`discoRegisterInterest` / `discoLookup`)
+  - Resolving the advertiser's peer record (peerId, seqNo, addrs)
+
 ## Building
 Enter the development shell and configure cmake
 
@@ -43,5 +49,6 @@ After building, run the executable from the build directory:
 ./build/examples/example_ping
 ./build/examples/example_kademlia
 ./build/examples/example_gossipsub
+./build/examples/example_service_discovery
 ```
 
