@@ -1,5 +1,6 @@
 #include <logos_test.h>
 #include <plugin.h>
+#include "test_helpers.h"
 
 LOGOS_TEST(sync_connect_disconnect_peer) {
     Libp2pModuleImpl plugin;
@@ -169,7 +170,7 @@ LOGOS_TEST(sync_kad_get_put_value) {
 
     auto res = plugin.kadGetValue(key, 1);
     LOGOS_ASSERT_TRUE(res.success);
-    LOGOS_ASSERT_TRUE(res.value.get<std::string>() == value);
+    LOGOS_ASSERT_TRUE(base64Decode(res.value.get<std::string>()) == value);
 
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }

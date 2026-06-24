@@ -20,7 +20,7 @@ LOGOS_TEST(kad_put_get) {
     auto result = nodeB.kadGetValue(key, quorum);
     LOGOS_ASSERT_TRUE(result.success);
 
-    std::string record = result.value.get<std::string>();
+    std::string record = base64Decode(result.value.get<std::string>());
     LOGOS_ASSERT_TRUE(record == value);
 
     LOGOS_ASSERT_TRUE(nodeA.stop().success);

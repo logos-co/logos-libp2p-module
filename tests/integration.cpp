@@ -76,7 +76,7 @@ LOGOS_TEST(integration_reconnect_after_disconnect) {
 
     auto readResult = nodeA.streamReadExactly(streamId, PING_SIZE);
     LOGOS_ASSERT_TRUE(readResult.success);
-    LOGOS_ASSERT_TRUE(readResult.value.get<std::string>() == payload);
+    LOGOS_ASSERT_TRUE(base64Decode(readResult.value.get<std::string>()) == payload);
 
     LOGOS_ASSERT_TRUE(nodeA.streamCloseWithEOF(streamId).success);
     LOGOS_ASSERT_TRUE(nodeA.streamRelease(streamId).success);
@@ -119,11 +119,11 @@ LOGOS_TEST(integration_multiple_streams_on_same_connection) {
 
     auto read1 = nodeA.streamReadExactly(stream1, PING_SIZE);
     LOGOS_ASSERT_TRUE(read1.success);
-    LOGOS_ASSERT_TRUE(read1.value.get<std::string>() == payload1);
+    LOGOS_ASSERT_TRUE(base64Decode(read1.value.get<std::string>()) == payload1);
 
     auto read2 = nodeA.streamReadExactly(stream2, PING_SIZE);
     LOGOS_ASSERT_TRUE(read2.success);
-    LOGOS_ASSERT_TRUE(read2.value.get<std::string>() == payload2);
+    LOGOS_ASSERT_TRUE(base64Decode(read2.value.get<std::string>()) == payload2);
 
     LOGOS_ASSERT_TRUE(nodeA.streamCloseWithEOF(stream1).success);
     LOGOS_ASSERT_TRUE(nodeA.streamRelease(stream1).success);
@@ -159,7 +159,7 @@ LOGOS_TEST(integration_direct_dial_stream_exchange) {
 
     auto readResult = nodeA.streamReadExactly(streamId, PING_SIZE);
     LOGOS_ASSERT_TRUE(readResult.success);
-    LOGOS_ASSERT_TRUE(readResult.value.get<std::string>() == payload);
+    LOGOS_ASSERT_TRUE(base64Decode(readResult.value.get<std::string>()) == payload);
 
     LOGOS_ASSERT_TRUE(nodeA.streamCloseWithEOF(streamId).success);
     LOGOS_ASSERT_TRUE(nodeA.streamRelease(streamId).success);
@@ -205,7 +205,7 @@ LOGOS_TEST(integration_circuit_relay_routing) {
 
     auto readResult = nodeA.streamReadExactly(streamId, PING_SIZE);
     LOGOS_ASSERT_TRUE(readResult.success);
-    LOGOS_ASSERT_TRUE(readResult.value.get<std::string>() == payload);
+    LOGOS_ASSERT_TRUE(base64Decode(readResult.value.get<std::string>()) == payload);
 
     LOGOS_ASSERT_TRUE(nodeA.streamCloseWithEOF(streamId).success);
     LOGOS_ASSERT_TRUE(nodeA.streamRelease(streamId).success);
@@ -241,7 +241,7 @@ LOGOS_TEST(integration_lp_stream_exchange) {
 
     auto readResult = nodeA.streamReadLp(streamId, 4096);
     LOGOS_ASSERT_TRUE(readResult.success);
-    LOGOS_ASSERT_TRUE(readResult.value.get<std::string>() == payload);
+    LOGOS_ASSERT_TRUE(base64Decode(readResult.value.get<std::string>()) == payload);
 
     LOGOS_ASSERT_TRUE(nodeA.streamCloseWithEOF(streamId).success);
     LOGOS_ASSERT_TRUE(nodeA.streamRelease(streamId).success);
@@ -278,7 +278,7 @@ LOGOS_TEST(integration_quic_ping_round_trip) {
 
     auto readResult = nodeA.streamReadExactly(streamId, PING_SIZE);
     LOGOS_ASSERT_TRUE(readResult.success);
-    LOGOS_ASSERT_TRUE(readResult.value.get<std::string>() == payload);
+    LOGOS_ASSERT_TRUE(base64Decode(readResult.value.get<std::string>()) == payload);
 
     LOGOS_ASSERT_TRUE(nodeA.streamCloseWithEOF(streamId).success);
     LOGOS_ASSERT_TRUE(nodeA.streamRelease(streamId).success);
