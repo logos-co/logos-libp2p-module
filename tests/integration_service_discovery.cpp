@@ -175,18 +175,19 @@ LOGOS_TEST(create_xpr) {
         {"file-share", ""},
     };
 
-    // Explicit addrs and a fixed seqNo exercise the address marshalling and the
-    // caller-provided-seqNo branch.
     auto res = node.createXpr(addrs, services, 42);
     LOGOS_ASSERT_TRUE(res.success);
     LOGOS_ASSERT_FALSE(res.value.get<std::string>().empty());
 
-    // Empty addrs falls back to the node's listen addresses; seqNo 0 defaults
-    // to the current unix time. Distinct inputs yield distinct signed bytes.
+    // Only seqNo changes, so a differing payload isolates the seqNo branch.
+    auto resSeq = node.createXpr(addrs, services, 43);
+    LOGOS_ASSERT_TRUE(resSeq.success);
+    LOGOS_ASSERT_TRUE(res.value.get<std::string>() != resSeq.value.get<std::string>());
+
+    // Empty addrs falls back to listen addresses; seqNo 0 uses current time.
     auto resDefaults = node.createXpr({}, {}, 0);
     LOGOS_ASSERT_TRUE(resDefaults.success);
     LOGOS_ASSERT_FALSE(resDefaults.value.get<std::string>().empty());
-    LOGOS_ASSERT_TRUE(res.value.get<std::string>() != resDefaults.value.get<std::string>());
 
     LOGOS_ASSERT_TRUE(node.stop().success);
 }

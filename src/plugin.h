@@ -154,6 +154,12 @@ inline SyncResult awaitResult(std::future<SyncResult>& f, int timeoutMs = 10000)
     return {false, "timeout", {}, nullptr};
 }
 
+// Wraps a resolved buffer as a successful result. The value is a raw byte
+// container (not UTF-8 text), matching publicKey/kadGetValue/stream reads.
+inline StdLogosResult bufferToResult(const SyncResult& r) {
+    return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
+}
+
 // Non-throwing JSON parse — malformed cbinding output yields a failed result
 // instead of propagating an exception.
 inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPrefix) {
@@ -262,7 +268,6 @@ public:
     StdLogosResult discoUnregisterInterest(const std::string& serviceId);
     StdLogosResult discoLookup(const std::string& serviceId, const std::string& serviceData);
     StdLogosResult discoRandomLookup();
-    // Builds and signs the node's own Extended Peer Record; returns the encoded bytes.
     StdLogosResult createXpr(const std::vector<std::string>& addrs,
                              const std::vector<std::pair<std::string, std::string>>& services,
                              uint64_t seqNo);

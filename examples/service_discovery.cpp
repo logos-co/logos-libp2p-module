@@ -124,7 +124,9 @@ int main()
         {"chat", std::string{0x01, 0x02, 0x03}},
     };
     auto xpr = advertiser.createXpr({}, xprServices, 0);
-    if (xpr.success) {
+    if (!xpr.success) {
+        printf("Failed to create XPR: %s\n", xpr.error.c_str());
+    } else {
         printf("Signed XPR is %zu bytes\n", xpr.value.get<std::string>().size());
     }
 

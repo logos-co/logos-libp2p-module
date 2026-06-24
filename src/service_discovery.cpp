@@ -82,9 +82,8 @@ StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
         });
 }
 
-/// Builds and signs the node's own Extended Peer Record (XPR) with its private
-/// key, returning the protobuf-encoded signed bytes. Empty `addrs` falls back
-/// to the node's listen addresses; `seqNo` of 0 defaults to the current time.
+/// Builds and signs the node's own Extended Peer Record, returning the signed
+/// protobuf bytes. Empty `addrs` uses the listen addresses; `seqNo` 0 uses now.
 StdLogosResult Libp2pModuleImpl::createXpr(
     const std::vector<std::string>& addrs,
     const std::vector<std::pair<std::string, std::string>>& services,
@@ -112,7 +111,5 @@ StdLogosResult Libp2pModuleImpl::createXpr(
                 serviceInfos.empty() ? nullptr : serviceInfos.data(), serviceInfos.size(),
                 seqNo, &Libp2pModuleImpl::promiseBufferCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
-        });
+        bufferToResult);
 }
