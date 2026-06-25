@@ -340,6 +340,12 @@ private:
     static void mountCompleteCallback(int ret, const char* msg, size_t len, void* userData);
     static void eventCallback(int ret, const char* msg, size_t len, void* userData);
 
+    using EmitEventFn = std::function<void(const std::string& eventName, const std::string& data)>;
+
+    // Lock-guarded snapshot of `emitEvent`, taken on the caller thread before any worker can emit, so worker threads never read the public field unsynchronized.
+    mutable std::shared_mutex m_emitEventLock;
+    EmitEventFn m_emitEventSnapshot;
+    void publishEmitEvent();
     void emitEventSafe(const std::string& name, const std::string& data) const;
 
     // Wraps the new-promise / invoke / await / clean-up dance shared by every

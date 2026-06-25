@@ -38,10 +38,21 @@ void Libp2pModuleImpl::promiseBufferCallback(int ret, const uint8_t* data, size_
     delete p;
 }
 
+void Libp2pModuleImpl::publishEmitEvent() {
+    std::unique_lock<std::shared_mutex> lock(m_emitEventLock);
+    m_emitEventSnapshot = emitEvent;
+}
+
 void Libp2pModuleImpl::emitEventSafe(const std::string& name, const std::string& data) const {
-    if (emitEvent) {
-        emitEvent(name, data);
+    EmitEventFn fn;
+    {
+        std::shared_lock<std::shared_mutex> lock(m_emitEventLock);
+        fn = m_emitEventSnapshot;
     }
+    if (!fn) {
+        return;
+    }
+    fn(name, data);
 }
 
 Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
@@ -185,6 +196,7 @@ Libp2pModuleImpl::~Libp2pModuleImpl() {
 }
 
 StdLogosResult Libp2pModuleImpl::start() {
+    publishEmitEvent();
     return callSync("Failed to start libp2p", [&](SyncPromise* p) {
         return libp2p_start(ctx, &Libp2pModuleImpl::promiseCallback, p);
     });
@@ -248,6 +260,7 @@ void Libp2pModuleImpl::eventCallback(int ret, const char* msg, size_t len, void*
 
 bool Libp2pModuleImpl::setEventCallback() {
     if (!ctx) return false;
+    publishEmitEvent();
     libp2p_set_event_callback(ctx, &Libp2pModuleImpl::eventCallback, this);
     return true;
 }
