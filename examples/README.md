@@ -27,7 +27,8 @@ use cases using the `logos-libp2p-module`.
   - Anchoring a DHT with a bootstrap node
   - Advertising a named service (`discoStartAdvertising`)
   - Registering interest and looking it up from another node (`discoRegisterInterest` / `discoLookup`)
-  - Resolving the advertiser's peer record (peerId, seqNo, addrs, services)
+  - Resolving the advertiser's peer record (peerId, seqNo, addrs)
+  - Building a signed Extended Peer Record for the node's own services (`createXpr`)
 
   `discoLookup` (and `discoRandomLookup`) return a JSON array of peer records. Each record describes one advertiser:
 

@@ -130,6 +130,18 @@ int main()
         printf("Random lookup returned %zu peer(s)\n", randRes.value.size());
     }
 
+    printf("Advertiser: building a signed Extended Peer Record\n");
+    std::vector<std::pair<std::string, std::string>> xprServices = {
+        {serviceId, serviceData},
+        {"chat", std::string{0x01, 0x02, 0x03}},
+    };
+    auto xpr = advertiser.createXpr({}, xprServices, 0);
+    if (!xpr.success) {
+        printf("Failed to create XPR: %s\n", xpr.error.c_str());
+    } else {
+        printf("Signed XPR is %zu bytes\n", xpr.value.get<std::string>().size());
+    }
+
     printf("Discoverer: unregistering interest in %s\n", serviceId.c_str());
     discoverer.discoUnregisterInterest(serviceId);
 
