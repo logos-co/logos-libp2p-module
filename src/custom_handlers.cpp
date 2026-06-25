@@ -39,6 +39,7 @@ StdLogosResult Libp2pModuleImpl::mountProtocol(const std::string& proto) {
     // Without emitEvent, protocolHandler would register a stream that no caller
     // could ever read, close, or release — leaking the stream.
     if (!emitEvent) return {false, {}, "emitEvent must be set before mounting a protocol"};
+    publishEmitEvent();
 
     auto handlerCtx = std::make_unique<ProtocolHandlerCtx>();
     handlerCtx->instance = this;
