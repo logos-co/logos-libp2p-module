@@ -23,13 +23,12 @@ json extendedRecordToJson(const Libp2pExtendedPeerRecord& rec) {
         for (size_t s = 0; s < rec.servicesLen; ++s) {
             json svc;
             svc["id"] = rec.services[s].id ? rec.services[s].id : "";
+            std::vector<uint8_t> data;
             if (rec.services[s].data && rec.services[s].dataLen > 0) {
-                svc["data"] = std::string(
-                    reinterpret_cast<const char*>(rec.services[s].data),
-                    rec.services[s].dataLen);
-            } else {
-                svc["data"] = "";
+                data.assign(rec.services[s].data,
+                            rec.services[s].data + rec.services[s].dataLen);
             }
+            svc["data"] = base64Encode(data);
             services.push_back(svc);
         }
     }

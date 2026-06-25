@@ -117,6 +117,8 @@ StdLogosResult Libp2pModuleImpl::createXpr(
 /// Verifies a signed XPR's signature and returns the decoded record (peerId,
 /// seqNo, addrs, services). `xpr` is the signed protobuf bytes produced by
 /// createXpr; a bad signature or malformed payload yields a failed result.
+/// Each service's `data` is base64-encoded, since it is arbitrary bytes that
+/// may not be valid UTF-8.
 StdLogosResult Libp2pModuleImpl::decodeXpr(const std::string& xpr) {
     if (xpr.empty()) return {false, {}, "decodeXpr: empty XPR"};
 
