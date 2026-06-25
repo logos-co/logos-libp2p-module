@@ -44,6 +44,11 @@ struct Libp2pModuleOptions {
     bool mountKad = true;
     bool mountServiceDiscovery = true;
 
+    // Raw private key bytes for a stable peer identity; empty generates a fresh key.
+    std::vector<uint8_t> privKey = {};
+    // Scheme for the generated key; ignored when privKey is supplied.
+    int keyType = LIBP2P_PK_SECP256K1;
+
     /// Builds options from the LIBP2P_MODULE_CONFIG deployment config (codegen
     /// default-constructs a loaded module). See readme; absent/invalid → defaults.
     static Libp2pModuleOptions load();
@@ -84,6 +89,40 @@ inline int parseTransport(const nlohmann::json& j, int fallback) {
     return fallback;
 }
 
+inline int parseKeyType(const nlohmann::json& j, int fallback) {
+    auto it = j.find("keyType");
+    if (it == j.end() || !it->is_string()) {
+        return fallback;
+    }
+    std::string t = it->get<std::string>();
+    if (t == "rsa") return LIBP2P_PK_RSA;
+    if (t == "ed25519") return LIBP2P_PK_ED25519;
+    if (t == "secp256k1") return LIBP2P_PK_SECP256K1;
+    if (t == "ecdsa") return LIBP2P_PK_ECDSA;
+    return fallback;
+}
+
+inline int hexNibble(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    throw std::invalid_argument("privKey contains a non-hex character");
+}
+
+/// Decodes a hex string into bytes. Throws std::invalid_argument on odd length
+/// or a non-hex character; load() catches it and falls back to defaults.
+inline std::vector<uint8_t> decodeHex(const std::string& hex) {
+    if (hex.size() % 2 != 0) {
+        throw std::invalid_argument("privKey hex length must be even");
+    }
+    std::vector<uint8_t> out;
+    out.reserve(hex.size() / 2);
+    for (size_t i = 0; i < hex.size(); i += 2) {
+        out.push_back(static_cast<uint8_t>((hexNibble(hex[i]) << 4) | hexNibble(hex[i + 1])));
+    }
+    return out;
+}
+
 /// Overlays present keys onto `o`. Throws nlohmann type_error on a wrong-typed
 /// field; load() catches it and falls back to defaults.
 inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
@@ -99,6 +138,10 @@ inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
         }
     }
     o.transport = parseTransport(j, o.transport);
+    o.keyType = parseKeyType(j, o.keyType);
+    if (auto it = j.find("privKey"); it != j.end() && it->is_string()) {
+        o.privKey = decodeHex(it->get<std::string>());
+    }
     o.autonat = j.value("autonat", o.autonat);
     o.autonatV2 = j.value("autonatV2", o.autonatV2);
     o.autonatV2Server = j.value("autonatV2Server", o.autonatV2Server);
@@ -208,6 +251,39 @@ inline void to_json(nlohmann::json& j, const Metric& m) {
     if (m.timestamp != 0) j["timestamp"] = m.timestamp;
 }
 
+/// Allocator that scrubs memory before releasing it, so private key bytes don't
+/// linger in the heap after the holding vector is reallocated or destroyed. The
+/// volatile writes are not elided by the optimizer, unlike a plain memset.
+template <class T>
+struct ScrubbingAllocator {
+    using value_type = T;
+
+    ScrubbingAllocator() noexcept = default;
+    template <class U>
+    ScrubbingAllocator(const ScrubbingAllocator<U>&) noexcept {}
+
+    T* allocate(std::size_t n) { return std::allocator<T>{}.allocate(n); }
+
+    void deallocate(T* p, std::size_t n) noexcept {
+        volatile unsigned char* vp = reinterpret_cast<volatile unsigned char*>(p);
+        for (std::size_t i = 0; i < n * sizeof(T); ++i) {
+            vp[i] = 0;
+        }
+        std::allocator<T>{}.deallocate(p, n);
+    }
+};
+
+template <class T, class U>
+bool operator==(const ScrubbingAllocator<T>&, const ScrubbingAllocator<U>&) noexcept {
+    return true;
+}
+template <class T, class U>
+bool operator!=(const ScrubbingAllocator<T>&, const ScrubbingAllocator<U>&) noexcept {
+    return false;
+}
+
+using SecureBytes = std::vector<uint8_t, ScrubbingAllocator<uint8_t>>;
+
 class Libp2pModuleImpl {
 public:
     Libp2pModuleImpl(const Libp2pModuleOptions& options = Libp2pModuleOptions::load());
@@ -289,7 +365,9 @@ private:
     std::vector<std::vector<const char*>> m_addrPtrStorage;
     std::vector<libp2p_bootstrap_node_t> m_bootstrapCNodes;
 
-    std::vector<uint8_t> m_privKey;
+    SecureBytes m_privKey;
+
+    StdLogosResult generatePrivateKey(int scheme);
 
     // Map guards lookup; entry->mtx guards the pointee. Ops take shared,
     // release takes exclusive and flips `released`.

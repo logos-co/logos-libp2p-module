@@ -44,6 +44,69 @@ LOGOS_TEST(config_from_json_overlay) {
     LOGOS_ASSERT_EQ(opts.maxInConnections, 25);
 }
 
+LOGOS_TEST(config_from_json_key_type_and_priv_key) {
+    auto j = nlohmann::json::parse(R"({
+        "keyType": "ed25519",
+        "privKey": "0a0bFF"
+    })");
+
+    Libp2pModuleOptions opts;
+    libp2p_module_config::apply(j, opts);
+
+    LOGOS_ASSERT_EQ(opts.keyType, LIBP2P_PK_ED25519);
+    LOGOS_ASSERT_EQ(opts.privKey.size(), 3u);
+    LOGOS_ASSERT_EQ(opts.privKey[0], 0x0au);
+    LOGOS_ASSERT_EQ(opts.privKey[1], 0x0bu);
+    LOGOS_ASSERT_EQ(opts.privKey[2], 0xffu);
+}
+
+LOGOS_TEST(config_key_type_defaults_to_secp256k1) {
+    Libp2pModuleOptions opts;
+    LOGOS_ASSERT_EQ(opts.keyType, LIBP2P_PK_SECP256K1);
+    LOGOS_ASSERT_TRUE(opts.privKey.empty());
+}
+
+LOGOS_TEST(config_load_invalid_priv_key_hex_returns_defaults) {
+    ScopedModuleConfig cfg(R"({"privKey": "zz", "maxConnections": 200})");
+
+    Libp2pModuleOptions opts = Libp2pModuleOptions::load();
+    LOGOS_ASSERT_TRUE(opts.privKey.empty());
+    LOGOS_ASSERT_EQ(opts.maxConnections, 50);
+}
+
+LOGOS_TEST(config_load_odd_priv_key_hex_returns_defaults) {
+    ScopedModuleConfig cfg(R"({"privKey": "abc"})");
+
+    Libp2pModuleOptions opts = Libp2pModuleOptions::load();
+    LOGOS_ASSERT_TRUE(opts.privKey.empty());
+}
+
+// A supplied private key must yield the same peer ID across constructions.
+LOGOS_TEST(config_priv_key_stable_peer_identity) {
+    Libp2pModuleImpl keyGen;
+    auto keyRes = keyGen.newPrivateKey();
+    LOGOS_ASSERT_TRUE(keyRes.success);
+    std::string raw = keyRes.value.get<std::string>();
+    std::vector<uint8_t> priv(raw.begin(), raw.end());
+
+    std::string firstPeerId;
+    {
+        Libp2pModuleImpl plugin(Libp2pModuleOptions{ .privKey = priv });
+        LOGOS_ASSERT_TRUE(plugin.start().success);
+        auto info = plugin.peerInfo();
+        LOGOS_ASSERT_TRUE(info.success);
+        firstPeerId = info.value["peerId"].get<std::string>();
+        LOGOS_ASSERT_TRUE(plugin.stop().success);
+    }
+
+    Libp2pModuleImpl plugin(Libp2pModuleOptions{ .privKey = priv });
+    LOGOS_ASSERT_TRUE(plugin.start().success);
+    auto info = plugin.peerInfo();
+    LOGOS_ASSERT_TRUE(info.success);
+    LOGOS_ASSERT_TRUE(info.value["peerId"].get<std::string>() == firstPeerId);
+    LOGOS_ASSERT_TRUE(plugin.stop().success);
+}
+
 LOGOS_TEST(config_from_json_partial_keeps_defaults) {
     auto j = nlohmann::json::parse(R"({"maxConnsPerPeer": 4})");
 
