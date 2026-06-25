@@ -62,15 +62,16 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1782318742,
-        "narHash": "sha256-XPiZLmswgXGBsPgK8XNyGV1mEtUE4MYrHxd8VDWWZ7U=",
+        "lastModified": 1782408105,
+        "narHash": "sha256-8x7ZG0hd29de47hNMaX4eP23gvbMdjD3hhW+nk5RyoM=",
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "9b112339434db71b73ba4fafcc77b4cae9f97c57",
+        "rev": "7c73484cc0c57a5f649dd3d277cef1c7c4de28f0",
         "type": "github"
       },
       "original": {
         "owner": "vacp2p",
+        "ref": "feat/cbind/xpr-decode",
         "repo": "nim-libp2p",
         "type": "github"
       }

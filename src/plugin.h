@@ -179,6 +179,33 @@ inline std::string base64Encode(const std::vector<uint8_t>& data) {
     return out;
 }
 
+// Inverse of base64Encode; feeds base64'd buffers (e.g. createXpr output) back
+// into byte-input APIs like decodeXpr.
+inline std::string base64Decode(const std::string& in) {
+    static constexpr char kAlphabet[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    int lookup[256];
+    for (int& v : lookup) v = -1;
+    for (int i = 0; i < 64; ++i) lookup[static_cast<unsigned char>(kAlphabet[i])] = i;
+
+    std::string out;
+    out.reserve(in.size() / 4 * 3);
+    uint32_t buf = 0;
+    int bits = 0;
+    for (char c : in) {
+        if (c == '=') break;
+        int val = lookup[static_cast<unsigned char>(c)];
+        if (val < 0) continue;
+        buf = (buf << 6) | static_cast<uint32_t>(val);
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            out.push_back(static_cast<char>((buf >> bits) & 0xff));
+        }
+    }
+    return out;
+}
+
 // Wraps a resolved buffer as a successful result. Buffers are raw bytes
 // (publicKey/kadGetValue/stream reads), so they're base64-encoded to keep
 // `value` a valid UTF-8 JSON string.
@@ -297,6 +324,7 @@ public:
     StdLogosResult createXpr(const std::vector<std::string>& addrs,
                              const std::vector<std::pair<std::string, std::string>>& services,
                              uint64_t seqNo);
+    StdLogosResult decodeXpr(const std::string& xpr);
 
     StdLogosResult peerstoreGetPeers();
     StdLogosResult peerstoreGetPeerInfo(const std::string& peerId);
@@ -369,6 +397,9 @@ private:
     static void promiseRandomRecordsCallback(int ret, const Libp2pExtendedPeerRecord* records,
                                              size_t recordsLen, const char* msg,
                                              size_t len, void* userData);
+    static void promiseExtendedPeerRecordCallback(int ret,
+                                                  const Libp2pExtendedPeerRecord* record,
+                                                  const char* msg, size_t len, void* userData);
 
     static void topicHandler(const char* topic, uint8_t* data, size_t len, void* userData);
     static void gossipsubResultCallback(int ret, const char* msg, size_t len, void* userData);
