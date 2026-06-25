@@ -2,8 +2,10 @@
 #include <plugin.h>
 #include <vector>
 #include <memory>
+#include <set>
 #include <thread>
 #include <chrono>
+#include <string>
 #include "test_helpers.h"
 
 LOGOS_TEST(gossipsub_subscribe_and_publish) {
@@ -77,6 +79,40 @@ LOGOS_TEST(gossipsub_subscribe_unsubscribe) {
     LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, payload).success);
 
     LOGOS_ASSERT_FALSE(node.gossipsubNextMessage(topic, 500).success);
+
+    LOGOS_ASSERT_TRUE(node.stop().success);
+}
+
+// The per-topic queue has no capacity bound: publish many before draining any,
+// then drain them all to confirm nothing is dropped.
+LOGOS_TEST(gossipsub_queue_buffers_many_messages_unbounded) {
+    Libp2pModuleImpl node;
+    LOGOS_ASSERT_TRUE(node.start().success);
+
+    std::string topic = "queue-capacity-topic";
+    LOGOS_ASSERT_TRUE(node.gossipsubSubscribe(topic).success);
+
+    const int NUM_MSGS = 50;
+    for (int i = 0; i < NUM_MSGS; ++i) {
+        LOGOS_ASSERT_TRUE(
+            node.gossipsubPublish(topic, "msg-" + std::to_string(i)).success);
+    }
+
+    // Every published message is buffered and drainable; delivery order is not
+    // asserted, only that none were dropped.
+    std::set<std::string> drained;
+    for (int i = 0; i < NUM_MSGS; ++i) {
+        auto res = node.gossipsubNextMessage(topic, 2000);
+        LOGOS_ASSERT_TRUE(res.success);
+        drained.insert(res.value.get<std::string>());
+    }
+    LOGOS_ASSERT_EQ(drained.size(), size_t(NUM_MSGS));
+    for (int i = 0; i < NUM_MSGS; ++i) {
+        LOGOS_ASSERT_TRUE(drained.count("msg-" + std::to_string(i)) == 1);
+    }
+
+    // Nothing left once the buffered backlog is drained.
+    LOGOS_ASSERT_FALSE(node.gossipsubNextMessage(topic, 200).success);
 
     LOGOS_ASSERT_TRUE(node.stop().success);
 }
