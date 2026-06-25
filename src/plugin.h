@@ -197,6 +197,38 @@ inline SyncResult awaitResult(std::future<SyncResult>& f, int timeoutMs = 10000)
     return {false, "timeout", {}, nullptr};
 }
 
+inline std::string base64Encode(const std::vector<uint8_t>& data) {
+    static constexpr char kAlphabet[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    out.reserve((data.size() + 2) / 3 * 4);
+    size_t i = 0;
+    for (; i + 3 <= data.size(); i += 3) {
+        uint32_t n = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
+        out.push_back(kAlphabet[(n >> 18) & 0x3f]);
+        out.push_back(kAlphabet[(n >> 12) & 0x3f]);
+        out.push_back(kAlphabet[(n >> 6) & 0x3f]);
+        out.push_back(kAlphabet[n & 0x3f]);
+    }
+    if (i < data.size()) {
+        uint32_t n = data[i] << 16;
+        bool hasTwo = i + 1 < data.size();
+        if (hasTwo) n |= data[i + 1] << 8;
+        out.push_back(kAlphabet[(n >> 18) & 0x3f]);
+        out.push_back(kAlphabet[(n >> 12) & 0x3f]);
+        out.push_back(hasTwo ? kAlphabet[(n >> 6) & 0x3f] : '=');
+        out.push_back('=');
+    }
+    return out;
+}
+
+// Wraps a resolved buffer as a successful result. Buffers are raw bytes
+// (publicKey/kadGetValue/stream reads), so they're base64-encoded to keep
+// `value` a valid UTF-8 JSON string.
+inline StdLogosResult bufferToResult(const SyncResult& r) {
+    return {true, base64Encode(r.buffer), ""};
+}
+
 // Non-throwing JSON parse — malformed cbinding output yields a failed result
 // instead of propagating an exception.
 inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPrefix) {
@@ -338,6 +370,9 @@ public:
     StdLogosResult discoUnregisterInterest(const std::string& serviceId);
     StdLogosResult discoLookup(const std::string& serviceId, const std::string& serviceData);
     StdLogosResult discoRandomLookup();
+    StdLogosResult createXpr(const std::vector<std::string>& addrs,
+                             const std::vector<std::pair<std::string, std::string>>& services,
+                             uint64_t seqNo);
 
     StdLogosResult peerstoreGetPeers();
     StdLogosResult peerstoreGetPeerInfo(const std::string& peerId);
@@ -389,6 +424,8 @@ private:
     std::mutex m_queueMutex;
     std::condition_variable m_queueCond;
     std::unordered_map<std::string, std::queue<std::string>> m_topicQueues;
+
+    SyncResult generatePrivateKeyRaw();
 
     static void promiseCallback(int ret, const char* msg, size_t len, void* userData);
     static void promiseBufferCallback(int ret, const uint8_t* data, size_t dataLen,

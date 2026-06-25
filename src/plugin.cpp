@@ -204,9 +204,7 @@ StdLogosResult Libp2pModuleImpl::publicKey() {
         [&](SyncPromise* p) {
             return libp2p_public_key(ctx, &Libp2pModuleImpl::promiseBufferCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
-        });
+        bufferToResult);
 }
 
 StdLogosResult Libp2pModuleImpl::newPrivateKey() {
@@ -221,11 +219,15 @@ StdLogosResult Libp2pModuleImpl::generatePrivateKey(int scheme) {
                                      &Libp2pModuleImpl::promiseBufferCallback, p);
     if (ret != RET_OK) {
         delete p;
-        return {false, {}, "Failed to generate private key (ret=" + std::to_string(ret) + ")"};
+        return {false, "Failed to generate private key (ret=" + std::to_string(ret) + ")", {}, nullptr};
     }
-    auto r = awaitResult(f);
+    return awaitResult(f);
+}
+
+StdLogosResult Libp2pModuleImpl::newPrivateKey() {
+    auto r = generatePrivateKeyRaw();
     if (!r.ok) return {false, {}, r.message};
-    return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
+    return bufferToResult(r);
 }
 
 StdLogosResult Libp2pModuleImpl::toCid(const std::string& key) {
