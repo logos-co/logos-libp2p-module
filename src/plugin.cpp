@@ -99,14 +99,13 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     m_libp2pConfig.mount_kad = options.mountKad ? 1 : 0;
     m_libp2pConfig.mount_service_discovery = options.mountServiceDiscovery ? 1 : 0;
 
-    auto keyResult = newPrivateKey();
-    if (!keyResult.success) {
-        m_initError = "private key generation failed: " + keyResult.error;
-        fprintf(stderr, "libp2p_new_private_key failed: %s\n", keyResult.error.c_str());
+    auto keyResult = generatePrivateKeyRaw();
+    if (!keyResult.ok) {
+        m_initError = "private key generation failed: " + keyResult.message;
+        fprintf(stderr, "libp2p_new_private_key failed: %s\n", keyResult.message.c_str());
         return;
     }
-    std::string keyStr = keyResult.value.get<std::string>();
-    m_privKey.assign(keyStr.begin(), keyStr.end());
+    m_privKey = std::move(keyResult.buffer);
 
     m_libp2pConfig.priv_key.data = m_privKey.data();
     m_libp2pConfig.priv_key.dataLen = static_cast<int>(m_privKey.size());
@@ -202,12 +201,10 @@ StdLogosResult Libp2pModuleImpl::publicKey() {
         [&](SyncPromise* p) {
             return libp2p_public_key(ctx, &Libp2pModuleImpl::promiseBufferCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
-        });
+        bufferToResult);
 }
 
-StdLogosResult Libp2pModuleImpl::newPrivateKey() {
+SyncResult Libp2pModuleImpl::generatePrivateKeyRaw() {
     // Doesn't need a ctx, so it bypasses callSync's ctx check.
     auto* p = new SyncPromise();
     auto f = p->get_future();
@@ -215,11 +212,15 @@ StdLogosResult Libp2pModuleImpl::newPrivateKey() {
                                      &Libp2pModuleImpl::promiseBufferCallback, p);
     if (ret != RET_OK) {
         delete p;
-        return {false, {}, "Failed to generate private key (ret=" + std::to_string(ret) + ")"};
+        return {false, "Failed to generate private key (ret=" + std::to_string(ret) + ")", {}, nullptr};
     }
-    auto r = awaitResult(f);
+    return awaitResult(f);
+}
+
+StdLogosResult Libp2pModuleImpl::newPrivateKey() {
+    auto r = generatePrivateKeyRaw();
     if (!r.ok) return {false, {}, r.message};
-    return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
+    return bufferToResult(r);
 }
 
 StdLogosResult Libp2pModuleImpl::toCid(const std::string& key) {
