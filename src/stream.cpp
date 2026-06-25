@@ -75,9 +75,7 @@ StdLogosResult Libp2pModuleImpl::streamReadExactly(uint64_t streamId, uint64_t l
             return libp2p_stream_readExactly(ctx, s, len,
                                              &Libp2pModuleImpl::promiseBufferCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
-        });
+        bufferToResult);
 }
 
 StdLogosResult Libp2pModuleImpl::streamReadLp(uint64_t streamId, uint64_t maxSize) {
@@ -86,9 +84,7 @@ StdLogosResult Libp2pModuleImpl::streamReadLp(uint64_t streamId, uint64_t maxSiz
             return libp2p_stream_readLp(ctx, s, maxSize,
                                         &Libp2pModuleImpl::promiseBufferCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
-        });
+        bufferToResult);
 }
 
 StdLogosResult Libp2pModuleImpl::streamWrite(uint64_t streamId, const std::string& data) {

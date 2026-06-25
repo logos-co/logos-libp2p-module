@@ -35,9 +35,7 @@ StdLogosResult Libp2pModuleImpl::kadGetValue(const std::string& key, int64_t quo
                 quorum,
                 &Libp2pModuleImpl::promiseBufferCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            return {true, std::string(r.buffer.begin(), r.buffer.end()), ""};
-        });
+        bufferToResult);
 }
 
 StdLogosResult Libp2pModuleImpl::kadAddProvider(const std::string& cid) {
