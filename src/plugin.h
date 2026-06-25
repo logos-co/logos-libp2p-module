@@ -402,7 +402,7 @@ private:
 
     SecureBytes m_privKey;
 
-    StdLogosResult generatePrivateKey(int scheme);
+    SyncResult generatePrivateKey(int scheme);
 
     // Map guards lookup; entry->mtx guards the pointee. Ops take shared,
     // release takes exclusive and flips `released`.
@@ -424,8 +424,6 @@ private:
     std::mutex m_queueMutex;
     std::condition_variable m_queueCond;
     std::unordered_map<std::string, std::queue<std::string>> m_topicQueues;
-
-    SyncResult generatePrivateKeyRaw();
 
     static void promiseCallback(int ret, const char* msg, size_t len, void* userData);
     static void promiseBufferCallback(int ret, const uint8_t* data, size_t dataLen,
