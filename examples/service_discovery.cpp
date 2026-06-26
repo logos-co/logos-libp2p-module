@@ -129,7 +129,7 @@ int main()
     } else {
         printf("Signed XPR is %zu bytes\n", xpr.value.get<std::string>().size());
 
-        auto decoded = advertiser.decodeXpr(base64Decode(xpr.value.get<std::string>()));
+        auto decoded = advertiser.decodeXpr(xpr.value.get<std::string>());
         if (!decoded.success) {
             printf("Failed to decode XPR: %s\n", decoded.error.c_str());
         } else {

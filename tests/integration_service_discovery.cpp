@@ -208,7 +208,8 @@ LOGOS_TEST(decode_xpr) {
     auto created = node.createXpr(addrs, services, 42);
     LOGOS_ASSERT_TRUE(created.success);
 
-    std::string signedXpr = base64Decode(created.value.get<std::string>());
+    // createXpr's base64 output feeds straight into decodeXpr, no manual decode.
+    std::string signedXpr = created.value.get<std::string>();
     auto decoded = node.decodeXpr(signedXpr);
     LOGOS_ASSERT_TRUE(decoded.success);
     LOGOS_ASSERT_EQ(decoded.value["peerId"].get<std::string>(), peerId);
@@ -219,8 +220,10 @@ LOGOS_TEST(decode_xpr) {
                     binData);
 
     // A flipped byte must fail signature verification, not silently decode.
-    std::string tampered = signedXpr;
-    tampered[tampered.size() / 2] ^= 0xff;
+    std::string rawBytes = base64Decode(signedXpr);
+    rawBytes[rawBytes.size() / 2] ^= 0xff;
+    std::string tampered = base64Encode(
+        std::vector<uint8_t>(rawBytes.begin(), rawBytes.end()));
     LOGOS_ASSERT_FALSE(node.decodeXpr(tampered).success);
 
     LOGOS_ASSERT_FALSE(node.decodeXpr("").success);
