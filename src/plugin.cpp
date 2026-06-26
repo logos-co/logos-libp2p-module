@@ -119,6 +119,7 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     if (!r.ok) {
         m_initError = "libp2p_new failed: " + r.message;
         fprintf(stderr, "libp2p_new failed: %s\n", r.message.c_str());
+        ctx = nullptr;
     }
 
     if (!ctx) {
