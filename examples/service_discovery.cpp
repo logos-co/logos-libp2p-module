@@ -15,6 +15,21 @@ static std::pair<std::string, std::vector<std::string>> peerInfoOf(Libp2pModuleI
     return {peerId, addrs};
 }
 
+static void printRecord(const nlohmann::json& rec)
+{
+    printf("  peer: %s seq: %llu\n",
+           rec["peerId"].get<std::string>().c_str(),
+           (unsigned long long)rec["seqNo"].get<uint64_t>());
+    for (const auto& addr : rec["addrs"]) {
+        printf("    addr: %s\n", addr.get<std::string>().c_str());
+    }
+    for (const auto& svc : rec["services"]) {
+        printf("    service: %s data: %s\n",
+               svc["id"].get<std::string>().c_str(),
+               svc["data"].get<std::string>().c_str());
+    }
+}
+
 static nlohmann::json lookupUntilFound(Libp2pModuleImpl& node,
                                        const std::string& serviceId,
                                        const std::string& serviceData,
@@ -100,10 +115,7 @@ int main()
 
     printf("Discoverer found %zu peer(s) advertising %s\n", records.size(), serviceId.c_str());
     for (const auto& rec : records) {
-        printf("  peer: %s seq: %llu addrs: %zu\n",
-               rec["peerId"].get<std::string>().c_str(),
-               (unsigned long long)rec["seqNo"].get<uint64_t>(),
-               rec["addrs"].size());
+        printRecord(rec);
     }
 
     std::string advertiserId = peerInfoOf(advertiser).first;
