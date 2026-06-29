@@ -10,10 +10,7 @@ StdLogosResult Libp2pModuleImpl::peerstoreGetPeers() {
             return libp2p_peerstore_get_peers(ctx,
                                                &Libp2pModuleImpl::promisePeersCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            if (r.message.empty()) return {true, json::array(), ""};
-            return parseJsonResponse(r.message, "peerstoreGetPeers");
-        });
+        [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
 
 StdLogosResult Libp2pModuleImpl::peerstoreGetPeerInfo(const std::string& peerId) {
@@ -22,10 +19,7 @@ StdLogosResult Libp2pModuleImpl::peerstoreGetPeerInfo(const std::string& peerId)
             return libp2p_peerstore_get_peer_info(ctx, peerId.c_str(),
                                                    &Libp2pModuleImpl::promisePeerStoreEntryCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            if (r.message.empty()) return {true, json::object(), ""};
-            return parseJsonResponse(r.message, "peerstoreGetPeerInfo");
-        });
+        [](const SyncResult& r) { return jsonResult(r, json::object()); });
 }
 
 StdLogosResult Libp2pModuleImpl::peerstoreAddPeer(

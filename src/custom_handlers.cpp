@@ -25,10 +25,8 @@ void Libp2pModuleImpl::protocolHandler(
 void Libp2pModuleImpl::mountCompleteCallback(int ret, const char* msg, size_t len,
                                               void* userData) {
     auto* hCtx = static_cast<ProtocolHandlerCtx*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
-    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
-    hCtx->mountPromise->set_value(std::move(r));
+    if (!hCtx || !hCtx->mountPromise) return;
+    hCtx->mountPromise->set_value(basicResult(ret, msg, len));
     delete hCtx->mountPromise;
     hCtx->mountPromise = nullptr;
 }

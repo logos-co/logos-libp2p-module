@@ -10,10 +10,7 @@ StdLogosResult Libp2pModuleImpl::kadFindNode(const std::string& peerId) {
             return libp2p_kad_find_node(ctx, peerId.c_str(),
                                         &Libp2pModuleImpl::promisePeersCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            if (r.message.empty()) return {true, json::array(), ""};
-            return parseJsonResponse(r.message, "kadFindNode");
-        });
+        [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
 
 StdLogosResult Libp2pModuleImpl::kadPutValue(const std::string& key, const std::string& value) {
@@ -65,10 +62,7 @@ StdLogosResult Libp2pModuleImpl::kadGetProviders(const std::string& cid) {
             return libp2p_kad_get_providers(ctx, cid.c_str(),
                                             &Libp2pModuleImpl::promiseProvidersCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            if (r.message.empty()) return {true, json::array(), ""};
-            return parseJsonResponse(r.message, "kadGetProviders");
-        });
+        [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
 
 StdLogosResult Libp2pModuleImpl::kadGetRandomRecords() {
@@ -77,8 +71,5 @@ StdLogosResult Libp2pModuleImpl::kadGetRandomRecords() {
             return libp2p_kad_random_records(ctx,
                                              &Libp2pModuleImpl::promiseRandomRecordsCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            if (r.message.empty()) return {true, json::array(), ""};
-            return parseJsonResponse(r.message, "kadGetRandomRecords");
-        });
+        [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
