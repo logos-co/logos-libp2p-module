@@ -17,31 +17,33 @@ std::string defaultListenAddr(int transport) {
 }
 
 void Libp2pModuleImpl::promiseCallback(int ret, const char* msg, size_t len, void* userData) {
-    auto* p = static_cast<SyncPromise*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
-    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
-    p->set_value(std::move(r));
-    delete p;
+    finishPromise(static_cast<SyncPromise*>(userData), basicResult(ret, msg, len));
 }
 
 void Libp2pModuleImpl::promiseBufferCallback(int ret, const uint8_t* data, size_t dataLen,
                                              const char* msg, size_t len, void* userData) {
-    auto* p = static_cast<SyncPromise*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
-    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    auto r = basicResult(ret, msg, len);
     if (data && dataLen > 0) {
         r.buffer.assign(data, data + dataLen);
     }
-    p->set_value(std::move(r));
-    delete p;
+    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
+}
+
+void Libp2pModuleImpl::publishEmitEvent() {
+    std::unique_lock<std::shared_mutex> lock(m_emitEventLock);
+    m_emitEventSnapshot = emitEvent;
 }
 
 void Libp2pModuleImpl::emitEventSafe(const std::string& name, const std::string& data) const {
-    if (emitEvent) {
-        emitEvent(name, data);
+    EmitEventFn fn;
+    {
+        std::shared_lock<std::shared_mutex> lock(m_emitEventLock);
+        fn = m_emitEventSnapshot;
     }
+    if (!fn) {
+        return;
+    }
+    fn(name, data);
 }
 
 Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
@@ -69,8 +71,6 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     if (m_addrs.empty()) {
         m_addrs.push_back(defaultListenAddr(options.transport));
     }
-    m_libp2pConfig.addrs = m_addrsPtr.data();
-    m_libp2pConfig.addrsLen = static_cast<int>(m_addrsPtr.size());
 
     m_addrsPtr.reserve(m_addrs.size());
     for (const auto& addr : m_addrs) {
@@ -112,6 +112,7 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
 
     auto keyResult = generatePrivateKeyRaw();
     if (!keyResult.ok) {
+        m_initError = "private key generation failed: " + keyResult.message;
         fprintf(stderr, "libp2p_new_private_key failed: %s\n", keyResult.message.c_str());
         return;
     }
@@ -125,12 +126,15 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
 
     ctx = libp2p_new(&m_libp2pConfig, &Libp2pModuleImpl::promiseCallback, p);
 
-    auto r = awaitResult(f, 5000);
+    auto r = awaitResult(f, kNewContextTimeoutMs);
     if (!r.ok) {
+        m_initError = "libp2p_new failed: " + r.message;
         fprintf(stderr, "libp2p_new failed: %s\n", r.message.c_str());
+        ctx = nullptr;
     }
 
     if (!ctx) {
+        if (m_initError.empty()) m_initError = "libp2p_new returned null context";
         fprintf(stderr, "libp2p_new returned null context\n");
     }
 }
@@ -177,13 +181,14 @@ Libp2pModuleImpl::~Libp2pModuleImpl() {
 
             libp2p_destroy(ctx, &Libp2pModuleImpl::promiseCallback, p);
 
-            awaitResult(f, 5000);
+            awaitResult(f, kDestroyTimeoutMs);
             ctx = nullptr;
         }
     } catch (...) {}
 }
 
 StdLogosResult Libp2pModuleImpl::start() {
+    publishEmitEvent();
     return callSync("Failed to start libp2p", [&](SyncPromise* p) {
         return libp2p_start(ctx, &Libp2pModuleImpl::promiseCallback, p);
     });
@@ -193,6 +198,15 @@ StdLogosResult Libp2pModuleImpl::stop() {
     return callSync("Failed to stop libp2p", [&](SyncPromise* p) {
         return libp2p_stop(ctx, &Libp2pModuleImpl::promiseCallback, p);
     });
+}
+
+bool Libp2pModuleImpl::ok() {
+    return ctx != nullptr;
+}
+
+StdLogosResult Libp2pModuleImpl::status() {
+    if (ctx) return {true, {}, ""};
+    return {false, {}, m_initError.empty() ? "libp2p not initialized" : m_initError};
 }
 
 StdLogosResult Libp2pModuleImpl::publicKey() {
@@ -249,6 +263,7 @@ void Libp2pModuleImpl::eventCallback(int ret, const char* msg, size_t len, void*
 
 bool Libp2pModuleImpl::setEventCallback() {
     if (!ctx) return false;
+    publishEmitEvent();
     libp2p_set_event_callback(ctx, &Libp2pModuleImpl::eventCallback, this);
     return true;
 }
@@ -267,7 +282,7 @@ StdLogosResult Libp2pModuleImpl::connectPeer(
         return libp2p_connect(ctx, peerId.c_str(), addrPtrs.data(),
                               static_cast<int>(addrPtrs.size()), timeoutMs,
                               &Libp2pModuleImpl::promiseCallback, p);
-    });
+    }, awaitTimeoutFor(timeoutMs));
 }
 
 StdLogosResult Libp2pModuleImpl::disconnectPeer(const std::string& peerId) {
@@ -282,7 +297,7 @@ StdLogosResult Libp2pModuleImpl::peerInfo() {
         [&](SyncPromise* p) {
             return libp2p_peerinfo(ctx, &Libp2pModuleImpl::promisePeerInfoCallback, p);
         },
-        [](const SyncResult& r) { return parseJsonResponse(r.message, "peerInfo"); });
+        [](const SyncResult& r) { return jsonResult(r, json::object()); });
 }
 
 StdLogosResult Libp2pModuleImpl::connectedPeers(int64_t direction) {
@@ -291,10 +306,7 @@ StdLogosResult Libp2pModuleImpl::connectedPeers(int64_t direction) {
             return libp2p_connected_peers(ctx, direction,
                                           &Libp2pModuleImpl::promisePeersCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            if (r.message.empty()) return {true, json::array(), ""};
-            return parseJsonResponse(r.message, "connectedPeers");
-        });
+        [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
 
 StdLogosResult Libp2pModuleImpl::dial(const std::string& peerId, const std::string& proto) {
@@ -304,8 +316,7 @@ StdLogosResult Libp2pModuleImpl::dial(const std::string& peerId, const std::stri
                                &Libp2pModuleImpl::promiseConnectionCallback, p);
         },
         [this](const SyncResult& r) -> StdLogosResult {
-            auto* stream = static_cast<libp2p_stream_t*>(r.extra);
-            if (stream) return {true, addStream(stream), ""};
+            if (r.stream) return {true, addStream(r.stream), ""};
             return {true, 0, ""};
         });
 }
@@ -326,10 +337,7 @@ StdLogosResult Libp2pModuleImpl::circuitRelayReserve(
                                                 static_cast<int>(addrPtrs.size()),
                                                 &Libp2pModuleImpl::promiseReservationCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            if (r.message.empty()) return {true, json::array(), ""};
-            return parseJsonResponse(r.message, "circuitRelayReserve");
-        });
+        [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
 
 StdLogosResult Libp2pModuleImpl::dialCircuitRelay(
@@ -344,8 +352,7 @@ StdLogosResult Libp2pModuleImpl::dialCircuitRelay(
                                              &Libp2pModuleImpl::promiseConnectionCallback, p);
         },
         [this](const SyncResult& r) -> StdLogosResult {
-            auto* stream = static_cast<libp2p_stream_t*>(r.extra);
-            if (stream) return {true, addStream(stream), ""};
+            if (r.stream) return {true, addStream(r.stream), ""};
             return {true, 0, ""};
         });
 }

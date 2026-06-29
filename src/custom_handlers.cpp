@@ -25,10 +25,8 @@ void Libp2pModuleImpl::protocolHandler(
 void Libp2pModuleImpl::mountCompleteCallback(int ret, const char* msg, size_t len,
                                               void* userData) {
     auto* hCtx = static_cast<ProtocolHandlerCtx*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
-    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
-    hCtx->mountPromise->set_value(std::move(r));
+    if (!hCtx || !hCtx->mountPromise) return;
+    hCtx->mountPromise->set_value(basicResult(ret, msg, len));
     delete hCtx->mountPromise;
     hCtx->mountPromise = nullptr;
 }
@@ -39,6 +37,7 @@ StdLogosResult Libp2pModuleImpl::mountProtocol(const std::string& proto) {
     // Without emitEvent, protocolHandler would register a stream that no caller
     // could ever read, close, or release — leaking the stream.
     if (!emitEvent) return {false, {}, "emitEvent must be set before mounting a protocol"};
+    publishEmitEvent();
 
     auto handlerCtx = std::make_unique<ProtocolHandlerCtx>();
     handlerCtx->instance = this;

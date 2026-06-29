@@ -43,6 +43,7 @@ void Libp2pModuleImpl::gossipsubResultCallback(int ret, const char* msg, size_t 
 
 StdLogosResult Libp2pModuleImpl::gossipsubSubscribe(const std::string& topic) {
     if (!ctx) return {false, {}, "No libp2p context"};
+    publishEmitEvent();
 
     auto subCtx = std::make_unique<SubscribeCtx>();
     subCtx->instance = this;
@@ -67,6 +68,7 @@ StdLogosResult Libp2pModuleImpl::gossipsubSubscribe(const std::string& topic) {
 
 StdLogosResult Libp2pModuleImpl::gossipsubUnsubscribe(const std::string& topic) {
     if (!ctx) return {false, {}, "No libp2p context"};
+    publishEmitEvent();
 
     SubscribeCtx* ctxPtr = nullptr;
     {

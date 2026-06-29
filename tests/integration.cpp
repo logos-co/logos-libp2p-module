@@ -262,8 +262,7 @@ LOGOS_TEST(integration_quic_ping_round_trip) {
     LOGOS_ASSERT_TRUE(nodeB.start().success);
 
     auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
-    // QUIC's TLS handshake under ThreadSanitizer can exceed a 500ms deadline.
-    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 5000).success);
+    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 500).success);
 
     auto dialResult = nodeA.dial(peerIdB, "/ipfs/ping/1.0.0");
     LOGOS_ASSERT_TRUE(dialResult.success);

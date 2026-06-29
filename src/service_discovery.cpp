@@ -64,10 +64,7 @@ StdLogosResult Libp2pModuleImpl::discoLookup(
                 serviceData.size(),
                 &Libp2pModuleImpl::promiseRandomRecordsCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            if (r.message.empty()) return {true, json::array(), ""};
-            return parseJsonResponse(r.message, "discoLookup");
-        });
+        [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
 
 StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
@@ -76,10 +73,7 @@ StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
             return libp2p_service_disco_random_lookup(ctx,
                                                      &Libp2pModuleImpl::promiseRandomRecordsCallback, p);
         },
-        [](const SyncResult& r) -> StdLogosResult {
-            if (r.message.empty()) return {true, json::array(), ""};
-            return parseJsonResponse(r.message, "discoRandomLookup");
-        });
+        [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
 
 /// Builds and signs the node's own Extended Peer Record, returning the signed

@@ -31,6 +31,30 @@ use cases using the `logos-libp2p-module`.
   - Building a signed Extended Peer Record for the node's own services (`createXpr`)
   - Verifying and decoding a signed Extended Peer Record back into its fields (`decodeXpr`)
 
+  `discoLookup` (and `discoRandomLookup`) return a JSON array of peer records. Each record describes one advertiser:
+
+  ```json
+  [
+    {
+      "peerId": "16Uiu2HAm...",
+      "seqNo": 1718000000,
+      "addrs": ["/ip4/127.0.0.1/tcp/40001"],
+      "services": [
+        { "id": "demo-service", "data": "version=1" }
+      ]
+    }
+  ]
+  ```
+
+  | Field      | Type             | Description                                                        |
+  | ---------- | ---------------- | ------------------------------------------------------------------ |
+  | `peerId`   | string           | The advertiser's peer ID.                                          |
+  | `seqNo`    | unsigned integer | Monotonic sequence number of the peer record; higher is newer.     |
+  | `addrs`    | array of strings | The advertiser's multiaddrs.                                       |
+  | `services` | array of objects | Services the peer advertises, each `{ "id", "data" }`.             |
+
+  `services[].data` is the opaque payload passed to `discoStartAdvertising`, returned verbatim as a string (empty when advertised without data).
+
 ## Building
 Enter the development shell and configure cmake
 
@@ -54,3 +78,21 @@ After building, run the executable from the build directory:
 ./build/examples/example_service_discovery
 ```
 
+For service discovery, a successful run prints the records returned by `discoLookup`:
+
+```text
+Starting nodes...
+Advertiser: advertising demo-service
+Discoverer: registering interest in demo-service
+Discoverer: looking up demo-service
+Discoverer found 1 peer(s) advertising demo-service
+  peer: 16Uiu2HAm... seq: 1718000000
+    addr: /ip4/127.0.0.1/tcp/40001
+    service: demo-service data: version=1
+Discoverer matched the advertiser: 16Uiu2HAm...
+Advertiser: random lookup
+Random lookup returned 1 peer(s)
+Discoverer: unregistering interest in demo-service
+Advertiser: stopping advertising demo-service
+Done
+```
