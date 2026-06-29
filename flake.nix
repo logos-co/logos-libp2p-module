@@ -173,9 +173,19 @@
         value = (module.packages.${system} or {}) // (sanitizerPackages.${system} or {});
       }) systems);
 
+      mergedDevShells = forEachSystem (system:
+        let pkgs = import nixpkgs { inherit system; };
+        in (module.devShells.${system} or {}) // {
+          default = pkgs.mkShell {
+            inputsFrom = [ module.devShells.${system}.default ];
+            buildInputs = [ pkgs.boost.dev ];
+          };
+        });
+
     in module // {
       apps = mergedApps;
       checks = module.checks or {};
       packages = mergedPackages;
+      devShells = mergedDevShells;
     };
 }

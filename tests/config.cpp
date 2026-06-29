@@ -1,3 +1,5 @@
+// Library-backed config tests (start a real node). Pure parsing: unit_config.cpp.
+
 #include <logos_test.h>
 #include <plugin.h>
 
@@ -5,6 +7,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <unistd.h>
+#include <string>
 
 namespace {
 // Sets LIBP2P_MODULE_CONFIG for the test body and restores it on scope exit so
@@ -81,13 +84,12 @@ LOGOS_TEST(config_load_odd_priv_key_hex_returns_defaults) {
     LOGOS_ASSERT_TRUE(opts.privKey.empty());
 }
 
-// A supplied private key must yield the same peer ID across constructions.
 LOGOS_TEST(config_priv_key_stable_peer_identity) {
     Libp2pModuleImpl keyGen;
     auto keyRes = keyGen.newPrivateKey();
     LOGOS_ASSERT_TRUE(keyRes.success);
-    std::string raw = keyRes.value.get<std::string>();
-    std::vector<uint8_t> priv(raw.begin(), raw.end());
+    std::string hexKey = keyRes.value.get<std::string>();
+    auto priv = libp2p_module_config::decodeHex(hexKey);
 
     std::string firstPeerId;
     {

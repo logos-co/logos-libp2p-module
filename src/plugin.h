@@ -243,8 +243,7 @@ inline StdLogosResult bufferToResult(const SyncResult& r) {
     return {true, base64Encode(r.buffer), ""};
 }
 
-// Like bufferToResult, but hex-encodes the buffer. Used for private keys so the
-// output matches the hex format the `privKey` config field expects.
+// Hex-encodes the buffer so private keys match the hex `privKey` config format.
 inline StdLogosResult bufferToHexResult(const SyncResult& r) {
     return {true, hexEncode(r.buffer), ""};
 }
@@ -473,6 +472,12 @@ private:
     static void mountCompleteCallback(int ret, const char* msg, size_t len, void* userData);
     static void eventCallback(int ret, const char* msg, size_t len, void* userData);
 
+    using EmitEventFn = std::function<void(const std::string& eventName, const std::string& data)>;
+
+    // Lock-guarded snapshot of `emitEvent`, taken on the caller thread before any worker can emit, so worker threads never read the public field unsynchronized.
+    mutable std::shared_mutex m_emitEventLock;
+    EmitEventFn m_emitEventSnapshot;
+    void publishEmitEvent();
     void emitEventSafe(const std::string& name, const std::string& data) const;
 
     // Wraps the new-promise / invoke / await / clean-up dance shared by every
