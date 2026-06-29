@@ -1,0 +1,11 @@
+{
+  "addrs": ["/ip4/0.0.0.0/tcp/9000"],
+  "transport": "tcp",
+  "maxConnections": 50,
+  "maxInConnections": 25,
+  "maxOutConnections": 25,
+  "maxConnsPerPeer": 1,
+  "mountGossipsub": true,
+  "mountKad": true,
+  "mountServiceDiscovery": true
+}

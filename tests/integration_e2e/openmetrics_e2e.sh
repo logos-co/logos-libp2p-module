@@ -82,6 +82,14 @@ DAEMON_PID=$!
 
 wait_until "logoscore daemon ready" \
     "$LOGOSCORE_BIN" load-module libp2p_module
+
+echo "----- libp2p_module createNode + getNodeInfo -----"
+"$LOGOSCORE_BIN" call libp2p_module createNode '{"addrs":["/ip4/127.0.0.1/tcp/0"]}'
+ver="$("$LOGOSCORE_BIN" call libp2p_module getNodeInfo Version | jq -r '.result.value // empty')"
+echo "getNodeInfo Version=$ver"
+[[ -n "$ver" ]] || { echo "FAIL: getNodeInfo Version empty" >&2; dump_daemon_log; exit 1; }
+echo "--------------------------------------------------"
+
 "$LOGOSCORE_BIN" load-module openmetrics
 "$LOGOSCORE_BIN" call openmetrics start "{\"port\":$PORT,\"modules\":[\"libp2p_module\"]}"
 
