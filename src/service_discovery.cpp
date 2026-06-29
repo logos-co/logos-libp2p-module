@@ -1,18 +1,9 @@
 #include "plugin.h"
+#include "utils.h"
 
-#include <chrono>
 #include <cstring>
-#include <ctime>
 
 using json = nlohmann::json;
-
-static std::string nowTimestamp() {
-    auto now = std::chrono::system_clock::now();
-    std::time_t t = std::chrono::system_clock::to_time_t(now);
-    char buf[32];
-    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&t));
-    return buf;
-}
 
 StdLogosResult Libp2pModuleImpl::discoStart() {
     return callSync("Failed to start discovery", [&](SyncPromise* p) {
