@@ -1,17 +1,16 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
+#include <climits>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <fstream>
 #include <functional>
-#include <map>
 #include <future>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
-#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -26,178 +25,51 @@ extern "C" {
 #include "lib/libp2p.h"
 }
 
-struct Libp2pModuleOptions {
-    std::vector<std::string> addrs = {};
-    std::vector<std::pair<std::string, std::vector<std::string>>> bootstrapNodes = {};
-    int transport = LIBP2P_TRANSPORT_TCP;
-    bool autonat = false;
-    bool autonatV2 = false;
-    bool autonatV2Server = false;
-    bool circuitRelay = false;
-    bool circuitRelayClient = false;
-    int maxConnections = 50;
-    int maxInConnections = 25;
-    int maxOutConnections = 25;
-    int maxConnsPerPeer = 1;
-    bool gossipsubTriggerSelf = true;
-    bool mountGossipsub = true;
-    bool mountKad = true;
-    bool mountServiceDiscovery = true;
+#include "config.h"
+#include "metric.h"
 
-    // Raw private key bytes for a stable peer identity; empty generates a fresh key.
-    std::vector<uint8_t> privKey = {};
-    // Scheme for the generated key; ignored when privKey is supplied.
-    int keyType = LIBP2P_PK_SECP256K1;
-
-    /// Builds options from the LIBP2P_MODULE_CONFIG deployment config (codegen
-    /// default-constructs a loaded module). See readme; absent/invalid → defaults.
-    static Libp2pModuleOptions load();
-};
-
-namespace libp2p_module_config {
-
-/// Reads LIBP2P_MODULE_CONFIG: inline JSON when the first non-space char is '{',
-/// otherwise a path to a JSON file. Returns "" when unset or unreadable.
-inline std::string readSource() {
-    const char* cfg = std::getenv("LIBP2P_MODULE_CONFIG");
-    if (!cfg || !*cfg) {
-        return "";
-    }
-    std::string value(cfg);
-    auto firstChar = value.find_first_not_of(" \t\r\n");
-    if (firstChar != std::string::npos && value[firstChar] == '{') {
-        return value;
-    }
-    std::ifstream f(value);
-    if (!f) {
-        fprintf(stderr, "libp2p_module: cannot read config file %s\n", value.c_str());
-        return "";
-    }
-    std::ostringstream ss;
-    ss << f.rdbuf();
-    return ss.str();
-}
-
-inline int parseTransport(const nlohmann::json& j, int fallback) {
-    auto it = j.find("transport");
-    if (it == j.end() || !it->is_string()) {
-        return fallback;
-    }
-    std::string t = it->get<std::string>();
-    if (t == "tcp") return LIBP2P_TRANSPORT_TCP;
-    if (t == "quic" || t == "quic-v1") return LIBP2P_TRANSPORT_QUIC;
-    return fallback;
-}
-
-inline int parseKeyType(const nlohmann::json& j, int fallback) {
-    auto it = j.find("keyType");
-    if (it == j.end() || !it->is_string()) {
-        return fallback;
-    }
-    std::string t = it->get<std::string>();
-    if (t == "rsa") return LIBP2P_PK_RSA;
-    if (t == "ed25519") return LIBP2P_PK_ED25519;
-    if (t == "secp256k1") return LIBP2P_PK_SECP256K1;
-    if (t == "ecdsa") return LIBP2P_PK_ECDSA;
-    return fallback;
-}
-
-inline int hexNibble(char c) {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    throw std::invalid_argument("privKey contains a non-hex character");
-}
-
-/// Decodes a hex string into bytes. Throws std::invalid_argument on odd length
-/// or a non-hex character; load() catches it and falls back to defaults.
-inline std::vector<uint8_t> decodeHex(const std::string& hex) {
-    if (hex.size() % 2 != 0) {
-        throw std::invalid_argument("privKey hex length must be even");
-    }
-    std::vector<uint8_t> out;
-    out.reserve(hex.size() / 2);
-    for (size_t i = 0; i < hex.size(); i += 2) {
-        out.push_back(static_cast<uint8_t>((hexNibble(hex[i]) << 4) | hexNibble(hex[i + 1])));
-    }
-    return out;
-}
-
-/// Overlays present keys onto `o`. Throws nlohmann type_error on a wrong-typed
-/// field; load() catches it and falls back to defaults.
-inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
-    if (!j.is_object()) {
-        return;
-    }
-    o.addrs = j.value("addrs", o.addrs);
-    if (auto it = j.find("bootstrapNodes"); it != j.end() && it->is_array()) {
-        o.bootstrapNodes.clear();
-        for (const auto& n : *it) {
-            o.bootstrapNodes.emplace_back(n.value("peerId", std::string{}),
-                                          n.value("addrs", std::vector<std::string>{}));
-        }
-    }
-    o.transport = parseTransport(j, o.transport);
-    o.keyType = parseKeyType(j, o.keyType);
-    if (auto it = j.find("privKey"); it != j.end()) {
-        if (!it->is_string()) {
-            throw std::invalid_argument("privKey must be a string");
-        }
-        o.privKey = decodeHex(it->get<std::string>());
-    }
-    o.autonat = j.value("autonat", o.autonat);
-    o.autonatV2 = j.value("autonatV2", o.autonatV2);
-    o.autonatV2Server = j.value("autonatV2Server", o.autonatV2Server);
-    o.circuitRelay = j.value("circuitRelay", o.circuitRelay);
-    o.circuitRelayClient = j.value("circuitRelayClient", o.circuitRelayClient);
-    o.maxConnections = j.value("maxConnections", o.maxConnections);
-    o.maxInConnections = j.value("maxInConnections", o.maxInConnections);
-    o.maxOutConnections = j.value("maxOutConnections", o.maxOutConnections);
-    o.maxConnsPerPeer = j.value("maxConnsPerPeer", o.maxConnsPerPeer);
-    o.gossipsubTriggerSelf = j.value("gossipsubTriggerSelf", o.gossipsubTriggerSelf);
-    o.mountGossipsub = j.value("mountGossipsub", o.mountGossipsub);
-    o.mountKad = j.value("mountKad", o.mountKad);
-    o.mountServiceDiscovery = j.value("mountServiceDiscovery", o.mountServiceDiscovery);
-}
-
-} // namespace libp2p_module_config
-
-inline Libp2pModuleOptions Libp2pModuleOptions::load() {
-    std::string raw = libp2p_module_config::readSource();
-    if (raw.empty()) {
-        return {};
-    }
-    auto j = nlohmann::json::parse(raw, nullptr, false);
-    if (j.is_discarded()) {
-        fprintf(stderr, "libp2p_module: ignoring invalid LIBP2P_MODULE_CONFIG\n");
-        return {};
-    }
-    Libp2pModuleOptions opts;
-    try {
-        libp2p_module_config::apply(j, opts);
-    } catch (const std::exception& e) {
-        fprintf(stderr, "libp2p_module: ignoring invalid LIBP2P_MODULE_CONFIG: %s\n", e.what());
-        return {};
-    }
-    return opts;
-}
+// Timeouts (milliseconds) for the sync-over-async libp2p bridge.
+inline constexpr int kDefaultOpTimeoutMs = 10000;
+inline constexpr int kNewContextTimeoutMs = 5000;
+inline constexpr int kDestroyTimeoutMs = 5000;
+// Added on top of a caller-supplied op timeout so the C++ await outlives the
+// libp2p operation it wraps instead of racing it.
+inline constexpr int kAwaitSlackMs = 5000;
 
 // Result type for internal sync-over-async operations.
 struct SyncResult {
     bool ok = false;
     std::string message;
     std::vector<uint8_t> buffer;
-    void* extra = nullptr;
+    nlohmann::json data;
+    libp2p_stream_t* stream = nullptr;
 };
 
 using SyncPromise = std::promise<SyncResult>;
 
+// Resolves and reclaims a heap SyncPromise. Every libp2p callback owns its
+// promise and ends by handing the result back through here.
+inline void finishPromise(SyncPromise* p, SyncResult r) {
+    p->set_value(std::move(r));
+    delete p;
+}
+
+// Seeds a SyncResult from the (ret, msg) pair every cbinding callback receives.
+inline SyncResult basicResult(int ret, const char* msg, size_t len) {
+    SyncResult r;
+    r.ok = (ret == RET_OK);
+    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    return r;
+}
+
 // Awaits a future with timeout. Returns a failed result on timeout.
-inline SyncResult awaitResult(std::future<SyncResult>& f, int timeoutMs = 10000) {
+inline SyncResult awaitResult(std::future<SyncResult>& f, int timeoutMs = kDefaultOpTimeoutMs) {
     if (f.wait_for(std::chrono::milliseconds(timeoutMs)) == std::future_status::ready) {
         return f.get();
     }
-    return {false, "timeout", {}, nullptr};
+    SyncResult r;
+    r.message = "timeout";
+    return r;
 }
 
 inline std::string base64Encode(const std::vector<uint8_t>& data) {
@@ -258,48 +130,19 @@ inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPre
     return {true, j, ""};
 }
 
-// One metrics series, mirroring the JSON that nim-libp2p's libp2p_collect_metrics
-// emits. Cbind sends labels as `[{"name":..,"value":..}, ...]`; we flatten into
-// a map because openmetrics-module's renderer expects `labels` as a flat
-// `{key:value}` object (openmetrics_format.cpp:82). `timestamp` is Unix
-// milliseconds from the registry; 0 means "unset" and is dropped on output.
-struct Metric {
-    std::string name;
-    std::string type;
-    std::string help;
-    std::map<std::string, std::string> labels;
-    double value = 0.0;
-    int64_t timestamp = 0;
-};
-
-inline void from_json(const nlohmann::json& j, Metric& m) {
-    j.at("name").get_to(m.name);
-    j.at("type").get_to(m.type);
-    j.at("help").get_to(m.help);
-    j.at("value").get_to(m.value);
-    m.labels.clear();
-    if (auto it = j.find("labels"); it != j.end() && it->is_array()) {
-        for (const auto& lp : *it) {
-            m.labels.emplace(lp.at("name").get<std::string>(),
-                             lp.at("value").get<std::string>());
-        }
-    }
-    if (auto it = j.find("timestamp"); it != j.end() && it->is_number_integer()) {
-        m.timestamp = it->get<int64_t>();
-    } else {
-        m.timestamp = 0;
-    }
+// Await long enough to outlast a caller-supplied op timeout, falling back to the
+// default when the op carries no timeout of its own.
+inline int awaitTimeoutFor(int64_t opTimeoutMs) {
+    if (opTimeoutMs <= 0) return kDefaultOpTimeoutMs;
+    int64_t v = opTimeoutMs + kAwaitSlackMs;
+    return v > INT_MAX ? INT_MAX : static_cast<int>(v);
 }
 
-inline void to_json(nlohmann::json& j, const Metric& m) {
-    j = nlohmann::json{
-        {"name", m.name},
-        {"type", m.type},
-        {"help", m.help},
-        {"labels", m.labels},
-        {"value", m.value},
-    };
-    if (m.timestamp != 0) j["timestamp"] = m.timestamp;
+// Maps a resolved SyncResult's structured payload into a result, substituting an
+// empty default when the callback produced no data (e.g. ok with zero items).
+inline StdLogosResult jsonResult(const SyncResult& r, nlohmann::json emptyDefault) {
+    if (r.data.is_null()) return {true, std::move(emptyDefault), ""};
+    return {true, r.data, ""};
 }
 
 /// Allocator that scrubs memory before releasing it, so private key bytes don't
@@ -341,6 +184,9 @@ public:
     ~Libp2pModuleImpl();
 
     std::function<void(const std::string& eventName, const std::string& data)> emitEvent;
+
+    bool ok();
+    StdLogosResult status();
 
     StdLogosResult start();
     StdLogosResult stop();
@@ -409,6 +255,10 @@ public:
 private:
     libp2p_ctx_t* ctx = nullptr;
     libp2p_config_t m_libp2pConfig = {};
+
+    // Set when construction fails; surfaced through status() since the
+    // constructor cannot signal failure to the codegen default-constructor.
+    std::string m_initError;
 
     // Address storage (kept alive for libp2p_config_t pointers)
     std::vector<std::string> m_addrs;
@@ -483,15 +333,17 @@ private:
     // Wraps the new-promise / invoke / await / clean-up dance shared by every
     // sync-over-async libp2p op. `invoke(SyncPromise*)` calls the cbinding and
     // returns its sync ret. The Transform overload maps the resolved SyncResult
-    // into the final StdLogosResult.
+    // into the final StdLogosResult. `awaitMs` bounds the wait; ops carrying a
+    // caller timeout pass awaitTimeoutFor(theirTimeout) so the await outlasts it.
     template <class Invoke>
-    StdLogosResult callSync(const char* errPrefix, Invoke&& invoke) {
+    StdLogosResult callSync(const char* errPrefix, Invoke&& invoke, int awaitMs = kDefaultOpTimeoutMs) {
         return callSyncWith(errPrefix, std::forward<Invoke>(invoke),
-            [](const SyncResult&) -> StdLogosResult { return {true, {}, ""}; });
+            [](const SyncResult&) -> StdLogosResult { return {true, {}, ""}; }, awaitMs);
     }
 
     template <class Invoke, class Transform>
-    StdLogosResult callSyncWith(const char* errPrefix, Invoke&& invoke, Transform&& transform) {
+    StdLogosResult callSyncWith(const char* errPrefix, Invoke&& invoke, Transform&& transform,
+                                int awaitMs = kDefaultOpTimeoutMs) {
         if (!ctx) return {false, {}, "No libp2p context"};
         auto* p = new SyncPromise();
         auto f = p->get_future();
@@ -506,7 +358,7 @@ private:
             return {false, {}, std::string(errPrefix) +
                 " (ret=" + std::to_string(ret) + ")"};
         }
-        auto r = awaitResult(f);
+        auto r = awaitResult(f, awaitMs);
         if (!r.ok) return {false, {}, r.message};
         return transform(r);
     }

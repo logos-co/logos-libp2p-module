@@ -8,11 +8,9 @@ void Libp2pModuleImpl::promisePeerInfoCallback(
     int ret, const Libp2pPeerInfo* info,
     const char* msg, size_t len, void* userData)
 {
-    auto* p = static_cast<SyncPromise*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
+    auto r = basicResult(ret, msg, len);
 
-    if (ret == RET_OK && info) {
+    if (r.ok && info) {
         json j;
         j["peerId"] = info->peerId ? info->peerId : "";
         json addrs = json::array();
@@ -22,24 +20,19 @@ void Libp2pModuleImpl::promisePeerInfoCallback(
             }
         }
         j["addrs"] = addrs;
-        r.message = j.dump();
-    } else {
-        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+        r.data = std::move(j);
     }
 
-    p->set_value(std::move(r));
-    delete p;
+    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
 }
 
 void Libp2pModuleImpl::promisePeerStoreEntryCallback(
     int ret, const Libp2pPeerStoreEntry* entry,
     const char* msg, size_t len, void* userData)
 {
-    auto* p = static_cast<SyncPromise*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
+    auto r = basicResult(ret, msg, len);
 
-    if (ret == RET_OK && entry) {
+    if (r.ok && entry) {
         json j;
         j["peerId"] = entry->peerId ? entry->peerId : "";
         json addrs = json::array();
@@ -69,46 +62,36 @@ void Libp2pModuleImpl::promisePeerStoreEntryCallback(
         j["publicKey"] = publicKey;
         j["agentVersion"] = entry->agentVersion ? entry->agentVersion : "";
         j["protoVersion"] = entry->protoVersion ? entry->protoVersion : "";
-        r.message = j.dump();
-    } else {
-        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+        r.data = std::move(j);
     }
 
-    p->set_value(std::move(r));
-    delete p;
+    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
 }
 
 void Libp2pModuleImpl::promisePeersCallback(
     int ret, const char** peerIds, size_t peerIdsLen,
     const char* msg, size_t len, void* userData)
 {
-    auto* p = static_cast<SyncPromise*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
+    auto r = basicResult(ret, msg, len);
 
-    if (ret == RET_OK && peerIds && peerIdsLen > 0) {
+    if (r.ok && peerIds && peerIdsLen > 0) {
         json arr = json::array();
         for (size_t i = 0; i < peerIdsLen; ++i) {
             if (peerIds[i]) arr.push_back(peerIds[i]);
         }
-        r.message = arr.dump();
-    } else {
-        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+        r.data = std::move(arr);
     }
 
-    p->set_value(std::move(r));
-    delete p;
+    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
 }
 
 void Libp2pModuleImpl::promiseProvidersCallback(
     int ret, const Libp2pPeerInfo* providers, size_t providersLen,
     const char* msg, size_t len, void* userData)
 {
-    auto* p = static_cast<SyncPromise*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
+    auto r = basicResult(ret, msg, len);
 
-    if (ret == RET_OK && providers && providersLen > 0) {
+    if (r.ok && providers && providersLen > 0) {
         json arr = json::array();
         for (size_t i = 0; i < providersLen; ++i) {
             json peer;
@@ -122,29 +105,22 @@ void Libp2pModuleImpl::promiseProvidersCallback(
             peer["addrs"] = addrs;
             arr.push_back(peer);
         }
-        r.message = arr.dump();
-    } else {
-        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+        r.data = std::move(arr);
     }
 
-    p->set_value(std::move(r));
-    delete p;
+    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
 }
 
 void Libp2pModuleImpl::promiseConnectionCallback(
     int ret, libp2p_stream_t* stream,
     const char* msg, size_t len, void* userData)
 {
-    auto* p = static_cast<SyncPromise*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
-    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
-    if (ret == RET_OK && stream) {
-        r.extra = stream;
+    auto r = basicResult(ret, msg, len);
+    if (r.ok && stream) {
+        r.stream = stream;
     }
 
-    p->set_value(std::move(r));
-    delete p;
+    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
 }
 
 void Libp2pModuleImpl::promiseReservationCallback(
@@ -152,33 +128,26 @@ void Libp2pModuleImpl::promiseReservationCallback(
     const char* msg, size_t len, void* userData)
 {
     (void)expireTime;
-    auto* p = static_cast<SyncPromise*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
+    auto r = basicResult(ret, msg, len);
 
-    if (ret == RET_OK && addrs && addrsLen > 0) {
+    if (r.ok && addrs && addrsLen > 0) {
         json arr = json::array();
         for (size_t i = 0; i < addrsLen; ++i) {
             if (addrs[i]) arr.push_back(addrs[i]);
         }
-        r.message = arr.dump();
-    } else {
-        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+        r.data = std::move(arr);
     }
 
-    p->set_value(std::move(r));
-    delete p;
+    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
 }
 
 void Libp2pModuleImpl::promiseRandomRecordsCallback(
     int ret, const Libp2pExtendedPeerRecord* records, size_t recordsLen,
     const char* msg, size_t len, void* userData)
 {
-    auto* p = static_cast<SyncPromise*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
+    auto r = basicResult(ret, msg, len);
 
-    if (ret == RET_OK && records && recordsLen > 0) {
+    if (r.ok && records && recordsLen > 0) {
         json arr = json::array();
         for (size_t i = 0; i < recordsLen; ++i) {
             json rec;
@@ -211,13 +180,10 @@ void Libp2pModuleImpl::promiseRandomRecordsCallback(
             rec["services"] = services;
             arr.push_back(rec);
         }
-        r.message = arr.dump();
-    } else {
-        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+        r.data = std::move(arr);
     }
 
-    p->set_value(std::move(r));
-    delete p;
+    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
 }
 
 void Libp2pModuleImpl::topicHandler(
