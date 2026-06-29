@@ -273,11 +273,7 @@ StdLogosResult Libp2pModuleImpl::connectPeer(
     const std::vector<std::string>& multiaddrs,
     int64_t timeoutMs)
 {
-    std::vector<const char*> addrPtrs;
-    addrPtrs.reserve(multiaddrs.size());
-    for (const auto& addr : multiaddrs) {
-        addrPtrs.push_back(addr.c_str());
-    }
+    auto addrPtrs = toCStringPtrs(multiaddrs);
     return callSync("Failed to connect", [&](SyncPromise* p) {
         return libp2p_connect(ctx, peerId.c_str(), addrPtrs.data(),
                               static_cast<int>(addrPtrs.size()), timeoutMs,
@@ -325,11 +321,7 @@ StdLogosResult Libp2pModuleImpl::circuitRelayReserve(
     const std::string& relayPeerId,
     const std::vector<std::string>& relayAddrs)
 {
-    std::vector<const char*> addrPtrs;
-    addrPtrs.reserve(relayAddrs.size());
-    for (const auto& addr : relayAddrs) {
-        addrPtrs.push_back(addr.c_str());
-    }
+    auto addrPtrs = toCStringPtrs(relayAddrs);
     return callSyncWith("Failed to reserve relay",
         [&](SyncPromise* p) {
             return libp2p_circuit_relay_reserve(ctx, relayPeerId.c_str(),

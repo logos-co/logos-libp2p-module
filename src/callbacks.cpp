@@ -1,7 +1,5 @@
 #include "plugin.h"
 
-#include <cstring>
-
 using json = nlohmann::json;
 
 void Libp2pModuleImpl::promisePeerInfoCallback(
@@ -11,16 +9,7 @@ void Libp2pModuleImpl::promisePeerInfoCallback(
     auto r = basicResult(ret, msg, len);
 
     if (r.ok && info) {
-        json j;
-        j["peerId"] = info->peerId ? info->peerId : "";
-        json addrs = json::array();
-        if (info->addrs) {
-            for (size_t i = 0; i < info->addrsLen; ++i) {
-                if (info->addrs[i]) addrs.push_back(info->addrs[i]);
-            }
-        }
-        j["addrs"] = addrs;
-        r.data = std::move(j);
+        r.data = peerInfoToJson(*info);
     }
 
     finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
@@ -35,31 +24,9 @@ void Libp2pModuleImpl::promisePeerStoreEntryCallback(
     if (r.ok && entry) {
         json j;
         j["peerId"] = entry->peerId ? entry->peerId : "";
-        json addrs = json::array();
-        if (entry->addrs) {
-            for (size_t i = 0; i < entry->addrsLen; ++i) {
-                if (entry->addrs[i]) addrs.push_back(entry->addrs[i]);
-            }
-        }
-        j["addrs"] = addrs;
-        json protocols = json::array();
-        if (entry->protocols) {
-            for (size_t i = 0; i < entry->protocolsLen; ++i) {
-                if (entry->protocols[i]) protocols.push_back(entry->protocols[i]);
-            }
-        }
-        j["protocols"] = protocols;
-        std::string publicKey;
-        if (entry->publicKey && entry->publicKeyLen > 0) {
-            static constexpr char digits[] = "0123456789abcdef";
-            publicKey.resize(entry->publicKeyLen * 2);
-            for (size_t i = 0; i < entry->publicKeyLen; ++i) {
-                uint8_t b = entry->publicKey[i];
-                publicKey[2 * i]     = digits[b >> 4];
-                publicKey[2 * i + 1] = digits[b & 0x0f];
-            }
-        }
-        j["publicKey"] = publicKey;
+        j["addrs"] = cStrArrayToJson(entry->addrs, entry->addrsLen);
+        j["protocols"] = cStrArrayToJson(entry->protocols, entry->protocolsLen);
+        j["publicKey"] = hexEncode(entry->publicKey, entry->publicKeyLen);
         j["agentVersion"] = entry->agentVersion ? entry->agentVersion : "";
         j["protoVersion"] = entry->protoVersion ? entry->protoVersion : "";
         r.data = std::move(j);
@@ -75,11 +42,7 @@ void Libp2pModuleImpl::promisePeersCallback(
     auto r = basicResult(ret, msg, len);
 
     if (r.ok && peerIds && peerIdsLen > 0) {
-        json arr = json::array();
-        for (size_t i = 0; i < peerIdsLen; ++i) {
-            if (peerIds[i]) arr.push_back(peerIds[i]);
-        }
-        r.data = std::move(arr);
+        r.data = cStrArrayToJson(peerIds, peerIdsLen);
     }
 
     finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
@@ -94,16 +57,7 @@ void Libp2pModuleImpl::promiseProvidersCallback(
     if (r.ok && providers && providersLen > 0) {
         json arr = json::array();
         for (size_t i = 0; i < providersLen; ++i) {
-            json peer;
-            peer["peerId"] = providers[i].peerId ? providers[i].peerId : "";
-            json addrs = json::array();
-            if (providers[i].addrs) {
-                for (size_t j2 = 0; j2 < providers[i].addrsLen; ++j2) {
-                    if (providers[i].addrs[j2]) addrs.push_back(providers[i].addrs[j2]);
-                }
-            }
-            peer["addrs"] = addrs;
-            arr.push_back(peer);
+            arr.push_back(peerInfoToJson(providers[i]));
         }
         r.data = std::move(arr);
     }
@@ -131,11 +85,7 @@ void Libp2pModuleImpl::promiseReservationCallback(
     auto r = basicResult(ret, msg, len);
 
     if (r.ok && addrs && addrsLen > 0) {
-        json arr = json::array();
-        for (size_t i = 0; i < addrsLen; ++i) {
-            if (addrs[i]) arr.push_back(addrs[i]);
-        }
-        r.data = std::move(arr);
+        r.data = cStrArrayToJson(addrs, addrsLen);
     }
 
     finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
@@ -153,14 +103,7 @@ void Libp2pModuleImpl::promiseRandomRecordsCallback(
             json rec;
             rec["peerId"] = records[i].peerId ? records[i].peerId : "";
             rec["seqNo"] = records[i].seqNo;
-
-            json addrs = json::array();
-            if (records[i].addrs) {
-                for (size_t a = 0; a < records[i].addrsLen; ++a) {
-                    if (records[i].addrs[a]) addrs.push_back(records[i].addrs[a]);
-                }
-            }
-            rec["addrs"] = addrs;
+            rec["addrs"] = cStrArrayToJson(records[i].addrs, records[i].addrsLen);
 
             json services = json::array();
             if (records[i].services) {
