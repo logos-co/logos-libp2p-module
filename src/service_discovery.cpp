@@ -1,4 +1,5 @@
 #include "plugin.h"
+#include "utils.h"
 
 #include <cstring>
 
@@ -39,6 +40,7 @@ StdLogosResult Libp2pModuleImpl::discoStopAdvertising(const std::string& service
 }
 
 StdLogosResult Libp2pModuleImpl::discoRegisterInterest(const std::string& serviceId) {
+    fprintf(stderr, "[INFO] %s service-discovery: starting interest for service '%s'\n", nowTimestamp().c_str(), serviceId.c_str());
     return callSync("Failed to register interest", [&](SyncPromise* p) {
         return libp2p_service_disco_register_interest(ctx, serviceId.c_str(),
                                                       &Libp2pModuleImpl::promiseCallback, p);
@@ -64,7 +66,16 @@ StdLogosResult Libp2pModuleImpl::discoLookup(
                 serviceData.size(),
                 &Libp2pModuleImpl::promiseRandomRecordsCallback, p);
         },
-        [](const SyncResult& r) { return jsonResult(r, json::array()); });
+        [&serviceId](const SyncResult& r) {
+            auto result = jsonResult(r, json::array());
+            if (result.success && result.value.is_array()) {
+                for (const auto& entry : result.value) {
+                    fprintf(stderr, "[INFO] %s service-discovery: found peer '%s' offering service '%s'\n",
+                            nowTimestamp().c_str(), entry.value("peerId", "<unknown>").c_str(), serviceId.c_str());
+                }
+            }
+            return result;
+        });
 }
 
 StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
