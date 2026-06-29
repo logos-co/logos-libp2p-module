@@ -36,6 +36,7 @@ if(LIBP2P_PATH)
             ../src/stream.cpp
             ../src/gossipsub.cpp
             ../src/service_discovery.cpp
+            ../src/utils.cpp
             ../src/custom_handlers.cpp
             ../src/peerstore.cpp
             ../src/metrics.cpp
