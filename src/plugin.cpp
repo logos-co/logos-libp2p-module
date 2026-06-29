@@ -222,7 +222,7 @@ SyncResult Libp2pModuleImpl::generatePrivateKey(int scheme) {
 StdLogosResult Libp2pModuleImpl::newPrivateKey() {
     auto r = generatePrivateKey(LIBP2P_PK_SECP256K1);
     if (!r.ok) return {false, {}, r.message};
-    return bufferToResult(r);
+    return bufferToHexResult(r);
 }
 
 StdLogosResult Libp2pModuleImpl::toCid(const std::string& key) {

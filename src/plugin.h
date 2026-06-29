@@ -139,7 +139,10 @@ inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
     }
     o.transport = parseTransport(j, o.transport);
     o.keyType = parseKeyType(j, o.keyType);
-    if (auto it = j.find("privKey"); it != j.end() && it->is_string()) {
+    if (auto it = j.find("privKey"); it != j.end()) {
+        if (!it->is_string()) {
+            throw std::invalid_argument("privKey must be a string");
+        }
         o.privKey = decodeHex(it->get<std::string>());
     }
     o.autonat = j.value("autonat", o.autonat);
@@ -222,11 +225,28 @@ inline std::string base64Encode(const std::vector<uint8_t>& data) {
     return out;
 }
 
+inline std::string hexEncode(const std::vector<uint8_t>& data) {
+    static constexpr char kDigits[] = "0123456789abcdef";
+    std::string out;
+    out.reserve(data.size() * 2);
+    for (uint8_t b : data) {
+        out.push_back(kDigits[b >> 4]);
+        out.push_back(kDigits[b & 0x0f]);
+    }
+    return out;
+}
+
 // Wraps a resolved buffer as a successful result. Buffers are raw bytes
 // (publicKey/kadGetValue/stream reads), so they're base64-encoded to keep
 // `value` a valid UTF-8 JSON string.
 inline StdLogosResult bufferToResult(const SyncResult& r) {
     return {true, base64Encode(r.buffer), ""};
+}
+
+// Like bufferToResult, but hex-encodes the buffer. Used for private keys so the
+// output matches the hex format the `privKey` config field expects.
+inline StdLogosResult bufferToHexResult(const SyncResult& r) {
+    return {true, hexEncode(r.buffer), ""};
 }
 
 // Non-throwing JSON parse — malformed cbinding output yields a failed result
