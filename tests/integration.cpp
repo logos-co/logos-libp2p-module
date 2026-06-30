@@ -250,6 +250,36 @@ LOGOS_TEST(integration_lp_stream_exchange) {
     LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
 
+LOGOS_TEST(integration_create_node_then_node_info) {
+    Libp2pModuleImpl node;
+    LOGOS_ASSERT_TRUE(node.createNode(R"({"addrs": ["/ip4/127.0.0.1/tcp/0"]})").success);
+    LOGOS_ASSERT_TRUE(node.start().success);
+
+    auto version = node.getNodeInfo("Version");
+    LOGOS_ASSERT_TRUE(version.success);
+    LOGOS_ASSERT_TRUE(version.value.get<std::string>() == "1.0.0");
+
+    auto ports = node.getNodeInfo("MyBoundPorts");
+    LOGOS_ASSERT_TRUE(ports.success);
+    LOGOS_ASSERT_FALSE(ports.value.empty());
+    LOGOS_ASSERT_TRUE(ports.value[0].get<int>() > 0);
+
+    auto peerId = node.getNodeInfo("PeerId");
+    LOGOS_ASSERT_TRUE(peerId.success);
+    LOGOS_ASSERT_FALSE(peerId.value.get<std::string>().empty());
+
+    LOGOS_ASSERT_FALSE(node.getNodeInfo("Nonexistent").success);
+
+    LOGOS_ASSERT_TRUE(node.stop().success);
+}
+
+LOGOS_TEST(integration_create_node_invalid_config_fails) {
+    Libp2pModuleImpl node;
+    auto res = node.createNode("{not valid json");
+    LOGOS_ASSERT_FALSE(res.success);
+    LOGOS_ASSERT_TRUE(res.error.find("invalid config") != std::string::npos);
+}
+
 LOGOS_TEST(integration_quic_ping_round_trip) {
     const int PING_SIZE = 32;
 
@@ -262,7 +292,8 @@ LOGOS_TEST(integration_quic_ping_round_trip) {
     LOGOS_ASSERT_TRUE(nodeB.start().success);
 
     auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
-    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 500).success);
+    // QUIC's TLS handshake under ThreadSanitizer can exceed a 500ms deadline.
+    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 5000).success);
 
     auto dialResult = nodeA.dial(peerIdB, "/ipfs/ping/1.0.0");
     LOGOS_ASSERT_TRUE(dialResult.success);

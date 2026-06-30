@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <sstream>
 #include <thread>
 
 using json = nlohmann::json;
@@ -14,6 +15,26 @@ std::string defaultListenAddr(int transport) {
     }
     return "/ip4/127.0.0.1/tcp/0";
 }
+
+// Pulls the port out of a multiaddr (the segment after /tcp/ or /udp/).
+bool extractPort(const std::string& multiaddr, int& out) {
+    std::stringstream ss(multiaddr);
+    std::string token, prev;
+    while (std::getline(ss, token, '/')) {
+        if ((prev == "tcp" || prev == "udp") && !token.empty()) {
+            try {
+                out = std::stoi(token);
+                return true;
+            } catch (...) {
+                return false;
+            }
+        }
+        prev = token;
+    }
+    return false;
+}
+
+constexpr char kModuleVersion[] = "1.0.0";
 }
 
 void Libp2pModuleImpl::promiseCallback(int ret, const char* msg, size_t len, void* userData) {
@@ -49,7 +70,18 @@ void Libp2pModuleImpl::emitEventSafe(const std::string& name, const std::string&
 Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     : ctx(nullptr)
 {
+    applyOptions(options);
+}
+
+void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
     std::memset(&m_libp2pConfig, 0, sizeof(m_libp2pConfig));
+    m_addrs.clear();
+    m_addrsPtr.clear();
+    m_peerIdStorage.clear();
+    m_addrStorage.clear();
+    m_addrPtrStorage.clear();
+    m_bootstrapCNodes.clear();
+    m_privKey.clear();
 
     m_libp2pConfig.mount_gossipsub = options.mountGossipsub ? 1 : 0;
     m_libp2pConfig.gossipsub_trigger_self = options.gossipsubTriggerSelf ? 1 : 0;
@@ -109,12 +141,16 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
 
     m_libp2pConfig.mount_kad = options.mountKad ? 1 : 0;
     m_libp2pConfig.mount_service_discovery = options.mountServiceDiscovery ? 1 : 0;
+}
+
+StdLogosResult Libp2pModuleImpl::createContext() {
+    m_initError.clear();
 
     auto keyResult = generatePrivateKeyRaw();
     if (!keyResult.ok) {
         m_initError = "private key generation failed: " + keyResult.message;
         fprintf(stderr, "libp2p_new_private_key failed: %s\n", keyResult.message.c_str());
-        return;
+        return {false, {}, m_initError};
     }
     m_privKey = std::move(keyResult.buffer);
 
@@ -124,70 +160,105 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     auto* p = new SyncPromise();
     auto f = p->get_future();
 
-    ctx = libp2p_new(&m_libp2pConfig, &Libp2pModuleImpl::promiseCallback, p);
+    auto* candidate = libp2p_new(&m_libp2pConfig, &Libp2pModuleImpl::promiseCallback, p);
 
     auto r = awaitResult(f, kNewContextTimeoutMs);
     if (!r.ok) {
         m_initError = "libp2p_new failed: " + r.message;
         fprintf(stderr, "libp2p_new failed: %s\n", r.message.c_str());
-        ctx = nullptr;
+        if (candidate) destroyHandle(candidate);
+        return {false, {}, m_initError};
     }
 
-    if (!ctx) {
-        if (m_initError.empty()) m_initError = "libp2p_new returned null context";
+    if (!candidate) {
+        m_initError = "libp2p_new returned null context";
         fprintf(stderr, "libp2p_new returned null context\n");
+        return {false, {}, m_initError};
     }
+
+    ctx = candidate;
+    return {true, {}, ""};
+}
+
+StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
+    bool ok = false;
+    std::string err;
+    auto options = Libp2pModuleOptions::fromJson(config, ok, &err);
+    if (!ok) {
+        std::string msg = "createNode: invalid config: " + err;
+        fprintf(stderr, "libp2p_module: %s\n", msg.c_str());
+        return {false, {}, msg};
+    }
+    if (ctx) {
+        std::string msg = "createNode: node already created";
+        fprintf(stderr, "libp2p_module: %s\n", msg.c_str());
+        return {false, {}, msg};
+    }
+    applyOptions(options);
+    return createContext();
+}
+
+void Libp2pModuleImpl::destroyContext() {
+    std::vector<uint64_t> streamIds;
+    {
+        std::shared_lock<std::shared_mutex> lock(m_streamsLock);
+        streamIds.reserve(m_streams.size());
+        for (const auto& [id, _] : m_streams) {
+            streamIds.push_back(id);
+        }
+    }
+
+    // Bounded worker pool — each streamRelease awaits up to 10s.
+    if (!streamIds.empty()) {
+        const size_t workers = std::min<size_t>(
+            streamIds.size(),
+            std::max<unsigned>(std::thread::hardware_concurrency(), 4u));
+
+        std::atomic<size_t> next{0};
+        std::vector<std::thread> pool;
+        pool.reserve(workers);
+        for (size_t i = 0; i < workers; ++i) {
+            pool.emplace_back([this, &streamIds, &next] {
+                try {
+                    for (;;) {
+                        size_t idx = next.fetch_add(1, std::memory_order_relaxed);
+                        if (idx >= streamIds.size()) return;
+                        streamRelease(streamIds[idx]);
+                    }
+                } catch (...) {}
+            });
+        }
+        for (auto& t : pool) {
+            if (t.joinable()) t.join();
+        }
+    }
+
+    if (ctx) {
+        destroyHandle(ctx);
+        ctx = nullptr;
+    }
+}
+
+void Libp2pModuleImpl::destroyHandle(libp2p_ctx_t* handle) {
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+
+    libp2p_destroy(handle, &Libp2pModuleImpl::promiseCallback, p);
+
+    awaitResult(f, kDestroyTimeoutMs);
 }
 
 Libp2pModuleImpl::~Libp2pModuleImpl() {
     try {
-        std::vector<uint64_t> streamIds;
-        {
-            std::shared_lock<std::shared_mutex> lock(m_streamsLock);
-            streamIds.reserve(m_streams.size());
-            for (const auto& [id, _] : m_streams) {
-                streamIds.push_back(id);
-            }
-        }
-
-        // Bounded worker pool — each streamRelease awaits up to 10s.
-        if (!streamIds.empty()) {
-            const size_t workers = std::min<size_t>(
-                streamIds.size(),
-                std::max<unsigned>(std::thread::hardware_concurrency(), 4u));
-
-            std::atomic<size_t> next{0};
-            std::vector<std::thread> pool;
-            pool.reserve(workers);
-            for (size_t i = 0; i < workers; ++i) {
-                pool.emplace_back([this, &streamIds, &next] {
-                    try {
-                        for (;;) {
-                            size_t idx = next.fetch_add(1, std::memory_order_relaxed);
-                            if (idx >= streamIds.size()) return;
-                            streamRelease(streamIds[idx]);
-                        }
-                    } catch (...) {}
-                });
-            }
-            for (auto& t : pool) {
-                if (t.joinable()) t.join();
-            }
-        }
-
-        if (ctx) {
-            auto* p = new SyncPromise();
-            auto f = p->get_future();
-
-            libp2p_destroy(ctx, &Libp2pModuleImpl::promiseCallback, p);
-
-            awaitResult(f, kDestroyTimeoutMs);
-            ctx = nullptr;
-        }
+        destroyContext();
     } catch (...) {}
 }
 
 StdLogosResult Libp2pModuleImpl::start() {
+    if (!ctx) {
+        auto created = createContext();
+        if (!created.success) return created;
+    }
     publishEmitEvent();
     return callSync("Failed to start libp2p", [&](SyncPromise* p) {
         return libp2p_start(ctx, &Libp2pModuleImpl::promiseCallback, p);
@@ -273,11 +344,7 @@ StdLogosResult Libp2pModuleImpl::connectPeer(
     const std::vector<std::string>& multiaddrs,
     int64_t timeoutMs)
 {
-    std::vector<const char*> addrPtrs;
-    addrPtrs.reserve(multiaddrs.size());
-    for (const auto& addr : multiaddrs) {
-        addrPtrs.push_back(addr.c_str());
-    }
+    auto addrPtrs = toCStringPtrs(multiaddrs);
     return callSync("Failed to connect", [&](SyncPromise* p) {
         return libp2p_connect(ctx, peerId.c_str(), addrPtrs.data(),
                               static_cast<int>(addrPtrs.size()), timeoutMs,
@@ -298,6 +365,35 @@ StdLogosResult Libp2pModuleImpl::peerInfo() {
             return libp2p_peerinfo(ctx, &Libp2pModuleImpl::promisePeerInfoCallback, p);
         },
         [](const SyncResult& r) { return jsonResult(r, json::object()); });
+}
+
+StdLogosResult Libp2pModuleImpl::nodeInfoBoundPorts() {
+    auto info = peerInfo();
+    if (!info.success) return info;
+    json ports = json::array();
+    for (const auto& addr : info.value.value("addrs", json::array())) {
+        int port = 0;
+        if (addr.is_string() && extractPort(addr.get<std::string>(), port)) {
+            ports.push_back(port);
+        }
+    }
+    return {true, ports, ""};
+}
+
+StdLogosResult Libp2pModuleImpl::getNodeInfo(const std::string& field) {
+    if (field == "Version") return {true, kModuleVersion, ""};
+    if (field == "MyBoundPorts") return nodeInfoBoundPorts();
+    if (field == "PeerId") {
+        auto info = peerInfo();
+        if (!info.success) return info;
+        return {true, info.value.value("peerId", std::string{}), ""};
+    }
+    if (field == "Multiaddrs") {
+        auto info = peerInfo();
+        if (!info.success) return info;
+        return {true, info.value.value("addrs", json::array()), ""};
+    }
+    return {false, {}, "unknown field: " + field};
 }
 
 StdLogosResult Libp2pModuleImpl::connectedPeers(int64_t direction) {
@@ -325,11 +421,7 @@ StdLogosResult Libp2pModuleImpl::circuitRelayReserve(
     const std::string& relayPeerId,
     const std::vector<std::string>& relayAddrs)
 {
-    std::vector<const char*> addrPtrs;
-    addrPtrs.reserve(relayAddrs.size());
-    for (const auto& addr : relayAddrs) {
-        addrPtrs.push_back(addr.c_str());
-    }
+    auto addrPtrs = toCStringPtrs(relayAddrs);
     return callSyncWith("Failed to reserve relay",
         [&](SyncPromise* p) {
             return libp2p_circuit_relay_reserve(ctx, relayPeerId.c_str(),

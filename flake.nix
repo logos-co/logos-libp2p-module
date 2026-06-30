@@ -138,6 +138,7 @@
           env = e2eEnv system;
           e2eRuntime = [ pkgs.coreutils pkgs.gnugrep pkgs.bash pkgs.iproute2 pkgs.jq ];
           e2eScript = ./tests/integration_e2e/openmetrics_e2e.sh;
+          standaloneE2eScript = ./tests/integration_e2e/standalone_e2e.sh;
 
           # `nix run .#openmetrics-e2e`: standalone, runs a live logoscore
           # daemon so it can't be a hermetic flake check. LOGOSCORE_BIN /
@@ -152,12 +153,21 @@
             export LGPM_BIN="''${LGPM_BIN:-${lgpmBin}}"
             exec ${e2eScript} "$@"
           '';
+          standaloneE2eApp = pkgs.writeShellScript "standalone-e2e" ''
+            export PATH=${pkgs.lib.makeBinPath e2eRuntime}:$PATH
+            export LIBP2P_LGX_DIR=${env.LIBP2P_LGX_DIR}
+            export LOGOSCORE_BIN="''${LOGOSCORE_BIN:-${logoscoreBin}}"
+            export LGPM_BIN="''${LGPM_BIN:-${lgpmBin}}"
+            exec ${standaloneE2eScript} "$@"
+          '';
         in {
-          # openmetrics-e2e pulls in Linux-only iproute2; omit it on Darwin.
+          # *-e2e run a live logoscore daemon, so they can't be hermetic flake
+          # checks; they're standalone apps run as their own CI step.
           apps = {
             tests = { type = "app"; program = toString runner; };
           } // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
             openmetrics-e2e = { type = "app"; program = toString openmetricsE2eApp; };
+            standalone-e2e = { type = "app"; program = toString standaloneE2eApp; };
           };
         }
       );

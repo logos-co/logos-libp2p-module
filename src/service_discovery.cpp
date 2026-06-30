@@ -83,11 +83,7 @@ StdLogosResult Libp2pModuleImpl::createXpr(
     const std::vector<std::pair<std::string, std::string>>& services,
     uint64_t seqNo)
 {
-    std::vector<const char*> addrPtrs;
-    addrPtrs.reserve(addrs.size());
-    for (const auto& addr : addrs) {
-        addrPtrs.push_back(addr.c_str());
-    }
+    auto addrPtrs = toCStringPtrs(addrs);
 
     std::vector<Libp2pServiceInfo> serviceInfos;
     serviceInfos.reserve(services.size());

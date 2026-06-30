@@ -58,6 +58,30 @@ Or run the test executables directly:
 ./build/integration
 ```
 
+## Standalone (logoscore)
+
+`integration_e2e/standalone_e2e.sh` runs this module on its own under a live
+`logoscore` daemon and asserts the standalone commands and their outputs:
+`createNode` binds the requested port, `start` succeeds, and `getNodeInfo`
+returns the expected `Version` / `MyBoundPorts` / `PeerId` / `Multiaddrs`. It
+also covers the negative paths — an unknown `getNodeInfo` field and a malformed
+`createNode` config are rejected, with the failure reason landing in the daemon
+log. Like the openmetrics e2e it starts a live daemon, so it runs outside the
+`nix flake check` sandbox:
+
+```bash
+nix run .#standalone-e2e
+# or against your own builds:
+LOGOSCORE_BIN=/path/to/logoscore \
+LGPM_BIN=/path/to/lgpm \
+  nix run .#standalone-e2e
+```
+
+The C++ integration layer covers the same API in-process
+(`integration_create_node_then_node_info`,
+`integration_create_node_invalid_config_fails`); the e2e additionally validates
+the real `logoscore` call path.
+
 ## OpenMetrics
 
 `metrics.cpp` covers the JSON schema returned by `collectMetrics()` (field

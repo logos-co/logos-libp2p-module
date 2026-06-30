@@ -27,13 +27,8 @@ StdLogosResult Libp2pModuleImpl::peerstoreAddPeer(
     const std::vector<std::string>& addrs,
     const std::vector<std::string>& protos)
 {
-    std::vector<const char*> addrsPtr;
-    addrsPtr.reserve(addrs.size());
-    for (const auto& a : addrs) addrsPtr.push_back(a.c_str());
-
-    std::vector<const char*> protosPtr;
-    protosPtr.reserve(protos.size());
-    for (const auto& s : protos) protosPtr.push_back(s.c_str());
+    auto addrsPtr = toCStringPtrs(addrs);
+    auto protosPtr = toCStringPtrs(protos);
 
     return callSync("Failed to add peer", [&](SyncPromise* p) {
         return libp2p_peerstore_add_peer(
@@ -48,9 +43,7 @@ StdLogosResult Libp2pModuleImpl::peerstoreSetPeerAddresses(
     const std::string& peerId,
     const std::vector<std::string>& addrs)
 {
-    std::vector<const char*> addrsPtr;
-    addrsPtr.reserve(addrs.size());
-    for (const auto& a : addrs) addrsPtr.push_back(a.c_str());
+    auto addrsPtr = toCStringPtrs(addrs);
 
     return callSync("Failed to set peer addresses", [&](SyncPromise* p) {
         return libp2p_peerstore_set_peer_addresses(
@@ -64,9 +57,7 @@ StdLogosResult Libp2pModuleImpl::peerstoreSetPeerProtocols(
     const std::string& peerId,
     const std::vector<std::string>& protos)
 {
-    std::vector<const char*> protosPtr;
-    protosPtr.reserve(protos.size());
-    for (const auto& s : protos) protosPtr.push_back(s.c_str());
+    auto protosPtr = toCStringPtrs(protos);
 
     return callSync("Failed to set peer protocols", [&](SyncPromise* p) {
         return libp2p_peerstore_set_peer_protocols(

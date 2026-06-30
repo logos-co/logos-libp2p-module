@@ -1,7 +1,5 @@
 #include "plugin.h"
 
-#include <cstring>
-
 using json = nlohmann::json;
 
 namespace {
@@ -44,16 +42,7 @@ void Libp2pModuleImpl::promisePeerInfoCallback(
     auto r = basicResult(ret, msg, len);
 
     if (r.ok && info) {
-        json j;
-        j["peerId"] = info->peerId ? info->peerId : "";
-        json addrs = json::array();
-        if (info->addrs) {
-            for (size_t i = 0; i < info->addrsLen; ++i) {
-                if (info->addrs[i]) addrs.push_back(info->addrs[i]);
-            }
-        }
-        j["addrs"] = addrs;
-        r.data = std::move(j);
+        r.data = peerInfoToJson(*info);
     }
 
     finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
@@ -68,31 +57,9 @@ void Libp2pModuleImpl::promisePeerStoreEntryCallback(
     if (r.ok && entry) {
         json j;
         j["peerId"] = entry->peerId ? entry->peerId : "";
-        json addrs = json::array();
-        if (entry->addrs) {
-            for (size_t i = 0; i < entry->addrsLen; ++i) {
-                if (entry->addrs[i]) addrs.push_back(entry->addrs[i]);
-            }
-        }
-        j["addrs"] = addrs;
-        json protocols = json::array();
-        if (entry->protocols) {
-            for (size_t i = 0; i < entry->protocolsLen; ++i) {
-                if (entry->protocols[i]) protocols.push_back(entry->protocols[i]);
-            }
-        }
-        j["protocols"] = protocols;
-        std::string publicKey;
-        if (entry->publicKey && entry->publicKeyLen > 0) {
-            static constexpr char digits[] = "0123456789abcdef";
-            publicKey.resize(entry->publicKeyLen * 2);
-            for (size_t i = 0; i < entry->publicKeyLen; ++i) {
-                uint8_t b = entry->publicKey[i];
-                publicKey[2 * i]     = digits[b >> 4];
-                publicKey[2 * i + 1] = digits[b & 0x0f];
-            }
-        }
-        j["publicKey"] = publicKey;
+        j["addrs"] = cStrArrayToJson(entry->addrs, entry->addrsLen);
+        j["protocols"] = cStrArrayToJson(entry->protocols, entry->protocolsLen);
+        j["publicKey"] = hexEncode(entry->publicKey, entry->publicKeyLen);
         j["agentVersion"] = entry->agentVersion ? entry->agentVersion : "";
         j["protoVersion"] = entry->protoVersion ? entry->protoVersion : "";
         r.data = std::move(j);
@@ -108,11 +75,7 @@ void Libp2pModuleImpl::promisePeersCallback(
     auto r = basicResult(ret, msg, len);
 
     if (r.ok && peerIds && peerIdsLen > 0) {
-        json arr = json::array();
-        for (size_t i = 0; i < peerIdsLen; ++i) {
-            if (peerIds[i]) arr.push_back(peerIds[i]);
-        }
-        r.data = std::move(arr);
+        r.data = cStrArrayToJson(peerIds, peerIdsLen);
     }
 
     finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
@@ -127,16 +90,7 @@ void Libp2pModuleImpl::promiseProvidersCallback(
     if (r.ok && providers && providersLen > 0) {
         json arr = json::array();
         for (size_t i = 0; i < providersLen; ++i) {
-            json peer;
-            peer["peerId"] = providers[i].peerId ? providers[i].peerId : "";
-            json addrs = json::array();
-            if (providers[i].addrs) {
-                for (size_t j2 = 0; j2 < providers[i].addrsLen; ++j2) {
-                    if (providers[i].addrs[j2]) addrs.push_back(providers[i].addrs[j2]);
-                }
-            }
-            peer["addrs"] = addrs;
-            arr.push_back(peer);
+            arr.push_back(peerInfoToJson(providers[i]));
         }
         r.data = std::move(arr);
     }
@@ -164,11 +118,7 @@ void Libp2pModuleImpl::promiseReservationCallback(
     auto r = basicResult(ret, msg, len);
 
     if (r.ok && addrs && addrsLen > 0) {
-        json arr = json::array();
-        for (size_t i = 0; i < addrsLen; ++i) {
-            if (addrs[i]) arr.push_back(addrs[i]);
-        }
-        r.data = std::move(arr);
+        r.data = cStrArrayToJson(addrs, addrsLen);
     }
 
     finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
@@ -183,7 +133,28 @@ void Libp2pModuleImpl::promiseRandomRecordsCallback(
     if (r.ok && records && recordsLen > 0) {
         json arr = json::array();
         for (size_t i = 0; i < recordsLen; ++i) {
-            arr.push_back(extendedRecordToJson(records[i]));
+            json rec;
+            rec["peerId"] = records[i].peerId ? records[i].peerId : "";
+            rec["seqNo"] = records[i].seqNo;
+            rec["addrs"] = cStrArrayToJson(records[i].addrs, records[i].addrsLen);
+
+            json services = json::array();
+            if (records[i].services) {
+                for (size_t s = 0; s < records[i].servicesLen; ++s) {
+                    json svc;
+                    svc["id"] = records[i].services[s].id ? records[i].services[s].id : "";
+                    if (records[i].services[s].data && records[i].services[s].dataLen > 0) {
+                        svc["data"] = std::string(
+                            reinterpret_cast<const char*>(records[i].services[s].data),
+                            records[i].services[s].dataLen);
+                    } else {
+                        svc["data"] = "";
+                    }
+                    services.push_back(svc);
+                }
+            }
+            rec["services"] = services;
+            arr.push_back(rec);
         }
         r.data = std::move(arr);
     }
