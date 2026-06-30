@@ -161,20 +161,23 @@ StdLogosResult Libp2pModuleImpl::createContext() {
     auto* p = new SyncPromise();
     auto f = p->get_future();
 
-    ctx = libp2p_new(&m_libp2pConfig, &Libp2pModuleImpl::promiseCallback, p);
+    auto* candidate = libp2p_new(&m_libp2pConfig, &Libp2pModuleImpl::promiseCallback, p);
 
     auto r = awaitResult(f, kNewContextTimeoutMs);
     if (!r.ok) {
         m_initError = "libp2p_new failed: " + r.message;
         fprintf(stderr, "libp2p_new failed: %s\n", r.message.c_str());
-        ctx = nullptr;
+        if (candidate) destroyHandle(candidate);
+        return {false, {}, m_initError};
     }
 
-    if (!ctx) {
-        if (m_initError.empty()) m_initError = "libp2p_new returned null context";
+    if (!candidate) {
+        m_initError = "libp2p_new returned null context";
         fprintf(stderr, "libp2p_new returned null context\n");
         return {false, {}, m_initError};
     }
+
+    ctx = candidate;
     return {true, {}, ""};
 }
 
@@ -187,7 +190,11 @@ StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
         fprintf(stderr, "libp2p_module: %s\n", msg.c_str());
         return {false, {}, msg};
     }
-    destroyContext();
+    if (ctx) {
+        std::string msg = "createNode: node already created";
+        fprintf(stderr, "libp2p_module: %s\n", msg.c_str());
+        return {false, {}, msg};
+    }
     applyOptions(options);
     return createContext();
 }
@@ -228,14 +235,18 @@ void Libp2pModuleImpl::destroyContext() {
     }
 
     if (ctx) {
-        auto* p = new SyncPromise();
-        auto f = p->get_future();
-
-        libp2p_destroy(ctx, &Libp2pModuleImpl::promiseCallback, p);
-
-        awaitResult(f, kDestroyTimeoutMs);
+        destroyHandle(ctx);
         ctx = nullptr;
     }
+}
+
+void Libp2pModuleImpl::destroyHandle(libp2p_ctx_t* handle) {
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+
+    libp2p_destroy(handle, &Libp2pModuleImpl::promiseCallback, p);
+
+    awaitResult(f, kDestroyTimeoutMs);
 }
 
 Libp2pModuleImpl::~Libp2pModuleImpl() {

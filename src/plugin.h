@@ -225,6 +225,7 @@ private:
     void applyOptions(const Libp2pModuleOptions& options);
     StdLogosResult createContext();
     void destroyContext();
+    void destroyHandle(libp2p_ctx_t* handle);
     StdLogosResult nodeInfoBoundPorts();
 
     SyncResult generatePrivateKeyRaw();
