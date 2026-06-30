@@ -71,7 +71,6 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     : ctx(nullptr)
 {
     applyOptions(options);
-    createContext();
 }
 
 void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
@@ -256,6 +255,10 @@ Libp2pModuleImpl::~Libp2pModuleImpl() {
 }
 
 StdLogosResult Libp2pModuleImpl::start() {
+    if (!ctx) {
+        auto created = createContext();
+        if (!created.success) return created;
+    }
     publishEmitEvent();
     return callSync("Failed to start libp2p", [&](SyncPromise* p) {
         return libp2p_start(ctx, &Libp2pModuleImpl::promiseCallback, p);
