@@ -27,6 +27,7 @@ extern "C" {
 
 #include "config.h"
 #include "metric.h"
+#include "utils.h"
 
 // Timeouts (milliseconds) for the sync-over-async libp2p bridge.
 inline constexpr int kDefaultOpTimeoutMs = 10000;
@@ -70,31 +71,6 @@ inline SyncResult awaitResult(std::future<SyncResult>& f, int timeoutMs = kDefau
     SyncResult r;
     r.message = "timeout";
     return r;
-}
-
-inline std::string base64Encode(const std::vector<uint8_t>& data) {
-    static constexpr char kAlphabet[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string out;
-    out.reserve((data.size() + 2) / 3 * 4);
-    size_t i = 0;
-    for (; i + 3 <= data.size(); i += 3) {
-        uint32_t n = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
-        out.push_back(kAlphabet[(n >> 18) & 0x3f]);
-        out.push_back(kAlphabet[(n >> 12) & 0x3f]);
-        out.push_back(kAlphabet[(n >> 6) & 0x3f]);
-        out.push_back(kAlphabet[n & 0x3f]);
-    }
-    if (i < data.size()) {
-        uint32_t n = data[i] << 16;
-        bool hasTwo = i + 1 < data.size();
-        if (hasTwo) n |= data[i + 1] << 8;
-        out.push_back(kAlphabet[(n >> 18) & 0x3f]);
-        out.push_back(kAlphabet[(n >> 12) & 0x3f]);
-        out.push_back(hasTwo ? kAlphabet[(n >> 6) & 0x3f] : '=');
-        out.push_back('=');
-    }
-    return out;
 }
 
 // Wraps a resolved buffer as a successful result. Buffers are raw bytes

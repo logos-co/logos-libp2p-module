@@ -11,6 +11,8 @@ logos_module(
     NAME libp2p_module
     SOURCES
         src/plugin.h
+        src/utils.h
+        src/utils.cpp
         src/plugin.cpp
         src/callbacks.cpp
         src/kademlia.cpp

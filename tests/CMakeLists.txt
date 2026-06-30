@@ -30,6 +30,7 @@ if(LIBP2P_PATH)
     logos_test(
         NAME libp2p_module_tests
         MODULE_SOURCES
+            ../src/utils.cpp
             ../src/plugin.cpp
             ../src/callbacks.cpp
             ../src/kademlia.cpp
