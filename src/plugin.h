@@ -115,6 +115,9 @@ public:
     bool ok();
     StdLogosResult status();
 
+    StdLogosResult createNode(const std::string& config);
+    StdLogosResult getNodeInfo(const std::string& field);
+
     StdLogosResult start();
     StdLogosResult stop();
     StdLogosResult publicKey();
@@ -218,6 +221,12 @@ private:
     std::mutex m_queueMutex;
     std::condition_variable m_queueCond;
     std::unordered_map<std::string, std::queue<std::string>> m_topicQueues;
+
+    void applyOptions(const Libp2pModuleOptions& options);
+    StdLogosResult createContext();
+    void destroyContext();
+    void destroyHandle(libp2p_ctx_t* handle);
+    StdLogosResult nodeInfoBoundPorts();
 
     SyncResult generatePrivateKeyRaw();
 
