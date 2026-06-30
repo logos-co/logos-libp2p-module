@@ -89,7 +89,7 @@ LOGOS_TEST(config_priv_key_stable_peer_identity) {
     auto keyRes = keyGen.newPrivateKey();
     LOGOS_ASSERT_TRUE(keyRes.success);
     std::string hexKey = keyRes.value.get<std::string>();
-    auto priv = libp2p_module_config::decodeHex(hexKey);
+    auto priv = decodeHex(hexKey);
 
     std::string firstPeerId;
     {

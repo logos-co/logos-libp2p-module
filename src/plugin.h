@@ -73,42 +73,6 @@ inline SyncResult awaitResult(std::future<SyncResult>& f, int timeoutMs = kDefau
     return r;
 }
 
-inline std::string base64Encode(const std::vector<uint8_t>& data) {
-    static constexpr char kAlphabet[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string out;
-    out.reserve((data.size() + 2) / 3 * 4);
-    size_t i = 0;
-    for (; i + 3 <= data.size(); i += 3) {
-        uint32_t n = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
-        out.push_back(kAlphabet[(n >> 18) & 0x3f]);
-        out.push_back(kAlphabet[(n >> 12) & 0x3f]);
-        out.push_back(kAlphabet[(n >> 6) & 0x3f]);
-        out.push_back(kAlphabet[n & 0x3f]);
-    }
-    if (i < data.size()) {
-        uint32_t n = data[i] << 16;
-        bool hasTwo = i + 1 < data.size();
-        if (hasTwo) n |= data[i + 1] << 8;
-        out.push_back(kAlphabet[(n >> 18) & 0x3f]);
-        out.push_back(kAlphabet[(n >> 12) & 0x3f]);
-        out.push_back(hasTwo ? kAlphabet[(n >> 6) & 0x3f] : '=');
-        out.push_back('=');
-    }
-    return out;
-}
-
-inline std::string hexEncode(const std::vector<uint8_t>& data) {
-    static constexpr char kDigits[] = "0123456789abcdef";
-    std::string out;
-    out.reserve(data.size() * 2);
-    for (uint8_t b : data) {
-        out.push_back(kDigits[b >> 4]);
-        out.push_back(kDigits[b & 0x0f]);
-    }
-    return out;
-}
-
 // Wraps a resolved buffer as a successful result. Buffers are raw bytes
 // (publicKey/kadGetValue/stream reads), so they're base64-encoded to keep
 // `value` a valid UTF-8 JSON string.
@@ -118,7 +82,7 @@ inline StdLogosResult bufferToResult(const SyncResult& r) {
 
 // Hex-encodes the buffer so private keys match the hex `privKey` config format.
 inline StdLogosResult bufferToHexResult(const SyncResult& r) {
-    return {true, hexEncode(r.buffer), ""};
+    return {true, hexEncode(r.buffer.data(), r.buffer.size()), ""};
 }
 
 // Non-throwing JSON parse — malformed cbinding output yields a failed result
@@ -145,39 +109,6 @@ inline StdLogosResult jsonResult(const SyncResult& r, nlohmann::json emptyDefaul
     if (r.data.is_null()) return {true, std::move(emptyDefault), ""};
     return {true, r.data, ""};
 }
-
-/// Allocator that scrubs memory before releasing it, so private key bytes don't
-/// linger in the heap after the holding vector is reallocated or destroyed. The
-/// volatile writes are not elided by the optimizer, unlike a plain memset.
-template <class T>
-struct ScrubbingAllocator {
-    using value_type = T;
-
-    ScrubbingAllocator() noexcept = default;
-    template <class U>
-    ScrubbingAllocator(const ScrubbingAllocator<U>&) noexcept {}
-
-    T* allocate(std::size_t n) { return std::allocator<T>{}.allocate(n); }
-
-    void deallocate(T* p, std::size_t n) noexcept {
-        volatile unsigned char* vp = reinterpret_cast<volatile unsigned char*>(p);
-        for (std::size_t i = 0; i < n * sizeof(T); ++i) {
-            vp[i] = 0;
-        }
-        std::allocator<T>{}.deallocate(p, n);
-    }
-};
-
-template <class T, class U>
-bool operator==(const ScrubbingAllocator<T>&, const ScrubbingAllocator<U>&) noexcept {
-    return true;
-}
-template <class T, class U>
-bool operator!=(const ScrubbingAllocator<T>&, const ScrubbingAllocator<U>&) noexcept {
-    return false;
-}
-
-using SecureBytes = std::vector<uint8_t, ScrubbingAllocator<uint8_t>>;
 
 class Libp2pModuleImpl {
 public:

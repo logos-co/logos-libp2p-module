@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <stdexcept>
+
 std::string base64Encode(const std::vector<uint8_t>& data) {
     static constexpr char kAlphabet[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -33,6 +35,25 @@ std::string hexEncode(const uint8_t* data, size_t len) {
     for (size_t i = 0; i < len; ++i) {
         out[2 * i]     = kDigits[data[i] >> 4];
         out[2 * i + 1] = kDigits[data[i] & 0x0f];
+    }
+    return out;
+}
+
+static int hexNibble(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    throw std::invalid_argument("hex string contains a non-hex character");
+}
+
+std::vector<uint8_t> decodeHex(const std::string& hex) {
+    if (hex.size() % 2 != 0) {
+        throw std::invalid_argument("hex string has an odd length");
+    }
+    std::vector<uint8_t> out;
+    out.reserve(hex.size() / 2);
+    for (size_t i = 0; i < hex.size(); i += 2) {
+        out.push_back(static_cast<uint8_t>((hexNibble(hex[i]) << 4) | hexNibble(hex[i + 1])));
     }
     return out;
 }

@@ -14,6 +14,8 @@ extern "C" {
 #include "lib/libp2p.h"
 }
 
+#include "utils.h"
+
 struct Libp2pModuleOptions {
     std::vector<std::string> addrs = {};
     std::vector<std::pair<std::string, std::vector<std::string>>> bootstrapNodes = {};
@@ -93,27 +95,6 @@ inline int parseKeyType(const nlohmann::json& j, int fallback) {
     if (t == "secp256k1") return LIBP2P_PK_SECP256K1;
     if (t == "ecdsa") return LIBP2P_PK_ECDSA;
     return fallback;
-}
-
-inline int hexNibble(char c) {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    throw std::invalid_argument("privKey contains a non-hex character");
-}
-
-/// Decodes a hex string into bytes. Throws std::invalid_argument on odd length
-/// or a non-hex character; load() catches it and falls back to defaults.
-inline std::vector<uint8_t> decodeHex(const std::string& hex) {
-    if (hex.size() % 2 != 0) {
-        throw std::invalid_argument("privKey hex length must be even");
-    }
-    std::vector<uint8_t> out;
-    out.reserve(hex.size() / 2);
-    for (size_t i = 0; i < hex.size(); i += 2) {
-        out.push_back(static_cast<uint8_t>((hexNibble(hex[i]) << 4) | hexNibble(hex[i + 1])));
-    }
-    return out;
 }
 
 /// Overlays present keys onto `o`. Throws nlohmann type_error on a wrong-typed
