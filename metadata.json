@@ -17,7 +17,7 @@
 
     "config": {
         "env": "LIBP2P_MODULE_CONFIG",
-        "description": "JSON config — inline, or a path to a JSON file — overlaid onto the default options when the module is loaded. Every key is optional; an omitted key keeps its default.",
+        "description": "JSON config — inline, or a path to a JSON file — overlaid onto the default options when the module is loaded. Every key is optional; an omitted key keeps its default. The same schema is accepted at call time by createNode, which rebuilds the node before start.",
         "schema": {
             "addrs": "array<multiaddr string> — listen addresses",
             "bootstrapNodes": "array<{ peerId: string, addrs: array<multiaddr string> }> — DHT bootstrap peers",

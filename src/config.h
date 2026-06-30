@@ -40,6 +40,11 @@ struct Libp2pModuleOptions {
     /// Builds options from the LIBP2P_MODULE_CONFIG deployment config (codegen
     /// default-constructs a loaded module). See readme; absent/invalid → defaults.
     static Libp2pModuleOptions load();
+
+    /// Builds options from a JSON config string (the createNode argument).
+    /// Sets ok=false on invalid JSON or a wrong-typed field; never throws. When
+    /// err is non-null, it receives the reason on failure (empty on success).
+    static Libp2pModuleOptions fromJson(const std::string& raw, bool& ok, std::string* err = nullptr);
 };
 
 namespace libp2p_module_config {
@@ -150,21 +155,37 @@ inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
 
 } // namespace libp2p_module_config
 
-inline Libp2pModuleOptions Libp2pModuleOptions::load() {
-    std::string raw = libp2p_module_config::readSource();
-    if (raw.empty()) {
-        return {};
-    }
+inline Libp2pModuleOptions Libp2pModuleOptions::fromJson(const std::string& raw, bool& ok, std::string* err) {
+    ok = true;
+    if (err) err->clear();
     auto j = nlohmann::json::parse(raw, nullptr, false);
     if (j.is_discarded()) {
-        fprintf(stderr, "libp2p_module: ignoring invalid LIBP2P_MODULE_CONFIG\n");
+        ok = false;
+        if (err) *err = "malformed JSON";
         return {};
     }
     Libp2pModuleOptions opts;
     try {
         libp2p_module_config::apply(j, opts);
     } catch (const std::exception& e) {
-        fprintf(stderr, "libp2p_module: ignoring invalid LIBP2P_MODULE_CONFIG: %s\n", e.what());
+        fprintf(stderr, "libp2p_module: invalid config: %s\n", e.what());
+        ok = false;
+        if (err) *err = e.what();
+        return {};
+    }
+    return opts;
+}
+
+inline Libp2pModuleOptions Libp2pModuleOptions::load() {
+    std::string raw = libp2p_module_config::readSource();
+    if (raw.empty()) {
+        return {};
+    }
+    bool ok = false;
+    std::string err;
+    auto opts = fromJson(raw, ok, &err);
+    if (!ok) {
+        fprintf(stderr, "libp2p_module: ignoring invalid LIBP2P_MODULE_CONFIG: %s\n", err.c_str());
         return {};
     }
     return opts;

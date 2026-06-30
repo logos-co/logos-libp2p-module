@@ -57,8 +57,8 @@ jobs:
             --print-build-logs \
             --show-trace
 
-  openmetrics-e2e:
-    name: OpenMetrics e2e (x86_64-linux)
+  e2e:
+    name: E2E (x86_64-linux)
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -90,6 +90,10 @@ jobs:
 
       - name: Run openmetrics e2e
         run: nix run .#openmetrics-e2e
+
+      - name: Run standalone e2e
+        if: ${{ !cancelled() }}
+        run: nix run .#standalone-e2e
 
   sanitizers:
     name: Sanitizers (${{ matrix.sanitizer }})

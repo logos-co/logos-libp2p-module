@@ -37,9 +37,59 @@ export LIBP2P_MODULE_CONFIG='{
 export LIBP2P_MODULE_CONFIG=/etc/logos/libp2p.json
 ```
 
-See the `config` section of [`metadata.json`](./metadata.json) for the full schema.
+See [`config.example.json`](./config.example.json) for a ready-to-edit sample and
+the `config` section of [`metadata.json`](./metadata.json) for the full schema.
 Code that constructs `Libp2pModuleImpl` directly (examples, tests) passes
 `Libp2pModuleOptions` to the constructor and bypasses this path.
+
+---
+
+# Running a node via logoscore
+
+The module can be driven directly from `logoscore` without any other module. A
+default node is created when the module is loaded; `createNode` then rebuilds it
+from a call-time config (same schema as `LIBP2P_MODULE_CONFIG`, so `@config.json`
+expands to the file's contents), and `getNodeInfo` reads back node details.
+
+First build the module's `.lgx` bundle, install it into a modules directory, and
+start the daemon against that directory:
+
+```bash
+nix build '.#lgx'                       # result/ holds the .lgx bundle
+lgpm --modules-dir ./modules --allow-unsigned install --file result/*.lgx
+lgpm --modules-dir ./modules list       # confirm "libp2p_module" is listed
+
+logoscore -D -m ./modules &             # start the daemon against ./modules
+```
+
+The daemon binds its socket asynchronously, so the first `load-module` can race
+it — retry once if it reports an RPC failure. Then drive the node:
+
+```bash
+logoscore load-module libp2p_module
+logoscore call libp2p_module createNode @config.example.json   # or inline JSON
+logoscore call libp2p_module start
+logoscore call libp2p_module getNodeInfo Version        # module version
+logoscore call libp2p_module getNodeInfo MyBoundPorts   # bound ports, e.g. [9000]
+logoscore call libp2p_module getNodeInfo PeerId         # this node's peer id
+logoscore call libp2p_module getNodeInfo Multiaddrs     # full bound multiaddrs
+logoscore stop
+```
+
+`createNode` is optional: if you set `LIBP2P_MODULE_CONFIG` before loading, the
+node is already configured and you can `start` straight away. Calling
+`createNode` tears down the existing node and builds a fresh one from the supplied
+config, so issue it before `start`. It accepts inline JSON or `@config.json`
+(the file's contents); wrap inline JSON in single quotes so the shell doesn't
+mangle it.
+
+`logoscore` only relays a generic "call failed" to the CLI; the specific reason
+(`createNode: invalid config: …`, `libp2p_new failed: …`) is written to the
+daemon's stderr, so check the daemon output (or its redirected log) when a call
+fails.
+
+A scripted version of this flow runs in CI and locally via
+`nix run .#standalone-e2e` (see [`tests/README.md`](./tests/README.md)).
 
 ---
 

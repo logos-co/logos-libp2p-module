@@ -27,6 +27,7 @@ extern "C" {
 
 #include "config.h"
 #include "metric.h"
+#include "utils.h"
 
 // Timeouts (milliseconds) for the sync-over-async libp2p bridge.
 inline constexpr int kDefaultOpTimeoutMs = 10000;
@@ -188,6 +189,9 @@ public:
     bool ok();
     StdLogosResult status();
 
+    StdLogosResult createNode(const std::string& config);
+    StdLogosResult getNodeInfo(const std::string& field);
+
     StdLogosResult start();
     StdLogosResult stop();
     StdLogosResult publicKey();
@@ -270,6 +274,7 @@ private:
     std::vector<libp2p_bootstrap_node_t> m_bootstrapCNodes;
 
     SecureBytes m_privKey;
+    int m_keyType = LIBP2P_PK_SECP256K1;
 
     SyncResult generatePrivateKey(int scheme);
 
@@ -293,6 +298,14 @@ private:
     std::mutex m_queueMutex;
     std::condition_variable m_queueCond;
     std::unordered_map<std::string, std::queue<std::string>> m_topicQueues;
+
+    void applyOptions(const Libp2pModuleOptions& options);
+    StdLogosResult createContext();
+    void destroyContext();
+    void destroyHandle(libp2p_ctx_t* handle);
+    StdLogosResult nodeInfoBoundPorts();
+
+    SyncResult generatePrivateKeyRaw();
 
     static void promiseCallback(int ret, const char* msg, size_t len, void* userData);
     static void promiseBufferCallback(int ret, const uint8_t* data, size_t dataLen,
