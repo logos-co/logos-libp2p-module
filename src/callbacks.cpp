@@ -2,6 +2,39 @@
 
 using json = nlohmann::json;
 
+namespace {
+json extendedRecordToJson(const Libp2pExtendedPeerRecord& rec) {
+    json out;
+    out["peerId"] = rec.peerId ? rec.peerId : "";
+    out["seqNo"] = rec.seqNo;
+
+    json addrs = json::array();
+    if (rec.addrs) {
+        for (size_t a = 0; a < rec.addrsLen; ++a) {
+            if (rec.addrs[a]) addrs.push_back(rec.addrs[a]);
+        }
+    }
+    out["addrs"] = addrs;
+
+    json services = json::array();
+    if (rec.services) {
+        for (size_t s = 0; s < rec.servicesLen; ++s) {
+            json svc;
+            svc["id"] = rec.services[s].id ? rec.services[s].id : "";
+            std::vector<uint8_t> data;
+            if (rec.services[s].data && rec.services[s].dataLen > 0) {
+                data.assign(rec.services[s].data,
+                            rec.services[s].data + rec.services[s].dataLen);
+            }
+            svc["data"] = base64Encode(data);
+            services.push_back(svc);
+        }
+    }
+    out["services"] = services;
+    return out;
+}
+}  // namespace
+
 void Libp2pModuleImpl::promisePeerInfoCallback(
     int ret, const Libp2pPeerInfo* info,
     const char* msg, size_t len, void* userData)
@@ -127,6 +160,24 @@ void Libp2pModuleImpl::promiseRandomRecordsCallback(
     }
 
     finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
+}
+
+void Libp2pModuleImpl::promiseExtendedPeerRecordCallback(
+    int ret, const Libp2pExtendedPeerRecord* record,
+    const char* msg, size_t len, void* userData)
+{
+    auto* p = static_cast<SyncPromise*>(userData);
+    SyncResult r;
+    r.ok = (ret == RET_OK);
+
+    if (ret == RET_OK && record) {
+        r.message = extendedRecordToJson(*record).dump();
+    } else {
+        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    }
+
+    p->set_value(std::move(r));
+    delete p;
 }
 
 void Libp2pModuleImpl::topicHandler(

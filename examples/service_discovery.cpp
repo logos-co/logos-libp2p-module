@@ -140,6 +140,16 @@ int main()
         printf("Failed to create XPR: %s\n", xpr.error.c_str());
     } else {
         printf("Signed XPR is %zu bytes\n", xpr.value.get<std::string>().size());
+
+        auto decoded = advertiser.decodeXpr(xpr.value.get<std::string>());
+        if (!decoded.success) {
+            printf("Failed to decode XPR: %s\n", decoded.error.c_str());
+        } else {
+            printf("Decoded XPR: peer %s, seq %llu, %zu service(s)\n",
+                   decoded.value["peerId"].get<std::string>().c_str(),
+                   (unsigned long long)decoded.value["seqNo"].get<uint64_t>(),
+                   decoded.value["services"].size());
+        }
     }
 
     printf("Discoverer: unregistering interest in %s\n", serviceId.c_str());

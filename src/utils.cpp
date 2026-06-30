@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <stdexcept>
+
 std::string base64Encode(const std::vector<uint8_t>& data) {
     static constexpr char kAlphabet[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -21,6 +23,50 @@ std::string base64Encode(const std::vector<uint8_t>& data) {
         out.push_back(kAlphabet[(n >> 12) & 0x3f]);
         out.push_back(hasTwo ? kAlphabet[(n >> 6) & 0x3f] : '=');
         out.push_back('=');
+    }
+    return out;
+}
+
+std::string base64Decode(const std::string& in) {
+    static constexpr char kAlphabet[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    int lookup[256];
+    for (int& v : lookup) v = -1;
+    for (int i = 0; i < 64; ++i) lookup[static_cast<unsigned char>(kAlphabet[i])] = i;
+
+    if (in.size() % 4 != 0) {
+        throw std::invalid_argument("base64Decode: length is not a multiple of 4");
+    }
+
+    std::string out;
+    out.reserve(in.size() / 4 * 3);
+    uint32_t buf = 0;
+    int bits = 0;
+    size_t pad = 0;
+    for (size_t i = 0; i < in.size(); ++i) {
+        char c = in[i];
+        if (c == '=') {
+            if (i < in.size() - 2 || ++pad > 2) {
+                throw std::invalid_argument("base64Decode: misplaced padding");
+            }
+            continue;
+        }
+        if (pad > 0) {
+            throw std::invalid_argument("base64Decode: data after padding");
+        }
+        int val = lookup[static_cast<unsigned char>(c)];
+        if (val < 0) {
+            throw std::invalid_argument("base64Decode: invalid character");
+        }
+        buf = (buf << 6) | static_cast<uint32_t>(val);
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            out.push_back(static_cast<char>((buf >> bits) & 0xff));
+        }
+    }
+    if ((buf & ((1u << bits) - 1)) != 0) {
+        throw std::invalid_argument("base64Decode: non-canonical trailing bits");
     }
     return out;
 }

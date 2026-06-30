@@ -11,6 +11,8 @@
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -168,6 +170,7 @@ public:
     StdLogosResult createXpr(const std::vector<std::string>& addrs,
                              const std::vector<std::pair<std::string, std::string>>& services,
                              uint64_t seqNo);
+    StdLogosResult decodeXpr(const std::string& xpr);
 
     StdLogosResult peerstoreGetPeers();
     StdLogosResult peerstoreGetPeerInfo(const std::string& peerId);
@@ -250,6 +253,9 @@ private:
     static void promiseRandomRecordsCallback(int ret, const Libp2pExtendedPeerRecord* records,
                                              size_t recordsLen, const char* msg,
                                              size_t len, void* userData);
+    static void promiseExtendedPeerRecordCallback(int ret,
+                                                  const Libp2pExtendedPeerRecord* record,
+                                                  const char* msg, size_t len, void* userData);
 
     static void topicHandler(const char* topic, uint8_t* data, size_t len, void* userData);
     static void gossipsubResultCallback(int ret, const char* msg, size_t len, void* userData);

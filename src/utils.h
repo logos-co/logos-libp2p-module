@@ -42,5 +42,9 @@ inline nlohmann::json peerInfoToJson(const Libp2pPeerInfo& info) {
 // Encodes raw bytes as base64.
 std::string base64Encode(const std::vector<uint8_t>& data);
 
+// Inverse of base64Encode. Throws std::invalid_argument on malformed input
+// (bad chars, misplaced/excess padding, wrong length, non-canonical tail bits).
+std::string base64Decode(const std::string& in);
+
 // Encodes raw bytes as lowercase hex.
 std::string hexEncode(const uint8_t* data, size_t len);

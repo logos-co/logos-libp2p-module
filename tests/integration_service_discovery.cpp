@@ -191,3 +191,42 @@ LOGOS_TEST(create_xpr) {
 
     LOGOS_ASSERT_TRUE(node.stop().success);
 }
+
+LOGOS_TEST(decode_xpr) {
+    Libp2pModuleImpl node(discoOptions());
+    LOGOS_ASSERT_TRUE(node.start().success);
+
+    auto [peerId, addrs] = getPeerInfoPair(node);
+
+    // 0xff is non-UTF-8: exercises the binary-safe base64 encoding of `data`.
+    std::string binData{0x01, 0x02, 0x03, static_cast<char>(0xff)};
+    std::vector<std::pair<std::string, std::string>> services = {
+        {"chat", binData},
+        {"file-share", ""},
+    };
+
+    auto created = node.createXpr(addrs, services, 42);
+    LOGOS_ASSERT_TRUE(created.success);
+
+    // createXpr's base64 output feeds straight into decodeXpr, no manual decode.
+    std::string signedXpr = created.value.get<std::string>();
+    auto decoded = node.decodeXpr(signedXpr);
+    LOGOS_ASSERT_TRUE(decoded.success);
+    LOGOS_ASSERT_EQ(decoded.value["peerId"].get<std::string>(), peerId);
+    LOGOS_ASSERT_EQ(decoded.value["seqNo"].get<uint64_t>(), 42u);
+    LOGOS_ASSERT_EQ(decoded.value["services"].size(), services.size());
+    LOGOS_ASSERT_EQ(decoded.value["services"][0]["id"].get<std::string>(), "chat");
+    LOGOS_ASSERT_EQ(base64Decode(decoded.value["services"][0]["data"].get<std::string>()),
+                    binData);
+
+    // A flipped byte must fail signature verification, not silently decode.
+    std::string rawBytes = base64Decode(signedXpr);
+    rawBytes[rawBytes.size() / 2] ^= 0xff;
+    std::string tampered = base64Encode(
+        std::vector<uint8_t>(rawBytes.begin(), rawBytes.end()));
+    LOGOS_ASSERT_FALSE(node.decodeXpr(tampered).success);
+
+    LOGOS_ASSERT_FALSE(node.decodeXpr("").success);
+
+    LOGOS_ASSERT_TRUE(node.stop().success);
+}
