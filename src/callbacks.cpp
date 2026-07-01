@@ -133,28 +133,7 @@ void Libp2pModuleImpl::promiseRandomRecordsCallback(
     if (r.ok && records && recordsLen > 0) {
         json arr = json::array();
         for (size_t i = 0; i < recordsLen; ++i) {
-            json rec;
-            rec["peerId"] = records[i].peerId ? records[i].peerId : "";
-            rec["seqNo"] = records[i].seqNo;
-            rec["addrs"] = cStrArrayToJson(records[i].addrs, records[i].addrsLen);
-
-            json services = json::array();
-            if (records[i].services) {
-                for (size_t s = 0; s < records[i].servicesLen; ++s) {
-                    json svc;
-                    svc["id"] = records[i].services[s].id ? records[i].services[s].id : "";
-                    if (records[i].services[s].data && records[i].services[s].dataLen > 0) {
-                        svc["data"] = std::string(
-                            reinterpret_cast<const char*>(records[i].services[s].data),
-                            records[i].services[s].dataLen);
-                    } else {
-                        svc["data"] = "";
-                    }
-                    services.push_back(svc);
-                }
-            }
-            rec["services"] = services;
-            arr.push_back(rec);
+            arr.push_back(extendedRecordToJson(records[i]));
         }
         r.data = std::move(arr);
     }
