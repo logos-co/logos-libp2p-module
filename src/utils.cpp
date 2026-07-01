@@ -1,5 +1,6 @@
 #include "utils.h"
 
+#include <array>
 #include <stdexcept>
 
 std::string base64Encode(const std::vector<uint8_t>& data) {
@@ -28,11 +29,14 @@ std::string base64Encode(const std::vector<uint8_t>& data) {
 }
 
 std::string base64Decode(const std::string& in) {
-    static constexpr char kAlphabet[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    int lookup[256];
-    for (int& v : lookup) v = -1;
-    for (int i = 0; i < 64; ++i) lookup[static_cast<unsigned char>(kAlphabet[i])] = i;
+    static const auto lookup = [] {
+        static constexpr char kAlphabet[] =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        std::array<int, 256> t;
+        t.fill(-1);
+        for (int i = 0; i < 64; ++i) t[static_cast<unsigned char>(kAlphabet[i])] = i;
+        return t;
+    }();
 
     if (in.size() % 4 != 0) {
         throw std::invalid_argument("base64Decode: length is not a multiple of 4");
