@@ -3,180 +3,166 @@
 using json = nlohmann::json;
 
 namespace {
-json extendedRecordToJson(const Libp2pExtendedPeerRecord& rec) {
+// {peerId, seqNo, addrs, services:[{id, data}]}. Service `data` is arbitrary
+// bytes, so it is base64-encoded to keep the JSON valid UTF-8.
+json recordEntryToJson(const ExtendedPeerRecordEntry& rec) {
     json out;
-    out["peerId"] = rec.peerId ? rec.peerId : "";
+    out["peerId"] = nfStr(rec.peerId);
     out["seqNo"] = rec.seqNo;
-
-    json addrs = json::array();
-    if (rec.addrs) {
-        for (size_t a = 0; a < rec.addrsLen; ++a) {
-            if (rec.addrs[a]) addrs.push_back(rec.addrs[a]);
-        }
-    }
-    out["addrs"] = addrs;
+    out["addrs"] = seqStrToJson(rec.addrs);
 
     json services = json::array();
-    if (rec.services) {
-        for (size_t s = 0; s < rec.servicesLen; ++s) {
+    if (rec.services.data) {
+        for (size_t i = 0; i < rec.services.len; ++i) {
+            const auto& s = rec.services.data[i];
             json svc;
-            svc["id"] = rec.services[s].id ? rec.services[s].id : "";
-            std::vector<uint8_t> data;
-            if (rec.services[s].data && rec.services[s].dataLen > 0) {
-                data.assign(rec.services[s].data,
-                            rec.services[s].data + rec.services[s].dataLen);
-            }
-            svc["data"] = base64Encode(data);
+            svc["id"] = nfStr(s.id);
+            svc["data"] = base64Encode(nfBytes(s.data));
             services.push_back(svc);
         }
     }
     out["services"] = services;
     return out;
 }
+
+json providerToJson(const ProviderInfo& p) {
+    json j;
+    j["peerId"] = nfStr(p.peerId);
+    j["addrs"] = seqStrToJson(p.addrs);
+    return j;
+}
 }  // namespace
 
-void Libp2pModuleImpl::promisePeerInfoCallback(
-    int ret, const Libp2pPeerInfo* info,
-    const char* msg, size_t len, void* userData)
-{
-    auto r = basicResult(ret, msg, len);
-
-    if (r.ok && info) {
-        r.data = peerInfoToJson(*info);
-    }
-
-    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
+void Libp2pModuleImpl::cbBool(int ec, const bool*, const char* em, void* ud) {
+    finishPromise(static_cast<SyncPromise*>(ud), replyBase(ec, em));
 }
 
-void Libp2pModuleImpl::promisePeerStoreEntryCallback(
-    int ret, const Libp2pPeerStoreEntry* entry,
-    const char* msg, size_t len, void* userData)
-{
-    auto r = basicResult(ret, msg, len);
+void Libp2pModuleImpl::cbBytes(int ec, const NimFfiBytes* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply) r.buffer = nfBytes(*reply);
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
 
-    if (r.ok && entry) {
+void Libp2pModuleImpl::cbStr(int ec, const NimFfiStr* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply) r.message = nfStr(*reply);
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+void Libp2pModuleImpl::cbRead(int ec, const ReadResponse* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply) r.buffer = nfBytes(reply->data);
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+void Libp2pModuleImpl::cbCreate(int ec, LibP2PCtx* newCtx, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok) r.newCtx = newCtx;
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+void Libp2pModuleImpl::cbPeerInfo(int ec, const PeerInfoResponse* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply) r.data = peerInfoToJson(*reply);
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+void Libp2pModuleImpl::cbPeers(int ec, const PeersResponse* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply) r.data = seqStrToJson(reply->peerIds);
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+void Libp2pModuleImpl::cbDial(int ec, const DialResponse* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply) r.data = reply->streamId;
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+void Libp2pModuleImpl::cbProviders(int ec, const ProvidersResponse* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply && reply->providers.data) {
+        json arr = json::array();
+        for (size_t i = 0; i < reply->providers.len; ++i) {
+            arr.push_back(providerToJson(reply->providers.data[i]));
+        }
+        r.data = std::move(arr);
+    }
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+void Libp2pModuleImpl::cbRecords(int ec, const ExtendedRecordsResponse* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply && reply->records.data) {
+        json arr = json::array();
+        for (size_t i = 0; i < reply->records.len; ++i) {
+            arr.push_back(recordEntryToJson(reply->records.data[i]));
+        }
+        r.data = std::move(arr);
+    }
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+void Libp2pModuleImpl::cbRecord(int ec, const ExtendedPeerRecordEntry* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply) r.data = recordEntryToJson(*reply);
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+void Libp2pModuleImpl::cbReservation(int ec, const ReservationResponse* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply) r.data = seqStrToJson(reply->addrs);
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+void Libp2pModuleImpl::cbPeerStoreEntry(
+    int ec, const PeerStoreEntryResponse* reply, const char* em, void* ud)
+{
+    auto r = replyBase(ec, em);
+    if (r.ok && reply) {
         json j;
-        j["peerId"] = entry->peerId ? entry->peerId : "";
-        j["addrs"] = cStrArrayToJson(entry->addrs, entry->addrsLen);
-        j["protocols"] = cStrArrayToJson(entry->protocols, entry->protocolsLen);
-        j["publicKey"] = hexEncode(entry->publicKey, entry->publicKeyLen);
-        j["agentVersion"] = entry->agentVersion ? entry->agentVersion : "";
-        j["protoVersion"] = entry->protoVersion ? entry->protoVersion : "";
+        j["peerId"] = nfStr(reply->peerId);
+        j["addrs"] = seqStrToJson(reply->addrs);
+        j["protocols"] = seqStrToJson(reply->protocols);
+        auto pk = nfBytes(reply->publicKey);
+        j["publicKey"] = hexEncode(pk.data(), pk.size());
+        j["agentVersion"] = nfStr(reply->agentVersion);
+        j["protoVersion"] = nfStr(reply->protoVersion);
         r.data = std::move(j);
     }
-
-    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
 }
 
-void Libp2pModuleImpl::promisePeersCallback(
-    int ret, const char** peerIds, size_t peerIdsLen,
-    const char* msg, size_t len, void* userData)
-{
-    auto r = basicResult(ret, msg, len);
-
-    if (r.ok && peerIds && peerIdsLen > 0) {
-        r.data = cStrArrayToJson(peerIds, peerIdsLen);
-    }
-
-    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
+// Event listeners run on the Nim dispatch thread through a C trampoline, so a
+// C++ exception escaping here would cross the FFI boundary and terminate. Guard
+// the whole body — a serialization failure (e.g. non-UTF-8 pubsub payload in
+// the emitted event) must not take the process down.
+void Libp2pModuleImpl::onIncomingStream(const IncomingStreamEvent* evt, void* ud) {
+    auto* self = static_cast<Libp2pModuleImpl*>(ud);
+    if (!self || !evt) return;
+    try {
+        json j;
+        j["streamId"] = evt->streamId;
+        j["proto"] = nfStr(evt->proto);
+        self->emitEventSafe("protocolStream", j.dump());
+    } catch (...) {}
 }
 
-void Libp2pModuleImpl::promiseProvidersCallback(
-    int ret, const Libp2pPeerInfo* providers, size_t providersLen,
-    const char* msg, size_t len, void* userData)
-{
-    auto r = basicResult(ret, msg, len);
-
-    if (r.ok && providers && providersLen > 0) {
-        json arr = json::array();
-        for (size_t i = 0; i < providersLen; ++i) {
-            arr.push_back(peerInfoToJson(providers[i]));
+void Libp2pModuleImpl::onPubsubMessage(const PubsubMessageEvent* evt, void* ud) {
+    auto* self = static_cast<Libp2pModuleImpl*>(ud);
+    if (!self || !evt) return;
+    try {
+        std::string topic = nfStr(evt->topic);
+        auto bytes = nfBytes(evt->data);
+        std::string payload(bytes.begin(), bytes.end());
+        {
+            std::lock_guard<std::mutex> lock(self->m_queueMutex);
+            self->m_topicQueues[topic].push(payload);
+            self->m_queueCond.notify_all();
         }
-        r.data = std::move(arr);
-    }
-
-    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
-}
-
-void Libp2pModuleImpl::promiseConnectionCallback(
-    int ret, libp2p_stream_t* stream,
-    const char* msg, size_t len, void* userData)
-{
-    auto r = basicResult(ret, msg, len);
-    if (r.ok && stream) {
-        r.stream = stream;
-    }
-
-    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
-}
-
-void Libp2pModuleImpl::promiseReservationCallback(
-    int ret, const char** addrs, size_t addrsLen, uint64_t expireTime,
-    const char* msg, size_t len, void* userData)
-{
-    (void)expireTime;
-    auto r = basicResult(ret, msg, len);
-
-    if (r.ok && addrs && addrsLen > 0) {
-        r.data = cStrArrayToJson(addrs, addrsLen);
-    }
-
-    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
-}
-
-void Libp2pModuleImpl::promiseRandomRecordsCallback(
-    int ret, const Libp2pExtendedPeerRecord* records, size_t recordsLen,
-    const char* msg, size_t len, void* userData)
-{
-    auto r = basicResult(ret, msg, len);
-
-    if (r.ok && records && recordsLen > 0) {
-        json arr = json::array();
-        for (size_t i = 0; i < recordsLen; ++i) {
-            arr.push_back(extendedRecordToJson(records[i]));
-        }
-        r.data = std::move(arr);
-    }
-
-    finishPromise(static_cast<SyncPromise*>(userData), std::move(r));
-}
-
-void Libp2pModuleImpl::promiseExtendedPeerRecordCallback(
-    int ret, const Libp2pExtendedPeerRecord* record,
-    const char* msg, size_t len, void* userData)
-{
-    auto* p = static_cast<SyncPromise*>(userData);
-    SyncResult r;
-    r.ok = (ret == RET_OK);
-
-    if (ret == RET_OK && record) {
-        r.message = extendedRecordToJson(*record).dump();
-    } else {
-        r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
-    }
-
-    p->set_value(std::move(r));
-    delete p;
-}
-
-void Libp2pModuleImpl::topicHandler(
-    const char* topic, uint8_t* data, size_t len, void* userData)
-{
-    auto* subCtx = static_cast<Libp2pModuleImpl::SubscribeCtx*>(userData);
-    if (!subCtx || !subCtx->instance) return;
-
-    auto* self = subCtx->instance;
-    std::string topicStr = topic ? topic : "";
-    std::string payload(reinterpret_cast<const char*>(data), len);
-
-    {
-        std::lock_guard<std::mutex> lock(self->m_queueMutex);
-        self->m_topicQueues[topicStr].push(std::move(payload));
-        self->m_queueCond.notify_all();
-    }
-
-    json j;
-    j["topic"] = topicStr;
-    j["data"] = std::string(reinterpret_cast<const char*>(data), len);
-    self->emitEventSafe("gossipsubMessage", j.dump());
+        json j;
+        j["topic"] = topic;
+        j["data"] = payload;
+        self->emitEventSafe("gossipsubMessage", j.dump());
+    } catch (...) {}
 }

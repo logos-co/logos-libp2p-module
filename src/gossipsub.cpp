@@ -1,101 +1,35 @@
 #include "plugin.h"
 
-#include <algorithm>
-#include <cstring>
+#include <chrono>
 
 StdLogosResult Libp2pModuleImpl::gossipsubPublish(
     const std::string& topic, const std::string& data)
 {
+    PublishRequest req{};
+    req.topic = nimffi_str(topic.c_str());
+    req.data = NimFfiBytes{reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())), data.size()};
     return callSync("Failed to publish", [&](SyncPromise* p) {
-        // cbinding signature is non-const but data is copied before enqueue.
-        return libp2p_gossipsub_publish(
-            ctx, topic.c_str(),
-            reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())),
-            data.size(),
-            &Libp2pModuleImpl::promiseCallback, p);
+        return libp2p_ctx_gossipsub_publish(ctx, &req, &Libp2pModuleImpl::cbBool, p);
     });
-}
-
-// Surface async (un)subscribe outcomes as gossipsubResult events. Drops the
-// ctx from the registry when the ack fires for an unsubscribing ctx.
-void Libp2pModuleImpl::gossipsubResultCallback(int ret, const char* msg, size_t len, void* userData) {
-    auto* subCtx = static_cast<SubscribeCtx*>(userData);
-    if (!subCtx || !subCtx->instance) return;
-
-    auto* instance = subCtx->instance;
-    const std::string topic = subCtx->topic;
-    const bool unsubscribing = subCtx->unsubscribing.load(std::memory_order_acquire);
-
-    nlohmann::json j;
-    j["topic"] = topic;
-    j["result"] = ret;
-    j["message"] = (msg && len > 0) ? std::string(msg, len) : std::string();
-    instance->emitEventSafe("gossipsubResult", j.dump());
-
-    if (unsubscribing && ret == RET_OK) {
-        std::lock_guard<std::mutex> lock(instance->m_subscribeContextsLock);
-        auto& vec = instance->m_subscribeContexts;
-        vec.erase(std::remove_if(vec.begin(), vec.end(),
-            [subCtx](const std::unique_ptr<SubscribeCtx>& c) { return c.get() == subCtx; }),
-            vec.end());
-    }
 }
 
 StdLogosResult Libp2pModuleImpl::gossipsubSubscribe(const std::string& topic) {
     if (!ctx) return {false, {}, "No libp2p context"};
+    // Delivered messages surface through the on_pubsub_message listener, which
+    // needs the emit snapshot published to forward gossipsubMessage events.
     publishEmitEvent();
-
-    auto subCtx = std::make_unique<SubscribeCtx>();
-    subCtx->instance = this;
-    subCtx->topic = topic;
-
-    int ret = libp2p_gossipsub_subscribe(
-        ctx, topic.c_str(),
-        &Libp2pModuleImpl::topicHandler,
-        &Libp2pModuleImpl::gossipsubResultCallback,
-        subCtx.get());
-
-    if (ret != RET_OK) {
-        return {false, {}, "Failed to subscribe"};
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(m_subscribeContextsLock);
-        m_subscribeContexts.push_back(std::move(subCtx));
-    }
-    return {true, {}, ""};
+    return callSync("Failed to subscribe", [&](SyncPromise* p) {
+        return libp2p_ctx_gossipsub_subscribe(ctx, nimffi_str(topic.c_str()),
+                                              &Libp2pModuleImpl::cbBool, p);
+    });
 }
 
 StdLogosResult Libp2pModuleImpl::gossipsubUnsubscribe(const std::string& topic) {
     if (!ctx) return {false, {}, "No libp2p context"};
-    publishEmitEvent();
-
-    SubscribeCtx* ctxPtr = nullptr;
-    {
-        std::lock_guard<std::mutex> lock(m_subscribeContextsLock);
-        auto it = std::find_if(m_subscribeContexts.begin(), m_subscribeContexts.end(),
-            [&](const std::unique_ptr<SubscribeCtx>& c) {
-                return c->topic == topic
-                    && !c->unsubscribing.load(std::memory_order_acquire);
-            });
-        if (it == m_subscribeContexts.end()) {
-            return {false, {}, "Not subscribed to topic"};
-        }
-        ctxPtr = it->get();
-        ctxPtr->unsubscribing.store(true, std::memory_order_release);
-    }
-
-    int ret = libp2p_gossipsub_unsubscribe(
-        ctx, topic.c_str(),
-        &Libp2pModuleImpl::topicHandler,
-        &Libp2pModuleImpl::gossipsubResultCallback,
-        ctxPtr);
-
-    if (ret != RET_OK) {
-        ctxPtr->unsubscribing.store(false, std::memory_order_release);
-        return {false, {}, "Failed to unsubscribe (ret=" + std::to_string(ret) + ")"};
-    }
-    return {true, {}, ""};
+    return callSync("Failed to unsubscribe", [&](SyncPromise* p) {
+        return libp2p_ctx_gossipsub_unsubscribe(ctx, nimffi_str(topic.c_str()),
+                                                &Libp2pModuleImpl::cbBool, p);
+    });
 }
 
 StdLogosResult Libp2pModuleImpl::gossipsubNextMessage(const std::string& topic, int64_t timeoutMs) {
