@@ -82,6 +82,11 @@ inline StdLogosResult bufferToResult(const SyncResult& r) {
     return {true, base64Encode(r.buffer), ""};
 }
 
+// Hex-encodes the buffer so private keys match the hex `privKey` config format.
+inline StdLogosResult bufferToHexResult(const SyncResult& r) {
+    return {true, hexEncode(r.buffer.data(), r.buffer.size()), ""};
+}
+
 // Non-throwing JSON parse — malformed cbinding output yields a failed result
 // instead of propagating an exception.
 inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPrefix) {
@@ -202,7 +207,10 @@ private:
     std::vector<std::vector<const char*>> m_addrPtrStorage;
     std::vector<libp2p_bootstrap_node_t> m_bootstrapCNodes;
 
-    std::vector<uint8_t> m_privKey;
+    SecureBytes m_privKey;
+    int m_keyType = LIBP2P_PK_SECP256K1;
+
+    SyncResult generatePrivateKey(int scheme);
 
     // Map guards lookup; entry->mtx guards the pointee. Ops take shared,
     // release takes exclusive and flips `released`.

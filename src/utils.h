@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -48,3 +49,40 @@ std::string base64Decode(const std::string& in);
 
 // Encodes raw bytes as lowercase hex.
 std::string hexEncode(const uint8_t* data, size_t len);
+
+// Decodes a hex string (either case) into bytes. Throws std::invalid_argument
+// on an odd length or a non-hex character.
+std::vector<uint8_t> decodeHex(const std::string& hex);
+
+// Allocator that scrubs memory before releasing it, so secret bytes don't
+// linger in the heap after the holding vector is reallocated or destroyed. The
+// volatile writes are not elided by the optimizer, unlike a plain memset.
+template <class T>
+struct ScrubbingAllocator {
+    using value_type = T;
+
+    ScrubbingAllocator() noexcept = default;
+    template <class U>
+    ScrubbingAllocator(const ScrubbingAllocator<U>&) noexcept {}
+
+    T* allocate(std::size_t n) { return std::allocator<T>{}.allocate(n); }
+
+    void deallocate(T* p, std::size_t n) noexcept {
+        volatile unsigned char* vp = reinterpret_cast<volatile unsigned char*>(p);
+        for (std::size_t i = 0; i < n * sizeof(T); ++i) {
+            vp[i] = 0;
+        }
+        std::allocator<T>{}.deallocate(p, n);
+    }
+};
+
+template <class T, class U>
+bool operator==(const ScrubbingAllocator<T>&, const ScrubbingAllocator<U>&) noexcept {
+    return true;
+}
+template <class T, class U>
+bool operator!=(const ScrubbingAllocator<T>&, const ScrubbingAllocator<U>&) noexcept {
+    return false;
+}
+
+using SecureBytes = std::vector<uint8_t, ScrubbingAllocator<uint8_t>>;

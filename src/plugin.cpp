@@ -81,7 +81,9 @@ void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
     m_addrStorage.clear();
     m_addrPtrStorage.clear();
     m_bootstrapCNodes.clear();
-    m_privKey.clear();
+
+    m_privKey.assign(options.privKey.begin(), options.privKey.end());
+    m_keyType = options.keyType;
 
     m_libp2pConfig.mount_gossipsub = options.mountGossipsub ? 1 : 0;
     m_libp2pConfig.gossipsub_trigger_self = options.gossipsubTriggerSelf ? 1 : 0;
@@ -146,13 +148,15 @@ void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
 StdLogosResult Libp2pModuleImpl::createContext() {
     m_initError.clear();
 
-    auto keyResult = generatePrivateKeyRaw();
-    if (!keyResult.ok) {
-        m_initError = "private key generation failed: " + keyResult.message;
-        fprintf(stderr, "libp2p_new_private_key failed: %s\n", keyResult.message.c_str());
-        return {false, {}, m_initError};
+    if (m_privKey.empty()) {
+        auto keyResult = generatePrivateKey(m_keyType);
+        if (!keyResult.ok) {
+            m_initError = "private key generation failed: " + keyResult.message;
+            fprintf(stderr, "libp2p_new_private_key failed: %s\n", keyResult.message.c_str());
+            return {false, {}, m_initError};
+        }
+        m_privKey.assign(keyResult.buffer.begin(), keyResult.buffer.end());
     }
-    m_privKey = std::move(keyResult.buffer);
 
     m_libp2pConfig.priv_key.data = m_privKey.data();
     m_libp2pConfig.priv_key.dataLen = static_cast<int>(m_privKey.size());
@@ -288,11 +292,11 @@ StdLogosResult Libp2pModuleImpl::publicKey() {
         bufferToResult);
 }
 
-SyncResult Libp2pModuleImpl::generatePrivateKeyRaw() {
+SyncResult Libp2pModuleImpl::generatePrivateKey(int scheme) {
     // Doesn't need a ctx, so it bypasses callSync's ctx check.
     auto* p = new SyncPromise();
     auto f = p->get_future();
-    int ret = libp2p_new_private_key(LIBP2P_PK_SECP256K1,
+    int ret = libp2p_new_private_key(static_cast<libp2p_pk_scheme>(scheme),
                                      &Libp2pModuleImpl::promiseBufferCallback, p);
     if (ret != RET_OK) {
         delete p;
@@ -302,9 +306,9 @@ SyncResult Libp2pModuleImpl::generatePrivateKeyRaw() {
 }
 
 StdLogosResult Libp2pModuleImpl::newPrivateKey() {
-    auto r = generatePrivateKeyRaw();
+    auto r = generatePrivateKey(LIBP2P_PK_SECP256K1);
     if (!r.ok) return {false, {}, r.message};
-    return bufferToResult(r);
+    return bufferToHexResult(r);
 }
 
 StdLogosResult Libp2pModuleImpl::toCid(const std::string& key) {

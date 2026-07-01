@@ -3,11 +3,14 @@ project(Libp2pModuleTests LANGUAGES CXX)
 
 include(LogosTest)
 
-# Fast unit layer: pure header-inline logic, links without libp2p.so (still
-# needs the cbind header in ../lib for constants/types).
+# Fast unit layer: header-inline logic plus the pure utils.cpp helpers it calls
+# (e.g. decodeHex), links without libp2p.so (still needs the cbind header in
+# ../lib for constants/types).
 
 logos_test(
     NAME libp2p_module_unit_tests
+    MODULE_SOURCES
+        ../src/utils.cpp
     TEST_SOURCES
         main.cpp
         unit_config.cpp

@@ -29,7 +29,8 @@ export LIBP2P_MODULE_CONFIG='{
   "bootstrapNodes": [
     { "peerId": "16Uiu2...", "addrs": ["/ip4/1.2.3.4/tcp/9000"] }
   ],
-  "transport": "tcp"
+  "transport": "tcp",
+  "privKey": "08021220..."
 }'
 
 # or a file
