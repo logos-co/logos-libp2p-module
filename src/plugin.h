@@ -239,8 +239,6 @@ private:
     void destroyHandle(libp2p_ctx_t* handle);
     StdLogosResult nodeInfoBoundPorts();
 
-    SyncResult generatePrivateKeyRaw();
-
     static void promiseCallback(int ret, const char* msg, size_t len, void* userData);
     static void promiseBufferCallback(int ret, const uint8_t* data, size_t dataLen,
                                       const char* msg, size_t len, void* userData);
