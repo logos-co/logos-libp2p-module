@@ -23,9 +23,12 @@
 #include "logos_json.h"
 #include "logos_result.h"
 
-extern "C" {
+// The nim-ffi generated header is header-only C: it declares the exported Nim
+// symbols inside its own `extern "C"` block and exposes the async API as
+// `static inline` wrappers plus C++-linkage callback typedefs. It must NOT be
+// wrapped in an extra `extern "C"` here, or the reply-callback typedefs would
+// take C linkage and no longer match the C++ static callbacks we pass in.
 #include "lib/libp2p.h"
-}
 
 #include "config.h"
 #include "metric.h"
@@ -45,7 +48,7 @@ struct SyncResult {
     std::string message;
     std::vector<uint8_t> buffer;
     nlohmann::json data;
-    libp2p_stream_t* stream = nullptr;
+    LibP2PCtx* newCtx = nullptr;
 };
 
 using SyncPromise = std::promise<SyncResult>;
@@ -57,11 +60,13 @@ inline void finishPromise(SyncPromise* p, SyncResult r) {
     delete p;
 }
 
-// Seeds a SyncResult from the (ret, msg) pair every cbinding callback receives.
-inline SyncResult basicResult(int ret, const char* msg, size_t len) {
+// Seeds a SyncResult from the (err_code, err_msg) pair every nim-ffi reply
+// callback receives. err_msg is a NUL-terminated copy owned by the binding and
+// valid only during the callback. err_code 0 (NIMFFI_RET_OK) means success.
+inline SyncResult replyBase(int errCode, const char* errMsg) {
     SyncResult r;
-    r.ok = (ret == RET_OK);
-    r.message = (msg && len > 0) ? std::string(msg, len) : std::string();
+    r.ok = (errCode == NIMFFI_RET_OK);
+    if (!r.ok) r.message = errMsg ? std::string(errMsg) : std::string();
     return r;
 }
 
@@ -186,48 +191,32 @@ public:
 
     LogosMap collectMetrics();
 
-    /* ----------- Event Callback ----------- */
-
-    bool setEventCallback();
-
 private:
-    libp2p_ctx_t* ctx = nullptr;
-    libp2p_config_t m_libp2pConfig = {};
+    LibP2PCtx* ctx = nullptr;
+    Libp2pConfig m_libp2pConfig = {};
 
     // Set when construction fails; surfaced through status() since the
     // constructor cannot signal failure to the codegen default-constructor.
     std::string m_initError;
 
-    // Address storage (kept alive for libp2p_config_t pointers)
+    // Backing storage the Libp2pConfig's NimFfiStr/seq views borrow from; it
+    // must outlive every libp2p_ctx_create call. Built once in applyOptions and
+    // never mutated afterwards, so the views stay valid.
     std::vector<std::string> m_addrs;
-    std::vector<const char*> m_addrsPtr;
+    std::vector<NimFfiStr> m_addrsFfi;
 
-    std::vector<std::string> m_peerIdStorage;
-    std::vector<std::vector<std::string>> m_addrStorage;
-    std::vector<std::vector<const char*>> m_addrPtrStorage;
-    std::vector<libp2p_bootstrap_node_t> m_bootstrapCNodes;
+    std::vector<std::string> m_bootstrapPeerIds;
+    std::vector<std::vector<std::string>> m_bootstrapAddrs;
+    std::vector<std::vector<NimFfiStr>> m_bootstrapAddrsFfi;
+    std::vector<BootstrapNode> m_bootstrapNodes;
 
     SecureBytes m_privKey;
     int m_keyType = LIBP2P_PK_SECP256K1;
 
     SyncResult generatePrivateKey(int scheme);
 
-    // Map guards lookup; entry->mtx guards the pointee. Ops take shared,
-    // release takes exclusive and flips `released`.
-    struct StreamEntry {
-        libp2p_stream_t* ptr;
-        mutable std::shared_mutex mtx;
-        bool released = false;
-        explicit StreamEntry(libp2p_stream_t* p) : ptr(p) {}
-    };
-
-    mutable std::shared_mutex m_streamsLock;
-    std::unordered_map<uint64_t, std::shared_ptr<StreamEntry>> m_streams;
-    std::atomic<uint64_t> m_nextStreamId{1};
-
-    uint64_t addStream(libp2p_stream_t* stream);
-    std::shared_ptr<StreamEntry> getStream(uint64_t id) const;
-    std::shared_ptr<StreamEntry> removeStream(uint64_t id);
+    // The Nim side owns stream lifetimes and hands out opaque uint64 stream
+    // ids; the wrapper forwards them verbatim, so no local stream table.
 
     std::mutex m_queueMutex;
     std::condition_variable m_queueCond;
@@ -236,39 +225,28 @@ private:
     void applyOptions(const Libp2pModuleOptions& options);
     StdLogosResult createContext();
     void destroyContext();
-    void destroyHandle(libp2p_ctx_t* handle);
     StdLogosResult nodeInfoBoundPorts();
 
-    static void promiseCallback(int ret, const char* msg, size_t len, void* userData);
-    static void promiseBufferCallback(int ret, const uint8_t* data, size_t dataLen,
-                                      const char* msg, size_t len, void* userData);
-    static void promisePeerInfoCallback(int ret, const Libp2pPeerInfo* info,
-                                        const char* msg, size_t len, void* userData);
-    static void promisePeerStoreEntryCallback(int ret, const Libp2pPeerStoreEntry* entry,
-                                              const char* msg, size_t len, void* userData);
-    static void promisePeersCallback(int ret, const char** peerIds, size_t peerIdsLen,
-                                     const char* msg, size_t len, void* userData);
-    static void promiseProvidersCallback(int ret, const Libp2pPeerInfo* providers,
-                                         size_t providersLen, const char* msg,
-                                         size_t len, void* userData);
-    static void promiseConnectionCallback(int ret, libp2p_stream_t* stream,
-                                          const char* msg, size_t len, void* userData);
-    static void promiseReservationCallback(int ret, const char** addrs, size_t addrsLen,
-                                           uint64_t expireTime, const char* msg,
-                                           size_t len, void* userData);
-    static void promiseRandomRecordsCallback(int ret, const Libp2pExtendedPeerRecord* records,
-                                             size_t recordsLen, const char* msg,
-                                             size_t len, void* userData);
-    static void promiseExtendedPeerRecordCallback(int ret,
-                                                  const Libp2pExtendedPeerRecord* record,
-                                                  const char* msg, size_t len, void* userData);
+    // Reply trampolines: one per generated response type. Each turns the typed
+    // (err_code, reply, err_msg) callback into a SyncResult and resolves the
+    // promise handed in as user_data.
+    static void cbBool(int ec, const bool* reply, const char* em, void* ud);
+    static void cbBytes(int ec, const NimFfiBytes* reply, const char* em, void* ud);
+    static void cbStr(int ec, const NimFfiStr* reply, const char* em, void* ud);
+    static void cbRead(int ec, const ReadResponse* reply, const char* em, void* ud);
+    static void cbCreate(int ec, LibP2PCtx* newCtx, const char* em, void* ud);
+    static void cbPeerInfo(int ec, const PeerInfoResponse* reply, const char* em, void* ud);
+    static void cbPeers(int ec, const PeersResponse* reply, const char* em, void* ud);
+    static void cbDial(int ec, const DialResponse* reply, const char* em, void* ud);
+    static void cbProviders(int ec, const ProvidersResponse* reply, const char* em, void* ud);
+    static void cbRecords(int ec, const ExtendedRecordsResponse* reply, const char* em, void* ud);
+    static void cbRecord(int ec, const ExtendedPeerRecordEntry* reply, const char* em, void* ud);
+    static void cbReservation(int ec, const ReservationResponse* reply, const char* em, void* ud);
+    static void cbPeerStoreEntry(int ec, const PeerStoreEntryResponse* reply, const char* em, void* ud);
 
-    static void topicHandler(const char* topic, uint8_t* data, size_t len, void* userData);
-    static void gossipsubResultCallback(int ret, const char* msg, size_t len, void* userData);
-    static void protocolHandler(libp2p_ctx_t* ctx, libp2p_stream_t* stream,
-                                const char* proto, size_t protoLen, void* userData);
-    static void mountCompleteCallback(int ret, const char* msg, size_t len, void* userData);
-    static void eventCallback(int ret, const char* msg, size_t len, void* userData);
+    // Event listeners registered on the context; the Nim side pushes here.
+    static void onIncomingStream(const IncomingStreamEvent* evt, void* ud);
+    static void onPubsubMessage(const PubsubMessageEvent* evt, void* ud);
 
     using EmitEventFn = std::function<void(const std::string& eventName, const std::string& data)>;
 
@@ -296,10 +274,11 @@ private:
         auto* p = new SyncPromise();
         auto f = p->get_future();
         int ret = invoke(p);
-        if (ret != RET_OK) {
-            // A synchronous failure (failWithMsg) fires the callback, which owns
-            // and deletes p, before returning the error; checkLibParams returns
-            // without firing it. Reclaim p only when the callback didn't run.
+        if (ret != 0) {
+            // A submit-time failure (encode/OOM/missing-callback) fires the
+            // reply callback synchronously — which owns and deletes p — before
+            // returning non-zero. Reclaim p only in the (unexpected) case the
+            // callback didn't run, so we never double-free.
             if (f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
                 delete p;
             }
@@ -310,46 +289,4 @@ private:
         if (!r.ok) return {false, {}, r.message};
         return transform(r);
     }
-
-    // Stream-op variant: looks up the entry, holds its shared lock across the
-    // whole sync-over-async call so a concurrent streamRelease can't free
-    // entry->ptr mid-flight. `invoke(libp2p_stream_t*, SyncPromise*)`.
-    template <class Invoke>
-    StdLogosResult callSyncStream(uint64_t streamId, const char* errPrefix, Invoke&& invoke) {
-        return callSyncStreamWith(streamId, errPrefix, std::forward<Invoke>(invoke),
-            [](const SyncResult&) -> StdLogosResult { return {true, {}, ""}; });
-    }
-
-    template <class Invoke, class Transform>
-    StdLogosResult callSyncStreamWith(uint64_t streamId, const char* errPrefix,
-                                       Invoke&& invoke, Transform&& transform) {
-        if (!ctx || streamId == 0) return {false, {}, "Invalid stream"};
-        auto entry = getStream(streamId);
-        if (!entry) return {false, {}, "Stream not found"};
-        std::shared_lock<std::shared_mutex> opLock(entry->mtx);
-        if (entry->released) return {false, {}, "Stream released"};
-        return callSyncWith(errPrefix,
-            [&](SyncPromise* p) { return invoke(entry->ptr, p); },
-            std::forward<Transform>(transform));
-    }
-
-    // Subscribe contexts live for the subscription's lifetime; the lock guards
-    // concurrent push/lookup and the libp2p worker thread's view of the vector.
-    struct SubscribeCtx {
-        Libp2pModuleImpl* instance;
-        std::string topic;
-        std::atomic<bool> unsubscribing{false};
-    };
-    std::mutex m_subscribeContextsLock;
-    std::vector<std::unique_ptr<SubscribeCtx>> m_subscribeContexts;
-
-    // Persist for the mounted protocol's lifetime; libp2p has no unmount API, so contexts
-    // live until ~Libp2pModuleImpl(). m_protocolHandlersLock guards concurrent push_back.
-    struct ProtocolHandlerCtx {
-        Libp2pModuleImpl* instance;
-        std::string proto;
-        SyncPromise* mountPromise = nullptr;
-    };
-    std::mutex m_protocolHandlersLock;
-    std::vector<std::unique_ptr<ProtocolHandlerCtx>> m_protocolHandlerContexts;
 };

@@ -3,7 +3,7 @@
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
-    libp2p.url = "github:vacp2p/nim-libp2p/feat/cbind/xpr-decode";
+    libp2p.url = "github:vacp2p/nim-libp2p/chore/cbind/use-nim-ffi";
 
     openmetrics-module = {
       url = "github:logos-co/openmetrics-module";

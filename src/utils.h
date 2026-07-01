@@ -8,35 +8,37 @@
 
 #include <nlohmann/json.hpp>
 
-extern "C" {
 #include "lib/libp2p.h"
+#include "libp2p_consts.h"
+
+// Copies a borrowed NimFfiStr into an owned std::string (empty on null data).
+// Response strings are only valid during the callback, so they must be copied.
+inline std::string nfStr(const NimFfiStr& s) {
+    return (s.data && s.len > 0) ? std::string(s.data, s.len) : std::string();
 }
 
-// Borrows each string's c_str() into the const char* array the cbinding layer
-// expects. The returned pointers alias `in`, which must outlive them.
-inline std::vector<const char*> toCStringPtrs(const std::vector<std::string>& in) {
-    std::vector<const char*> out;
-    out.reserve(in.size());
-    for (const auto& s : in) out.push_back(s.c_str());
-    return out;
+// Copies a borrowed NimFfiBytes into an owned byte vector (binary-safe).
+inline std::vector<uint8_t> nfBytes(const NimFfiBytes& b) {
+    if (!b.data || b.len == 0) return {};
+    return std::vector<uint8_t>(b.data, b.data + b.len);
 }
 
-// Collects a cbinding's (char** arr, len) pair into a JSON array, skipping nulls.
-inline nlohmann::json cStrArrayToJson(const char* const* arr, size_t len) {
+// Collects a NimFfiStr sequence into a JSON array.
+inline nlohmann::json seqStrToJson(const LibP2PSeq_Str& seq) {
     nlohmann::json out = nlohmann::json::array();
-    if (!arr) return out;
-    for (size_t i = 0; i < len; ++i) {
-        if (arr[i]) out.push_back(arr[i]);
+    if (!seq.data) return out;
+    for (size_t i = 0; i < seq.len; ++i) {
+        out.push_back(nfStr(seq.data[i]));
     }
     return out;
 }
 
-// Flattens a Libp2pPeerInfo into {peerId, addrs}, the shape every peer-bearing
+// Flattens a PeerInfoResponse into {peerId, addrs}, the shape every peer-bearing
 // callback returns.
-inline nlohmann::json peerInfoToJson(const Libp2pPeerInfo& info) {
+inline nlohmann::json peerInfoToJson(const PeerInfoResponse& info) {
     nlohmann::json j;
-    j["peerId"] = info.peerId ? info.peerId : "";
-    j["addrs"] = cStrArrayToJson(info.addrs, info.addrsLen);
+    j["peerId"] = nfStr(info.peerId);
+    j["addrs"] = seqStrToJson(info.addrs);
     return j;
 }
 
