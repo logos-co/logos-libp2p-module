@@ -20,8 +20,7 @@ StdLogosResult Libp2pModuleImpl::discoStartAdvertising(
 {
     StartAdvertisingRequest req{};
     req.serviceId = nimffi_str(serviceId.c_str());
-    req.serviceData = NimFfiBytes{
-        reinterpret_cast<uint8_t*>(const_cast<char*>(serviceData.data())), serviceData.size()};
+    req.serviceData = nimffiBytes(serviceData);
     return callSync("Failed to start advertising", [&](SyncPromise* p) {
         return libp2p_ctx_service_disco_start_advertising(ctx, &req,
                                                           &Libp2pModuleImpl::cbBool, p);
@@ -55,8 +54,7 @@ StdLogosResult Libp2pModuleImpl::discoLookup(
 {
     LookupRequest req{};
     req.serviceId = nimffi_str(serviceId.c_str());
-    req.serviceData = NimFfiBytes{
-        reinterpret_cast<uint8_t*>(const_cast<char*>(serviceData.data())), serviceData.size()};
+    req.serviceData = nimffiBytes(serviceData);
     return callSyncWith("Failed to lookup",
         [&](SyncPromise* p) {
             return libp2p_ctx_service_disco_lookup(ctx, &req, &Libp2pModuleImpl::cbRecords, p);
@@ -79,17 +77,14 @@ StdLogosResult Libp2pModuleImpl::createXpr(
     const std::vector<std::pair<std::string, std::string>>& services,
     uint64_t seqNo)
 {
-    std::vector<NimFfiStr> addrsFfi;
-    addrsFfi.reserve(addrs.size());
-    for (const auto& a : addrs) addrsFfi.push_back(nimffi_str(a.c_str()));
+    auto addrsFfi = toNimFfiStrs(addrs);
 
     std::vector<ServiceInfoEntry> serviceEntries;
     serviceEntries.reserve(services.size());
     for (const auto& [id, data] : services) {
         ServiceInfoEntry entry{};
         entry.id = nimffi_str(id.c_str());
-        entry.data = NimFfiBytes{
-            reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())), data.size()};
+        entry.data = nimffiBytes(data);
         serviceEntries.push_back(entry);
     }
 
@@ -122,8 +117,7 @@ StdLogosResult Libp2pModuleImpl::decodeXpr(const std::string& xpr) {
     }
 
     DecodeXprRequest req{};
-    req.encoded = NimFfiBytes{
-        reinterpret_cast<uint8_t*>(const_cast<char*>(bytes.data())), bytes.size()};
+    req.encoded = nimffiBytes(bytes);
 
     return callSyncWith("Failed to decode XPR",
         [&](SyncPromise* p) {

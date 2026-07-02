@@ -25,7 +25,7 @@ StdLogosResult Libp2pModuleImpl::streamReadLp(uint64_t streamId, uint64_t maxSiz
 StdLogosResult Libp2pModuleImpl::streamWrite(uint64_t streamId, const std::string& data) {
     StreamWriteRequest req{};
     req.streamId = streamId;
-    req.data = NimFfiBytes{reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())), data.size()};
+    req.data = nimffiBytes(data);
     return callSync("Failed to write to stream", [&](SyncPromise* p) {
         return libp2p_ctx_stream_write(ctx, &req, &Libp2pModuleImpl::cbBool, p);
     });
@@ -34,7 +34,7 @@ StdLogosResult Libp2pModuleImpl::streamWrite(uint64_t streamId, const std::strin
 StdLogosResult Libp2pModuleImpl::streamWriteLp(uint64_t streamId, const std::string& data) {
     StreamWriteRequest req{};
     req.streamId = streamId;
-    req.data = NimFfiBytes{reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())), data.size()};
+    req.data = nimffiBytes(data);
     return callSync("Failed to write LP to stream", [&](SyncPromise* p) {
         return libp2p_ctx_stream_write_lp(ctx, &req, &Libp2pModuleImpl::cbBool, p);
     });

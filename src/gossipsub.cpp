@@ -7,7 +7,7 @@ StdLogosResult Libp2pModuleImpl::gossipsubPublish(
 {
     PublishRequest req{};
     req.topic = nimffi_str(topic.c_str());
-    req.data = NimFfiBytes{reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())), data.size()};
+    req.data = nimffiBytes(data);
     return callSync("Failed to publish", [&](SyncPromise* p) {
         return libp2p_ctx_gossipsub_publish(ctx, &req, &Libp2pModuleImpl::cbBool, p);
     });
