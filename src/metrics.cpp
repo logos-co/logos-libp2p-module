@@ -9,7 +9,7 @@ LogosMap Libp2pModuleImpl::collectMetrics() {
     std::string text;
     auto res = callSyncWith("Failed to collect metrics",
         [&](SyncPromise* p) {
-            return libp2p_collect_metrics(ctx, &Libp2pModuleImpl::promiseCallback, p);
+            return libp2p_ctx_collect_metrics(ctx, &Libp2pModuleImpl::cbStr, p);
         },
         [](const SyncResult& r) -> StdLogosResult {
             return {true, r.message, ""};

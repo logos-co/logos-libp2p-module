@@ -1,20 +1,16 @@
 #include "plugin.h"
 
-#include <cstring>
-
 using json = nlohmann::json;
 
 StdLogosResult Libp2pModuleImpl::discoStart() {
     return callSync("Failed to start discovery", [&](SyncPromise* p) {
-        return libp2p_service_disco_start(ctx,
-                                          &Libp2pModuleImpl::promiseCallback, p);
+        return libp2p_ctx_service_disco_start(ctx, &Libp2pModuleImpl::cbBool, p);
     });
 }
 
 StdLogosResult Libp2pModuleImpl::discoStop() {
     return callSync("Failed to stop discovery", [&](SyncPromise* p) {
-        return libp2p_service_disco_stop(ctx,
-                                         &Libp2pModuleImpl::promiseCallback, p);
+        return libp2p_ctx_service_disco_stop(ctx, &Libp2pModuleImpl::cbBool, p);
     });
 }
 
@@ -22,33 +18,33 @@ StdLogosResult Libp2pModuleImpl::discoStartAdvertising(
     const std::string& serviceId,
     const std::string& serviceData)
 {
+    StartAdvertisingRequest req{};
+    req.serviceId = nimffi_str(serviceId.c_str());
+    req.serviceData = nimffiBytes(serviceData);
     return callSync("Failed to start advertising", [&](SyncPromise* p) {
-        return libp2p_service_disco_start_advertising(
-            ctx, serviceId.c_str(),
-            serviceData.empty() ? nullptr : reinterpret_cast<const uint8_t*>(serviceData.data()),
-            serviceData.size(),
-            &Libp2pModuleImpl::promiseCallback, p);
+        return libp2p_ctx_service_disco_start_advertising(ctx, &req,
+                                                          &Libp2pModuleImpl::cbBool, p);
     });
 }
 
 StdLogosResult Libp2pModuleImpl::discoStopAdvertising(const std::string& serviceId) {
     return callSync("Failed to stop advertising", [&](SyncPromise* p) {
-        return libp2p_service_disco_stop_advertising(ctx, serviceId.c_str(),
-                                                     &Libp2pModuleImpl::promiseCallback, p);
+        return libp2p_ctx_service_disco_stop_advertising(ctx, nimffi_str(serviceId.c_str()),
+                                                         &Libp2pModuleImpl::cbBool, p);
     });
 }
 
 StdLogosResult Libp2pModuleImpl::discoRegisterInterest(const std::string& serviceId) {
     return callSync("Failed to register interest", [&](SyncPromise* p) {
-        return libp2p_service_disco_register_interest(ctx, serviceId.c_str(),
-                                                      &Libp2pModuleImpl::promiseCallback, p);
+        return libp2p_ctx_service_disco_register_interest(ctx, nimffi_str(serviceId.c_str()),
+                                                          &Libp2pModuleImpl::cbBool, p);
     });
 }
 
 StdLogosResult Libp2pModuleImpl::discoUnregisterInterest(const std::string& serviceId) {
     return callSync("Failed to unregister interest", [&](SyncPromise* p) {
-        return libp2p_service_disco_unregister_interest(ctx, serviceId.c_str(),
-                                                        &Libp2pModuleImpl::promiseCallback, p);
+        return libp2p_ctx_service_disco_unregister_interest(ctx, nimffi_str(serviceId.c_str()),
+                                                            &Libp2pModuleImpl::cbBool, p);
     });
 }
 
@@ -56,13 +52,12 @@ StdLogosResult Libp2pModuleImpl::discoLookup(
     const std::string& serviceId,
     const std::string& serviceData)
 {
+    LookupRequest req{};
+    req.serviceId = nimffi_str(serviceId.c_str());
+    req.serviceData = nimffiBytes(serviceData);
     return callSyncWith("Failed to lookup",
         [&](SyncPromise* p) {
-            return libp2p_service_disco_lookup(
-                ctx, serviceId.c_str(),
-                serviceData.empty() ? nullptr : reinterpret_cast<const uint8_t*>(serviceData.data()),
-                serviceData.size(),
-                &Libp2pModuleImpl::promiseRandomRecordsCallback, p);
+            return libp2p_ctx_service_disco_lookup(ctx, &req, &Libp2pModuleImpl::cbRecords, p);
         },
         [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
@@ -70,8 +65,7 @@ StdLogosResult Libp2pModuleImpl::discoLookup(
 StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
     return callSyncWith("Failed to random lookup",
         [&](SyncPromise* p) {
-            return libp2p_service_disco_random_lookup(ctx,
-                                                     &Libp2pModuleImpl::promiseRandomRecordsCallback, p);
+            return libp2p_ctx_service_disco_random_lookup(ctx, &Libp2pModuleImpl::cbRecords, p);
         },
         [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
@@ -83,23 +77,25 @@ StdLogosResult Libp2pModuleImpl::createXpr(
     const std::vector<std::pair<std::string, std::string>>& services,
     uint64_t seqNo)
 {
-    auto addrPtrs = toCStringPtrs(addrs);
+    auto addrsFfi = toNimFfiStrs(addrs);
 
-    std::vector<Libp2pServiceInfo> serviceInfos;
-    serviceInfos.reserve(services.size());
+    std::vector<ServiceInfoEntry> serviceEntries;
+    serviceEntries.reserve(services.size());
     for (const auto& [id, data] : services) {
-        serviceInfos.push_back(Libp2pServiceInfo{
-            .id = const_cast<char*>(id.c_str()),
-            .data = data.empty() ? nullptr : reinterpret_cast<const uint8_t*>(data.data()),
-            .dataLen = data.size()});
+        ServiceInfoEntry entry{};
+        entry.id = nimffi_str(id.c_str());
+        entry.data = nimffiBytes(data);
+        serviceEntries.push_back(entry);
     }
+
+    CreateXprRequest req{};
+    req.addrs = LibP2PSeq_Str{addrsFfi.data(), addrsFfi.size()};
+    req.services = LibP2PSeq_ServiceInfoEntry{serviceEntries.data(), serviceEntries.size()};
+    req.seqNo = seqNo;
 
     return callSyncWith("Failed to create XPR",
         [&](SyncPromise* p) {
-            return libp2p_create_xpr(
-                ctx, addrPtrs.empty() ? nullptr : addrPtrs.data(), addrPtrs.size(),
-                serviceInfos.empty() ? nullptr : serviceInfos.data(), serviceInfos.size(),
-                seqNo, &Libp2pModuleImpl::promiseBufferCallback, p);
+            return libp2p_ctx_create_xpr(ctx, &req, &Libp2pModuleImpl::cbBytes, p);
         },
         bufferToResult);
 }
@@ -120,18 +116,17 @@ StdLogosResult Libp2pModuleImpl::decodeXpr(const std::string& xpr) {
         return {false, {}, std::string("decodeXpr: invalid base64: ") + e.what()};
     }
 
+    DecodeXprRequest req{};
+    req.encoded = nimffiBytes(bytes);
+
     return callSyncWith("Failed to decode XPR",
         [&](SyncPromise* p) {
-            return libp2p_decode_xpr(
-                reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size(),
-                &Libp2pModuleImpl::promiseExtendedPeerRecordCallback, p);
+            return libp2p_ctx_decode_xpr(ctx, &req, &Libp2pModuleImpl::cbRecord, p);
         },
         [](const SyncResult& r) -> StdLogosResult {
-            auto parsed = parseJsonResponse(r.message, "decodeXpr");
-            if (!parsed.success) return parsed;
-            if (!parsed.value.is_object()) {
+            if (!r.data.is_object()) {
                 return {false, {}, "decodeXpr: no record decoded"};
             }
-            return {true, parsed.value, ""};
+            return {true, r.data, ""};
         });
 }
