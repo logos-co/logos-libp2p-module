@@ -24,12 +24,8 @@ StdLogosResult Libp2pModuleImpl::peerstoreAddPeer(
     const std::vector<std::string>& addrs,
     const std::vector<std::string>& protos)
 {
-    std::vector<NimFfiStr> addrsFfi;
-    addrsFfi.reserve(addrs.size());
-    for (const auto& a : addrs) addrsFfi.push_back(nimffi_str(a.c_str()));
-    std::vector<NimFfiStr> protosFfi;
-    protosFfi.reserve(protos.size());
-    for (const auto& s : protos) protosFfi.push_back(nimffi_str(s.c_str()));
+    auto addrsFfi = toNimFfiStrs(addrs);
+    auto protosFfi = toNimFfiStrs(protos);
 
     AddPeerRequest req{};
     req.peerId = nimffi_str(peerId.c_str());
@@ -45,9 +41,7 @@ StdLogosResult Libp2pModuleImpl::peerstoreSetPeerAddresses(
     const std::string& peerId,
     const std::vector<std::string>& addrs)
 {
-    std::vector<NimFfiStr> addrsFfi;
-    addrsFfi.reserve(addrs.size());
-    for (const auto& a : addrs) addrsFfi.push_back(nimffi_str(a.c_str()));
+    auto addrsFfi = toNimFfiStrs(addrs);
 
     SetAddressesRequest req{};
     req.peerId = nimffi_str(peerId.c_str());
@@ -62,9 +56,7 @@ StdLogosResult Libp2pModuleImpl::peerstoreSetPeerProtocols(
     const std::string& peerId,
     const std::vector<std::string>& protos)
 {
-    std::vector<NimFfiStr> protosFfi;
-    protosFfi.reserve(protos.size());
-    for (const auto& s : protos) protosFfi.push_back(nimffi_str(s.c_str()));
+    auto protosFfi = toNimFfiStrs(protos);
 
     SetProtocolsRequest req{};
     req.peerId = nimffi_str(peerId.c_str());

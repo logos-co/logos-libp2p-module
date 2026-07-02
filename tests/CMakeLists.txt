@@ -18,6 +18,8 @@ logos_test(
         unit_sync.cpp
     EXTRA_INCLUDES
         ../lib
+    EXTRA_LINK_LIBS
+        tinycbor
 )
 
 # Integration tests (real libp2p library)
@@ -58,6 +60,7 @@ if(LIBP2P_PATH)
             ../lib
         EXTRA_LINK_LIBS
             ${LIBP2P_PATH}
+            tinycbor
     )
 
     get_filename_component(LIBP2P_DIR "${LIBP2P_PATH}" DIRECTORY)

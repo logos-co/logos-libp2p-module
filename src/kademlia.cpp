@@ -13,8 +13,8 @@ StdLogosResult Libp2pModuleImpl::kadFindNode(const std::string& peerId) {
 
 StdLogosResult Libp2pModuleImpl::kadPutValue(const std::string& key, const std::string& value) {
     KadPutValueRequest req{};
-    req.key = NimFfiBytes{reinterpret_cast<uint8_t*>(const_cast<char*>(key.data())), key.size()};
-    req.value = NimFfiBytes{reinterpret_cast<uint8_t*>(const_cast<char*>(value.data())), value.size()};
+    req.key = nimffiBytes(key);
+    req.value = nimffiBytes(value);
     return callSync("Failed to put value", [&](SyncPromise* p) {
         return libp2p_ctx_kad_put_value(ctx, &req, &Libp2pModuleImpl::cbBool, p);
     });
@@ -22,7 +22,7 @@ StdLogosResult Libp2pModuleImpl::kadPutValue(const std::string& key, const std::
 
 StdLogosResult Libp2pModuleImpl::kadGetValue(const std::string& key, int64_t quorum) {
     KadGetValueRequest req{};
-    req.key = NimFfiBytes{reinterpret_cast<uint8_t*>(const_cast<char*>(key.data())), key.size()};
+    req.key = nimffiBytes(key);
     req.quorum = quorum;
     return callSyncWith("Failed to get value",
         [&](SyncPromise* p) {

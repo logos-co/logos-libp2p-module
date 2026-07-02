@@ -42,7 +42,7 @@
 
     "nix": {
         "packages": {
-            "runtime": ["nlohmann_json"]
+            "runtime": ["nlohmann_json", "tinycbor"]
         },
         "external_libraries": [
             { "name": "libp2p", "vendor_path": "lib" }

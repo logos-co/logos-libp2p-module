@@ -23,6 +23,21 @@ inline std::vector<uint8_t> nfBytes(const NimFfiBytes& b) {
     return std::vector<uint8_t>(b.data, b.data + b.len);
 }
 
+// Non-owning NimFfiBytes view over `data` (the Nim side copies before enqueue,
+// so the const-away cast is safe); `data` must outlive the FFI call.
+inline NimFfiBytes nimffiBytes(const std::string& data) {
+    return NimFfiBytes{
+        reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())), data.size()};
+}
+
+// Non-owning NimFfiStr views over each string in `in`, which must outlive them.
+inline std::vector<NimFfiStr> toNimFfiStrs(const std::vector<std::string>& in) {
+    std::vector<NimFfiStr> out;
+    out.reserve(in.size());
+    for (const auto& s : in) out.push_back(nimffi_str(s.c_str()));
+    return out;
+}
+
 // Collects a NimFfiStr sequence into a JSON array.
 inline nlohmann::json seqStrToJson(const LibP2PSeq_Str& seq) {
     nlohmann::json out = nlohmann::json::array();

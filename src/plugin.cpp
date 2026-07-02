@@ -94,10 +94,7 @@ void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
     if (m_addrs.empty()) {
         m_addrs.push_back(defaultListenAddr(options.transport));
     }
-    m_addrsFfi.reserve(m_addrs.size());
-    for (const auto& addr : m_addrs) {
-        m_addrsFfi.push_back(nimffi_str(addr.c_str()));
-    }
+    m_addrsFfi = toNimFfiStrs(m_addrs);
     m_libp2pConfig.addrs = LibP2PSeq_Str{m_addrsFfi.data(), m_addrsFfi.size()};
 
     if (!options.bootstrapNodes.empty()) {
@@ -112,12 +109,7 @@ void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
             m_bootstrapAddrs.push_back(addrs);
         }
         for (size_t i = 0; i < n; ++i) {
-            std::vector<NimFfiStr> ffi;
-            ffi.reserve(m_bootstrapAddrs[i].size());
-            for (const auto& a : m_bootstrapAddrs[i]) {
-                ffi.push_back(nimffi_str(a.c_str()));
-            }
-            m_bootstrapAddrsFfi.push_back(std::move(ffi));
+            m_bootstrapAddrsFfi.push_back(toNimFfiStrs(m_bootstrapAddrs[i]));
         }
         for (size_t i = 0; i < n; ++i) {
             BootstrapNode node{};
@@ -278,7 +270,7 @@ StdLogosResult Libp2pModuleImpl::toCid(const std::string& key) {
     req.version = 1;
     req.multicodec = nimffi_str("dag-pb");
     req.hash = nimffi_str("sha2-256");
-    req.data = NimFfiBytes{reinterpret_cast<uint8_t*>(const_cast<char*>(key.data())), key.size()};
+    req.data = nimffiBytes(key);
     return callSyncWith("Failed to create CID",
         [&](SyncPromise* p) {
             return libp2p_ctx_create_cid(ctx, &req, &Libp2pModuleImpl::cbStr, p);
@@ -293,9 +285,7 @@ StdLogosResult Libp2pModuleImpl::connectPeer(
     const std::vector<std::string>& multiaddrs,
     int64_t timeoutMs)
 {
-    std::vector<NimFfiStr> addrsFfi;
-    addrsFfi.reserve(multiaddrs.size());
-    for (const auto& a : multiaddrs) addrsFfi.push_back(nimffi_str(a.c_str()));
+    auto addrsFfi = toNimFfiStrs(multiaddrs);
 
     ConnectRequest req{};
     req.peerId = nimffi_str(peerId.c_str());
@@ -317,7 +307,7 @@ StdLogosResult Libp2pModuleImpl::disconnectPeer(const std::string& peerId) {
 StdLogosResult Libp2pModuleImpl::peerInfo() {
     return callSyncWith("Failed to get peer info",
         [&](SyncPromise* p) {
-            return libp2p_ctx_peerinfo(ctx, &Libp2pModuleImpl::cbPeerInfo, p);
+            return libp2p_ctx_peer_info(ctx, &Libp2pModuleImpl::cbPeerInfo, p);
         },
         [](const SyncResult& r) { return jsonResult(r, json::object()); });
 }
@@ -378,9 +368,7 @@ StdLogosResult Libp2pModuleImpl::circuitRelayReserve(
     const std::string& relayPeerId,
     const std::vector<std::string>& relayAddrs)
 {
-    std::vector<NimFfiStr> addrsFfi;
-    addrsFfi.reserve(relayAddrs.size());
-    for (const auto& a : relayAddrs) addrsFfi.push_back(nimffi_str(a.c_str()));
+    auto addrsFfi = toNimFfiStrs(relayAddrs);
 
     CircuitRelayReserveRequest req{};
     req.relayPeerId = nimffi_str(relayPeerId.c_str());
