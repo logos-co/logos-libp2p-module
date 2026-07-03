@@ -250,6 +250,7 @@ private:
     static void cbPeerInfo(int ec, const PeerInfoResponse* reply, const char* em, void* ud);
     static void cbPeers(int ec, const PeersResponse* reply, const char* em, void* ud);
     static void cbDial(int ec, const DialResponse* reply, const char* em, void* ud);
+    static void cbPublish(int ec, const PublishResponse* reply, const char* em, void* ud);
     static void cbProviders(int ec, const ProvidersResponse* reply, const char* em, void* ud);
     static void cbRecords(int ec, const ExtendedRecordsResponse* reply, const char* em, void* ud);
     static void cbRecord(int ec, const ExtendedPeerRecordEntry* reply, const char* em, void* ud);

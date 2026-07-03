@@ -79,6 +79,12 @@ void Libp2pModuleImpl::cbDial(int ec, const DialResponse* reply, const char* em,
     finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
 }
 
+void Libp2pModuleImpl::cbPublish(int ec, const PublishResponse* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply) r.data = reply->peerCount;
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
 void Libp2pModuleImpl::cbProviders(int ec, const ProvidersResponse* reply, const char* em, void* ud) {
     auto r = replyBase(ec, em);
     if (r.ok && reply && reply->providers.data) {
