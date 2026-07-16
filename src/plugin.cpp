@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <sstream>
+#include <thread>
 
 using json = nlohmann::json;
 
@@ -31,6 +32,16 @@ bool extractPort(const std::string& multiaddr, int& out) {
         prev = token;
     }
     return false;
+}
+
+// A create that times out leaves the reply pending, and a late reply hands back
+// a context nobody owns. Keep the future alive on a detached thread so the
+// context still gets destroyed if it ever arrives.
+void reapLateContext(std::future<SyncResult> f) {
+    std::thread([f = std::move(f)]() mutable {
+        auto r = f.get();
+        if (r.newCtx) libp2p_ctx_destroy(r.newCtx);
+    }).detach();
 }
 
 constexpr char kModuleVersion[] = "1.0.0";
@@ -123,29 +134,52 @@ void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
     }
 }
 
-StdLogosResult Libp2pModuleImpl::createContext() {
-    m_initError.clear();
-
-    // An empty privKey leaves the seq nil, so the Nim side generates a fresh
-    // identity; a supplied key gives a stable peer id across restarts.
-    m_libp2pConfig.privKey =
-        NimFfiBytes{m_privKey.empty() ? nullptr : m_privKey.data(), m_privKey.size()};
-
+SyncResult Libp2pModuleImpl::spawnContext(Libp2pConfig& cfg) {
     auto* p = new SyncPromise();
     auto f = p->get_future();
 
-    int ret = libp2p_ctx_create(&m_libp2pConfig, &Libp2pModuleImpl::cbCreate, p);
+    int ret = libp2p_ctx_create(&cfg, &Libp2pModuleImpl::cbCreate, p);
     if (ret != 0) {
         if (f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
             delete p;
         }
-        m_initError = "libp2p_ctx_create failed to submit (ret=" + std::to_string(ret) + ")";
-        fprintf(stderr, "libp2p_module: %s\n", m_initError.c_str());
-        return {false, {}, m_initError};
+        SyncResult r;
+        r.message = "failed to submit (ret=" + std::to_string(ret) + ")";
+        return r;
     }
 
     auto r = awaitResult(f, kNewContextTimeoutMs);
-    if (!r.ok || !r.newCtx) {
+    if (!r.ok) {
+        if (f.valid()) reapLateContext(std::move(f));
+        return r;
+    }
+    if (!r.newCtx) {
+        r.ok = false;
+        r.message = "no context returned";
+    }
+    return r;
+}
+
+StdLogosResult Libp2pModuleImpl::createContext() {
+    m_initError.clear();
+
+    // The config carries no key scheme, so a nil privKey would leave the scheme
+    // up to the Nim side and silently ignore the configured keyType. Generate
+    // the identity here instead; a supplied privKey gives a stable peer id
+    // across restarts and skips this.
+    if (m_privKey.empty()) {
+        auto key = generatePrivateKey(m_keyType);
+        if (!key.ok) {
+            m_initError = "private key generation failed: " + key.message;
+            fprintf(stderr, "libp2p_module: %s\n", m_initError.c_str());
+            return {false, {}, m_initError};
+        }
+        m_privKey.assign(key.buffer.begin(), key.buffer.end());
+    }
+    m_libp2pConfig.privKey = NimFfiBytes{m_privKey.data(), m_privKey.size()};
+
+    auto r = spawnContext(m_libp2pConfig);
+    if (!r.ok) {
         m_initError = "libp2p_ctx_create failed: " + r.message;
         fprintf(stderr, "libp2p_module: %s\n", m_initError.c_str());
         return {false, {}, m_initError};
@@ -229,24 +263,13 @@ StdLogosResult Libp2pModuleImpl::publicKey() {
         bufferToResult);
 }
 
-SyncResult Libp2pModuleImpl::generatePrivateKey(int scheme) {
-    // Key generation is a context method now, so make sure a node exists first;
-    // the generated key is independent of that node's own identity.
-    if (!ctx) {
-        auto created = createContext();
-        if (!created.success) {
-            SyncResult r;
-            r.message = created.error;
-            return r;
-        }
-    }
-
+SyncResult Libp2pModuleImpl::requestPrivateKey(LibP2PCtx* c, int scheme) {
     NewPrivateKeyRequest req{};
     req.scheme = scheme;
 
     auto* p = new SyncPromise();
     auto f = p->get_future();
-    int ret = libp2p_ctx_new_private_key(ctx, &req, &Libp2pModuleImpl::cbBytes, p);
+    int ret = libp2p_ctx_new_private_key(c, &req, &Libp2pModuleImpl::cbBytes, p);
     if (ret != 0) {
         if (f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
             delete p;
@@ -258,8 +281,34 @@ SyncResult Libp2pModuleImpl::generatePrivateKey(int scheme) {
     return awaitResult(f);
 }
 
+SyncResult Libp2pModuleImpl::generatePrivateKey(int scheme) {
+    if (ctx) return requestPrivateKey(ctx, scheme);
+
+    // Key generation is a context method upstream (nim-ffi exports every proc
+    // through a `lib` receiver), but the key it returns only depends on the
+    // node's rng. Borrow a bare throwaway node rather than adopting one as
+    // `ctx`, which would make a later createNode() fail with "node already
+    // created". Nothing is started, so it binds no ports.
+    Libp2pConfig cfg = m_libp2pConfig;
+    cfg.privKey = NimFfiBytes{nullptr, 0};
+    cfg.mountGossipsub = false;
+    cfg.mountKad = false;
+    cfg.mountServiceDiscovery = false;
+    cfg.bootstrapNodes = LibP2PSeq_BootstrapNode{nullptr, 0};
+    auto tmp = spawnContext(cfg);
+    if (!tmp.ok) {
+        SyncResult r;
+        r.message = "no context for key generation: " + tmp.message;
+        return r;
+    }
+
+    auto r = requestPrivateKey(tmp.newCtx, scheme);
+    libp2p_ctx_destroy(tmp.newCtx);
+    return r;
+}
+
 StdLogosResult Libp2pModuleImpl::newPrivateKey() {
-    auto r = generatePrivateKey(LIBP2P_PK_SECP256K1);
+    auto r = generatePrivateKey(m_keyType);
     if (!r.ok) return {false, {}, r.message};
     return bufferToHexResult(r);
 }

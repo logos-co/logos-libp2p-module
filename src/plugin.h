@@ -222,6 +222,9 @@ private:
     int m_keyType = LIBP2P_PK_SECP256K1;
 
     SyncResult generatePrivateKey(int scheme);
+    SyncResult requestPrivateKey(LibP2PCtx* c, int scheme);
+    // Creates a context from `cfg` without adopting it as the member `ctx`.
+    SyncResult spawnContext(Libp2pConfig& cfg);
 
     // The Nim side owns stream lifetimes and hands out opaque uint64 stream
     // ids; the wrapper forwards them verbatim, so no local stream table.
@@ -299,7 +302,7 @@ private:
                 " (ret=" + std::to_string(ret) + ")"};
         }
         auto r = awaitResult(f, awaitMs);
-        if (!r.ok) return {false, {}, r.message};
+        if (!r.ok) return {false, {}, std::string(errPrefix) + ": " + r.message};
         return transform(r);
     }
 };

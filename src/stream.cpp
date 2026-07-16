@@ -1,6 +1,15 @@
 #include "plugin.h"
 
+namespace {
+// The cbinding carries read sizes as int64, so anything past INT64_MAX would
+// arrive on the Nim side as a negative length.
+bool fitsInt64(uint64_t v) {
+    return v <= static_cast<uint64_t>(INT64_MAX);
+}
+}  // namespace
+
 StdLogosResult Libp2pModuleImpl::streamReadExactly(uint64_t streamId, uint64_t len) {
+    if (!fitsInt64(len)) return {false, {}, "Failed to read from stream: length too large"};
     StreamReadExactlyRequest req{};
     req.streamId = streamId;
     req.numBytes = static_cast<int64_t>(len);
@@ -12,6 +21,7 @@ StdLogosResult Libp2pModuleImpl::streamReadExactly(uint64_t streamId, uint64_t l
 }
 
 StdLogosResult Libp2pModuleImpl::streamReadLp(uint64_t streamId, uint64_t maxSize) {
+    if (!fitsInt64(maxSize)) return {false, {}, "Failed to read LP from stream: maxSize too large"};
     StreamReadLpRequest req{};
     req.streamId = streamId;
     req.maxSize = static_cast<int64_t>(maxSize);
