@@ -83,27 +83,3 @@ jobs:
             exit 1
           fi
           echo "✅ Generated markdown matches committed version."
-
-  upload-docs:
-    name: Upload generated documentation
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [compile-check, markdown-check]
-    if: github.ref == 'refs/heads/master' && success()
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Generate markdown
-        run: |
-          chmod +x ./tutorial/generate_markdown.sh
-          ./tutorial/generate_markdown.sh
-
-      - name: Upload docs artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tutorial-docs
-          path: tutorial/docs/
-          retention-days: 30
-          if-no-files-found: error
