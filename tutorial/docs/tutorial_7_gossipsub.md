@@ -217,9 +217,16 @@ for event-driven applications.
 
 ## Run tutorial
 
+Build the module (one time):
+```bash
+nix develop
+./tutorial/build_tutorials.sh
+```
+
 Run this tutorial:
 ```bash
 ./build/tutorial_7_gossipsub
+```
 ---
 
 < [Kademlia Provider Records](tutorial_6_kademlia_providers.md) -- [Service Discovery](tutorial_8_service_discovery.md) >

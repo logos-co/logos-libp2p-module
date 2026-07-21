@@ -118,9 +118,16 @@ In this tutorial you learned how to:
 
 ## Run tutorial
 
+Build the module (one time):
+```bash
+nix develop
+./tutorial/build_tutorials.sh
+```
+
 Run this tutorial:
 ```bash
 ./build/tutorial_1_node_lifecycle
+```
 ---
 
 [Custom Node Configuration](tutorial_2_custom_config.md) >

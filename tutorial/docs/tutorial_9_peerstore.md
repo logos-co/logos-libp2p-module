@@ -211,6 +211,12 @@ Verify deletion:
 
 ## Run tutorial
 
+Build the module (one time):
+```bash
+nix develop
+./tutorial/build_tutorials.sh
+```
+
 Run this tutorial:
 ```bash
 ./build/tutorial_9_peerstore
