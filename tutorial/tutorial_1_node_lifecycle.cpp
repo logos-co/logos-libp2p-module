@@ -24,6 +24,7 @@
 ///
 /// Every program starts by including the module's single public header:
 #include <cstdio>
+#include <string>
 #include "plugin.h"
 
 /// The main class we work with is `Libp2pModuleImpl`. Let's create one with

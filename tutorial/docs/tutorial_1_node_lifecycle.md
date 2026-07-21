@@ -25,6 +25,7 @@ called `Libp2pModuleImpl` that you can embed directly into your application.
 Every program starts by including the module's single public header:
 ```cpp
 #include <cstdio>
+#include <string>
 #include "plugin.h"
 
 ```

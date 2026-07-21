@@ -150,7 +150,7 @@ controls the consistency level:
 
     std::string received;
     if (getRes.value.is_string()) {
-        received = getRes.value.get<std::string>();
+        received = base64Decode(getRes.value.get<std::string>());
     }
 
     if (received.empty()) {
@@ -173,8 +173,8 @@ controls the consistency level:
     nodeB.stop();
 
     printf("\n=== Tutorial 5 Complete ===\n");
-    
-    return 0;    
+
+    return 0;
 }
 
 ```

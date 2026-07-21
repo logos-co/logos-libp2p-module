@@ -25,29 +25,33 @@ cd "${PROJECT_DIR}"
 # Build directory (same as the project's standard cmake build)
 BUILD_DIR="${PROJECT_DIR}/build"
 
-# Ensure cmake is configured
-if [ ! -f "${BUILD_DIR}/CMakeCache.txt" ]; then
+# Ensure cmake is configured. A previous failed configure can leave a
+# CMakeCache.txt without a generated build system.
+if [ ! -f "${BUILD_DIR}/CMakeCache.txt" ] || [ ! -f "${BUILD_DIR}/Makefile" ]; then
     echo "Configuring CMake..."
     cmake -B "${BUILD_DIR}" -S "${PROJECT_DIR}"
 fi
 
-# Build only the tutorial targets
+# Discover and build only the tutorial targets. CMake target names match the
+# tutorial source basenames, e.g. tutorial_1_node_lifecycle.cpp.
 echo "Building tutorials..."
-cmake --build "${BUILD_DIR}" --target \
-    tutorial_1_node_lifecycle \
-    tutorial_2_custom_config \
-    tutorial_3_connecting_peers \
-    tutorial_4_custom_protocol \
-    tutorial_5_kademlia_basics \
-    tutorial_6_kademlia_providers \
-    tutorial_7_gossipsub \
-    tutorial_8_service_discovery \
-    tutorial_9_peerstore \
-    tutorial_10_circuit_relay \
+tutorial_targets=()
+for tutorial_src in "${SCRIPT_DIR}"/tutorial_*.cpp; do
+    [ -f "${tutorial_src}" ] || continue
+    tutorial_file="$(basename "${tutorial_src}")"
+    tutorial_targets+=("${tutorial_file%.cpp}")
+done
+
+if [ "${#tutorial_targets[@]}" -eq 0 ]; then
+    echo "No tutorial sources found in ${SCRIPT_DIR}" >&2
+    exit 1
+fi
+
+cmake --build "${BUILD_DIR}" --target "${tutorial_targets[@]}" \
     -j "$(nproc 2>/dev/null || echo 4)"
 
 echo ""
 echo "✅ All tutorials compiled successfully."
 echo ""
-echo "Binaries in: ${BUILD_DIR}/"
-ls -1 "${BUILD_DIR}"/tutorial_* 2>/dev/null
+echo "Binaries in: ${BUILD_DIR}/tutorial/"
+ls -1 "${BUILD_DIR}"/tutorial/tutorial_*

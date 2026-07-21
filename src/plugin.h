@@ -24,7 +24,7 @@
 #include "logos_result.h"
 
 extern "C" {
-#include "lib/libp2p.h"
+#include <libp2p.h>
 }
 
 #include "config.h"

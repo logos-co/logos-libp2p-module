@@ -31,6 +31,9 @@
 ///   4. `streamClose()` or `streamCloseWithEOF()` — Close gracefully
 ///   5. `streamRelease()` — Free server-side resources
 #include <cstdio>
+#include <cstdint>
+#include <string>
+#include <vector>
 #include "plugin.h"
 
 int main()
@@ -154,7 +157,7 @@ int main()
         return 1;
     }
 
-    std::string reply = readRes.value.get<std::string>();
+    std::string reply = base64Decode(readRes.value.get<std::string>());
 
 /// Verify the echo matches:
     if (reply == payload) {
@@ -174,7 +177,7 @@ int main()
     nodeB.stop();
 
     printf("\n=== Tutorial 3 Complete ===\n");
-    
+
     return 0;
 }
 

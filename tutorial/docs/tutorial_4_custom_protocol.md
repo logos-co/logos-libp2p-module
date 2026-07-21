@@ -29,9 +29,12 @@ The stream lifecycle on the server side is:
 > for closing it.
 ```cpp
 #include <cstdio>
+#include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <mutex>
 #include <string>
+#include <vector>
 #include "plugin.h"
 
 using json = nlohmann::json;
@@ -182,7 +185,7 @@ fires, and Node A receives a new stream.
                 readRes.error.c_str());
         return 1;
     }
-    std::string received = readRes.value.get<std::string>();
+    std::string received = base64Decode(readRes.value.get<std::string>());
     printf("Node A received: \"%s\"\n", received.c_str());
 
 ```
@@ -204,7 +207,7 @@ Echo it back:
                 echoRes.error.c_str());
         return 1;
     }
-    std::string echo = echoRes.value.get<std::string>();
+    std::string echo = base64Decode(echoRes.value.get<std::string>());
     printf("Node B received echo: \"%s\"\n", echo.c_str());
 
     if (echo != message) {
@@ -229,10 +232,10 @@ resources with `streamRelease()`.
     nodeB.stop();
 
     printf("\n=== Tutorial 4 Complete ===\n");
-    
+
     return 0;
 }
-    
+
 ```
 
 ## Key Takeaways

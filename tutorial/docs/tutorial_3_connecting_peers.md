@@ -32,6 +32,9 @@ A stream must follow this lifecycle:
   5. `streamRelease()` — Free server-side resources
 ```cpp
 #include <cstdio>
+#include <cstdint>
+#include <string>
+#include <vector>
 #include "plugin.h"
 
 int main()
@@ -176,7 +179,7 @@ Read the echo (32 bytes back):
         return 1;
     }
 
-    std::string reply = readRes.value.get<std::string>();
+    std::string reply = base64Decode(readRes.value.get<std::string>());
 
 ```
 
@@ -202,7 +205,7 @@ Always close and release streams when done:
     nodeB.stop();
 
     printf("\n=== Tutorial 3 Complete ===\n");
-    
+
     return 0;
 }
 

@@ -24,8 +24,10 @@ In this tutorial we'll:
 ```cpp
 #include <cstdio>
 #include <chrono>
+#include <mutex>
 #include <thread>
 #include <string>
+#include <vector>
 #include "plugin.h"
 
 int main()
@@ -186,15 +188,15 @@ for event-driven applications.
     // Give it a moment to arrive
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    bool received = false;
+    bool eventReceived = false;
     std::string msgCopy;
     {
         std::lock_guard<std::mutex> lock(eventMtx);
-        received = messageReceived;
+        eventReceived = messageReceived;
         msgCopy = eventMessage;
     }
 
-    if (received) {
+    if (eventReceived) {
         printf("Event-driven reception worked: \"%s\"\n",
                msgCopy.c_str());
     }
@@ -211,7 +213,7 @@ for event-driven applications.
     nodeB.stop();
 
     printf("\n=== Tutorial 7 Complete ===\n");
-    
+
     return 0;
 }
 

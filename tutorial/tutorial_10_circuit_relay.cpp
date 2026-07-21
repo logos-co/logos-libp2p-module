@@ -31,6 +31,7 @@
 /// > relay node. Use it only when direct connections are impossible.
 #include <cstdio>
 #include <chrono>
+#include <cstdint>
 #include <thread>
 #include <string>
 #include <vector>
@@ -57,10 +58,12 @@ int main()
     // Destination node (behind NAT)
     Libp2pModuleOptions optsDest;
     optsDest.addrs = {"/ip4/127.0.0.1/tcp/9891"};
+    optsDest.circuitRelayClient = true;
 
     // Client node
     Libp2pModuleOptions optsClient;
     optsClient.addrs = {"/ip4/127.0.0.1/tcp/9892"};
+    optsClient.circuitRelayClient = true;
 
     Libp2pModuleImpl relay(optsRelay);
     Libp2pModuleImpl dest(optsDest);
@@ -137,16 +140,15 @@ int main()
     printf("Client connected to relay\n");
 
 /// Now the Client dials the Destination's peer ID through the relay.
-/// The multiaddr is the Destination's direct address (even though
-/// the traffic goes through the relay).
+/// The multiaddr comes from the reservation response, with `/p2p-circuit`
+/// appended so libp2p routes the stream through the Relay.
     printf("Client dialing destination through relay...\n");
 
-    // Get the destination's address
-    std::string destAddr;
-    if (infoDest.contains("addrs") && infoDest["addrs"].is_array() && !infoDest["addrs"].empty()) {
-        destAddr = infoDest["addrs"][0].get<std::string>();
+    std::string relayDialAddr;
+    if (reserveRes.value.is_array() && !reserveRes.value.empty()) {
+        relayDialAddr = reserveRes.value[0].get<std::string>() + "/p2p-circuit";
     } else {
-        fprintf(stderr, "Destination has no known addresses to dial\n");
+        fprintf(stderr, "Reservation did not return relay addresses\n");
         return 1;
     }
 
@@ -154,7 +156,7 @@ int main()
 /// The ping protocol works well for this.
     auto dialRes = client.dialCircuitRelay(
         destPeerId,
-        destAddr,
+        relayDialAddr,
         "/ipfs/ping/1.0.0");
 
     if (!dialRes.success) {
