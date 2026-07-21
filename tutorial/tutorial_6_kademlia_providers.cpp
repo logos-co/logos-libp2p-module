@@ -70,7 +70,7 @@ int main()
 /// ## Step 2: Convert a content key to a CID
 ///
 /// The `toCid()` function takes a string and produces a CID (Content ID)
-/// that can be used with Kadmelia's provider API.
+/// that can be used with Kademlia's provider API.
     std::string contentKey = "my-awesome-file.txt";
     printf("Converting \"%s\" to CID...\n", contentKey.c_str());
     auto cidRes = nodeA.toCid(contentKey);

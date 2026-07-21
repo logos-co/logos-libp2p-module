@@ -37,7 +37,7 @@ int main()
 {
     printf("=== Tutorial 5: Kademlia DHT Basics ===\n\n");
 
-/// ## Step 1: Create three nodes
+/// ## Step 1: Create two nodes
 ///
 /// We need at least two nodes to demonstrate DHT operations. In a
 /// real network, one node would be a well-known bootstrap peer.
