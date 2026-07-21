@@ -12,8 +12,8 @@ nix develop
 ./tutorial/build_tutorials.sh
 
 # Run any tutorial:
-./build/tutorial_1_node_lifecycle
-./build/tutorial_3_connecting_peers
+./build/tutorial/tutorial_1_node_lifecycle
+./build/tutorial/tutorial_3_connecting_peers
 # ...
 ```
 
