@@ -169,6 +169,10 @@ When Node A no longer has the content, it can stop advertising.
 
     printf("\n=== Tutorial 6 Complete ===\n");
 
+    return 0;
+}
+
+
 ```
 
 ## Key Takeaways
@@ -179,10 +183,11 @@ When Node A no longer has the content, it can stop advertising.
   - `kadGetProviders()` discovers who has content
   - `kadFindNode()` finds peers in the DHT routing table
 
-In the [next tutorial](tutorial_7_gossipsub.md), we'll explore
-GossipSub for pub/sub messaging.
-```cpp
-    return 0;
-}
-```
+## Run tutorial
 
+Run this tutorial:
+```bash
+./build/tutorial_6_kademlia_providers
+---
+
+< [Kademlia DHT Basics](tutorial_5_kademlia_basics.md) -- [GossipSub – Pub/Sub Messaging](tutorial_7_gossipsub.md) >

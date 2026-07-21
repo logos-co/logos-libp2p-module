@@ -242,6 +242,10 @@ int main()
 
     printf("\n=== Tutorial 8 Complete ===\n");
 
+    return 0;
+}
+
+
 /// ## Key Takeaways
 ///
 ///   - Service Discovery requires a bootstrap node as rendezvous
@@ -251,8 +255,10 @@ int main()
 ///   - `discoLookup()` finds peers offering a service
 ///   - `discoRandomLookup()` discovers random peers
 ///   - `createXpr()` / `decodeXpr()` work with signed peer records
+
+/// ## Run tutorial
 ///
-/// In the [next tutorial](tutorial_9_peerstore.md), we'll learn how
-/// to manage known peers in the peer store.
-    return 0;
-}
+/// Run this tutorial:
+/// ```bash
+/// ./build/tutorial_8_service_discovery
+/// ```

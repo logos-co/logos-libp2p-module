@@ -202,7 +202,18 @@ Always close and release streams when done:
     nodeB.stop();
 
     printf("\n=== Tutorial 3 Complete ===\n");
+    
     return 0;
 }
+
 ```
 
+## Run tutorial
+
+Run this tutorial:
+```bash
+./build/tutorial_3_connecting_peers
+```
+---
+
+< [Custom Node Configuration](tutorial_2_custom_config.md) -- [Custom Protocol Handlers](tutorial_4_custom_protocol.md) >

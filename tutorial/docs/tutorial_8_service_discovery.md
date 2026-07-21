@@ -276,6 +276,10 @@ side channels.
 
     printf("\n=== Tutorial 8 Complete ===\n");
 
+    return 0;
+}
+
+
 ```
 
 ## Key Takeaways
@@ -288,10 +292,12 @@ side channels.
   - `discoRandomLookup()` discovers random peers
   - `createXpr()` / `decodeXpr()` work with signed peer records
 
-In the [next tutorial](tutorial_9_peerstore.md), we'll learn how
-to manage known peers in the peer store.
-```cpp
-    return 0;
-}
-```
+## Run tutorial
 
+Run this tutorial:
+```bash
+./build/tutorial_8_service_discovery
+```
+---
+
+< [GossipSub – Pub/Sub Messaging](tutorial_7_gossipsub.md) -- [Peer Store Management](tutorial_9_peerstore.md) >

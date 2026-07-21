@@ -157,6 +157,9 @@ int main()
     nodeB.stop();
 
     printf("\n=== Tutorial 5 Complete ===\n");
+    
+    return 0;    
+}
 
 /// ## Key Takeaways
 ///
@@ -166,9 +169,10 @@ int main()
 ///   - `kadGetValue(key, quorum)` retrieves it
 ///   - `kadGetRandomRecords()` discovers random peers in the DHT
 ///   - Values may take a moment to propagate after storing
+
+/// ## Run tutorial
 ///
-/// In the [next tutorial](tutorial_6_kademlia_providers.md), we'll
-/// explore provider records — a way to find which peers offer
-/// specific content.
-    return 0;
-}
+/// Run this tutorial:
+/// ```bash
+/// ./build/tutorial_5_kademlia_basics
+/// ```

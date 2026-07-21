@@ -175,6 +175,9 @@ int main()
     nodeB.stop();
 
     printf("\n=== Tutorial 7 Complete ===\n");
+    
+    return 0;
+}
 
 /// ## Key Takeaways
 ///
@@ -184,9 +187,10 @@ int main()
 ///   - Use `gossipsubNextMessage(topic, timeout)` for polling
 ///   - Use `emitEvent` for event-driven message reception
 ///   - Always unsubscribe and stop cleanly
+
+/// ## Run tutorial
 ///
-/// In the [next tutorial](tutorial_8_service_discovery.md), we'll
-/// learn how peers can discover each other by capability using the
-/// service discovery API.
-    return 0;
-}
+/// Run this tutorial:
+/// ```bash
+/// ./build/tutorial_7_gossipsub
+/// ```

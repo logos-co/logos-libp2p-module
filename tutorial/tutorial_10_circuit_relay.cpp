@@ -186,6 +186,9 @@ int main()
 
     printf("\n=== Tutorial 10 Complete ===\n");
 
+    return 0;
+}
+
 /// ## Key Takeaways
 ///
 ///   - Circuit Relay allows connecting peers behind NAT/firewalls
@@ -201,5 +204,10 @@ int main()
 /// This concludes the tutorial series! You now have a solid
 /// foundation for building peer-to-peer applications with
 /// `logos-libp2p-module`.
-    return 0;
-}
+
+/// ## Run tutorial
+///
+/// Run this tutorial:
+/// ```bash
+/// ./build/tutorial_10_circuit_relay
+/// ```

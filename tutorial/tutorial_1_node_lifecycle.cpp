@@ -87,6 +87,9 @@ int main()
     node.stop();
     printf("Node stopped\n");
 
+    return 0;
+}
+
 /// ## Summary
 ///
 /// In this tutorial you learned how to:
@@ -94,8 +97,10 @@ int main()
 ///   - Start and stop a libp2p node
 ///   - Query peer identity and listening addresses
 ///   - Retrieve module metadata
+
+/// ## Run tutorial
 ///
-/// In the [next tutorial](tutorial_2_custom_config.md), we'll explore
-/// how to configure the node with a custom port and transport settings.
-    return 0;
-}
+/// Run this tutorial:
+/// ```bash
+/// ./build/tutorial_1_node_lifecycle
+/// ```

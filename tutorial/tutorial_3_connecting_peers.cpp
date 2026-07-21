@@ -174,5 +174,13 @@ int main()
     nodeB.stop();
 
     printf("\n=== Tutorial 3 Complete ===\n");
+    
     return 0;
 }
+
+/// ## Run tutorial
+///
+/// Run this tutorial:
+/// ```bash
+/// ./build/tutorial_3_connecting_peers
+/// ```

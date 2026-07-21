@@ -200,6 +200,9 @@ for event-driven applications.
     nodeB.stop();
 
     printf("\n=== Tutorial 7 Complete ===\n");
+    
+    return 0;
+}
 
 ```
 
@@ -212,11 +215,11 @@ for event-driven applications.
   - Use `emitEvent` for event-driven message reception
   - Always unsubscribe and stop cleanly
 
-In the [next tutorial](tutorial_8_service_discovery.md), we'll
-learn how peers can discover each other by capability using the
-service discovery API.
-```cpp
-    return 0;
-}
-```
+## Run tutorial
 
+Run this tutorial:
+```bash
+./build/tutorial_7_gossipsub
+---
+
+< [Kademlia Provider Records](tutorial_6_kademlia_providers.md) -- [Service Discovery](tutorial_8_service_discovery.md) >

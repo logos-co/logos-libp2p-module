@@ -192,6 +192,9 @@ Verify deletion:
 
     printf("\n=== Tutorial 9 Complete ===\n");
 
+    return 0;
+}
+
 ```
 
 ## Key Takeaways
@@ -206,10 +209,12 @@ Verify deletion:
   - A populated peer store speeds up reconnection and reduces
     network overhead
 
-In the [next tutorial](tutorial_10_circuit_relay.md), we'll learn
-how to connect peers behind NAT/firewalls using Circuit Relay.
-```cpp
-    return 0;
-}
-```
+## Run tutorial
 
+Run this tutorial:
+```bash
+./build/tutorial_9_peerstore
+```
+---
+
+< [Service Discovery](tutorial_8_service_discovery.md) -- [Circuit Relay – Connecting Through Firewalls](tutorial_10_circuit_relay.md) >

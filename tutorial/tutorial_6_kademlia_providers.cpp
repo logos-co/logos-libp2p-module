@@ -147,6 +147,10 @@ int main()
 
     printf("\n=== Tutorial 6 Complete ===\n");
 
+    return 0;
+}
+
+
 /// ## Key Takeaways
 ///
 ///   - Provider records advertise **content availability**, not content itself
@@ -154,8 +158,10 @@ int main()
 ///   - `kadStartProviding()` / `kadStopProviding()` manage provider announcements
 ///   - `kadGetProviders()` discovers who has content
 ///   - `kadFindNode()` finds peers in the DHT routing table
+
+/// ## Run tutorial
 ///
-/// In the [next tutorial](tutorial_7_gossipsub.md), we'll explore
-/// GossipSub for pub/sub messaging.
-    return 0;
-}
+/// Run this tutorial:
+/// ```bash
+/// ./build/tutorial_6_kademlia_providers
+/// ```

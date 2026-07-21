@@ -173,6 +173,9 @@ controls the consistency level:
     nodeB.stop();
 
     printf("\n=== Tutorial 5 Complete ===\n");
+    
+    return 0;    
+}
 
 ```
 
@@ -185,11 +188,12 @@ controls the consistency level:
   - `kadGetRandomRecords()` discovers random peers in the DHT
   - Values may take a moment to propagate after storing
 
-In the [next tutorial](tutorial_6_kademlia_providers.md), we'll
-explore provider records — a way to find which peers offer
-specific content.
-```cpp
-    return 0;
-}
-```
+## Run tutorial
 
+Run this tutorial:
+```bash
+./build/tutorial_5_kademlia_basics
+```
+---
+
+< [Custom Protocol Handlers](tutorial_4_custom_protocol.md) -- [Kademlia Provider Records](tutorial_6_kademlia_providers.md) >

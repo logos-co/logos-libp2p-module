@@ -103,6 +103,9 @@ Always clean up by stopping the node when you're done.
     node.stop();
     printf("Node stopped\n");
 
+    return 0;
+}
+
 ```
 
 ## Summary
@@ -113,10 +116,11 @@ In this tutorial you learned how to:
   - Query peer identity and listening addresses
   - Retrieve module metadata
 
-In the [next tutorial](tutorial_2_custom_config.md), we'll explore
-how to configure the node with a custom port and transport settings.
-```cpp
-    return 0;
-}
-```
+## Run tutorial
 
+Run this tutorial:
+```bash
+./build/tutorial_1_node_lifecycle
+---
+
+[Custom Node Configuration](tutorial_2_custom_config.md) >

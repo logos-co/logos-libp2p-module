@@ -134,6 +134,9 @@ supplied via `Libp2pModuleOptions::fromJson()`.
     }
 
     nodeFromJson.stop();
+    
+    return 0;
+}
 
 ```
 
@@ -161,10 +164,12 @@ In this tutorial you learned:
   - How to pass options via C++ struct or JSON
   - How to verify the node's actual bound addresses
 
-In the [next tutorial](tutorial_3_connecting_peers.md), we'll connect
-two nodes and exchange data.
-```cpp
-    return 0;
-}
-```
+## Run tutorial
 
+Run this tutorial:
+```bash
+./build/tutorial_2_custom_config
+```
+---
+
+< [Creating and Starting a libp2p Node](tutorial_1_node_lifecycle.md) -- [Connecting Peers and Exchanging Data](tutorial_3_connecting_peers.md) >

@@ -124,6 +124,9 @@ int main()
     }
 
     nodeFromJson.stop();
+    
+    return 0;
+}
 
 /// ## Exercise: Try different configurations
 ///
@@ -148,8 +151,10 @@ int main()
 ///   - How to control connection limits
 ///   - How to pass options via C++ struct or JSON
 ///   - How to verify the node's actual bound addresses
+
+/// ## Run tutorial
 ///
-/// In the [next tutorial](tutorial_3_connecting_peers.md), we'll connect
-/// two nodes and exchange data.
-    return 0;
-}
+/// Run this tutorial:
+/// ```bash
+/// ./build/tutorial_2_custom_config
+/// ```

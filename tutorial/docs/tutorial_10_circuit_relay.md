@@ -208,6 +208,9 @@ The ping protocol works well for this.
 
     printf("\n=== Tutorial 10 Complete ===\n");
 
+    return 0;
+}
+
 ```
 
 ## Key Takeaways
@@ -225,8 +228,12 @@ The ping protocol works well for this.
 This concludes the tutorial series! You now have a solid
 foundation for building peer-to-peer applications with
 `logos-libp2p-module`.
-```cpp
-    return 0;
-}
-```
 
+## Run tutorial
+
+Run this tutorial:
+```bash
+./build/tutorial_10_circuit_relay
+---
+
+< [Peer Store Management](tutorial_9_peerstore.md)

@@ -164,6 +164,9 @@ int main()
 
     printf("\n=== Tutorial 9 Complete ===\n");
 
+    return 0;
+}
+
 /// ## Key Takeaways
 ///
 ///   - The peer store is a built-in database of known peers
@@ -175,8 +178,10 @@ int main()
 ///   - `peerstoreDeletePeer()` removes peers
 ///   - A populated peer store speeds up reconnection and reduces
 ///     network overhead
+
+/// ## Run tutorial
 ///
-/// In the [next tutorial](tutorial_10_circuit_relay.md), we'll learn
-/// how to connect peers behind NAT/firewalls using Circuit Relay.
-    return 0;
-}
+/// Run this tutorial:
+/// ```bash
+/// ./build/tutorial_9_peerstore
+/// ```

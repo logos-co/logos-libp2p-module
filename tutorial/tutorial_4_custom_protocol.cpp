@@ -192,7 +192,10 @@ int main()
     nodeB.stop();
 
     printf("\n=== Tutorial 4 Complete ===\n");
-
+    
+    return 0;
+}
+    
 /// ## Key Takeaways
 ///
 ///   - `mountProtocol()` registers a handler on the server side
@@ -200,8 +203,10 @@ int main()
 ///   - The dialing side uses `streamClose()`/`streamCloseWithEOF()`
 ///   - The server side uses `streamRelease()` (no close)
 ///   - Use `streamWriteLp()` / `streamReadLp()` for length-prefixed messages
+
+/// ## Run tutorial
 ///
-/// In the [next tutorial](tutorial_5_kademlia_basics.md), we'll explore
-/// Kademlia DHT for distributed key-value storage.
-    return 0;
-}
+/// Run this tutorial:
+/// ```bash
+/// ./build/tutorial_4_custom_protocol
+/// ```

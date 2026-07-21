@@ -229,7 +229,10 @@ resources with `streamRelease()`.
     nodeB.stop();
 
     printf("\n=== Tutorial 4 Complete ===\n");
-
+    
+    return 0;
+}
+    
 ```
 
 ## Key Takeaways
@@ -240,10 +243,12 @@ resources with `streamRelease()`.
   - The server side uses `streamRelease()` (no close)
   - Use `streamWriteLp()` / `streamReadLp()` for length-prefixed messages
 
-In the [next tutorial](tutorial_5_kademlia_basics.md), we'll explore
-Kademlia DHT for distributed key-value storage.
-```cpp
-    return 0;
-}
-```
+## Run tutorial
 
+Run this tutorial:
+```bash
+./build/tutorial_4_custom_protocol
+```
+---
+
+< [Connecting Peers and Exchanging Data](tutorial_3_connecting_peers.md) -- [Kademlia DHT Basics](tutorial_5_kademlia_basics.md) >
