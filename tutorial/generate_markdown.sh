@@ -133,17 +133,28 @@ generate() {
 
     flush_code() {
         if [ -n "$code_content" ]; then
-            code_content="${code_content%$'\n'}"
-            echo "\`\`\`cpp"
-            echo "$code_content"
-            echo "\`\`\`"
-            echo ""
+            printf '```cpp\n'
+            printf '%s' "$code_content"
+            printf '```\n\n'
             code_content=""
         fi
     }
 
+    nav_cell() {
+        local align="$1"
+        local href="$2"
+        local text="$3"
+
+        if [ -z "$href" ]; then
+            printf '<td width="50%%"></td>\n'
+        else
+            printf '<td width="50%%" align="%s"><a href="%s">%s</a></td>\n' \
+                "$align" "$href" "$text"
+        fi
+    }
+
     {
-        while IFS= read -r line; do
+        while IFS= read -r line || [ -n "$line" ]; do
             # Doc comment: /// at column 0
             if echo "$line" | grep -q '^///'; then
                 if [ "$state" = "CODE" ] || [ "$state" = "CODE_BLANK" ]; then
@@ -186,12 +197,13 @@ generate() {
         # Append navigation links
         echo "---"
         echo ""
-        if [ -n "$prev_link" ] && [ -n "$next_link" ]; then
-            echo "< [${prev_title}](${prev_link}) -- [${next_title}](${next_link}) >"
-        elif [ -n "$prev_link" ]; then
-            echo "< [${prev_title}](${prev_link})"
-        elif [ -n "$next_link" ]; then
-            echo "[${next_title}](${next_link}) >"
+        if [ -n "$prev_link" ] || [ -n "$next_link" ]; then
+            echo "<table width=\"100%\">"
+            echo "  <tr>"
+            nav_cell "left" "$prev_link" "&larr; ${prev_title}"
+            nav_cell "right" "$next_link" "${next_title} &rarr;"
+            echo "  </tr>"
+            echo "</table>"
         fi
 
     } > "$md"
