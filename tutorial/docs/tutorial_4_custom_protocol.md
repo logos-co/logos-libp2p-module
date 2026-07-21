@@ -248,16 +248,14 @@ resources with `streamRelease()`.
 
 ## Run tutorial
 
-Build the module (one time):
 ```bash
-nix develop
-./tutorial/build_tutorials.sh
-```
-
-Run this tutorial:
-```bash
-./build/tutorial_4_custom_protocol
+./build/tutorial/tutorial_4_custom_protocol
 ```
 ---
 
-< [Connecting Peers and Exchanging Data](tutorial_3_connecting_peers.md) -- [Kademlia DHT Basics](tutorial_5_kademlia_basics.md) >
+<table width="100%">
+  <tr>
+<td width="50%" align="left"><a href="tutorial_3_connecting_peers.md">&larr; Connecting Peers and Exchanging Data</a></td>
+<td width="50%" align="right"><a href="tutorial_5_kademlia_basics.md">Kademlia DHT Basics &rarr;</a></td>
+  </tr>
+</table>

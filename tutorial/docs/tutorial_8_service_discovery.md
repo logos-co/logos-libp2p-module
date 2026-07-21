@@ -294,16 +294,14 @@ side channels.
 
 ## Run tutorial
 
-Build the module (one time):
 ```bash
-nix develop
-./tutorial/build_tutorials.sh
-```
-
-Run this tutorial:
-```bash
-./build/tutorial_8_service_discovery
+./build/tutorial/tutorial_8_service_discovery
 ```
 ---
 
-< [GossipSub – Pub/Sub Messaging](tutorial_7_gossipsub.md) -- [Peer Store Management](tutorial_9_peerstore.md) >
+<table width="100%">
+  <tr>
+<td width="50%" align="left"><a href="tutorial_7_gossipsub.md">&larr; GossipSub – Pub/Sub Messaging</a></td>
+<td width="50%" align="right"><a href="tutorial_9_peerstore.md">Peer Store Management &rarr;</a></td>
+  </tr>
+</table>

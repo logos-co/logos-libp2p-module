@@ -211,16 +211,14 @@ Verify deletion:
 
 ## Run tutorial
 
-Build the module (one time):
 ```bash
-nix develop
-./tutorial/build_tutorials.sh
-```
-
-Run this tutorial:
-```bash
-./build/tutorial_9_peerstore
+./build/tutorial/tutorial_9_peerstore
 ```
 ---
 
-< [Service Discovery](tutorial_8_service_discovery.md) -- [Circuit Relay – Connecting Through Firewalls](tutorial_10_circuit_relay.md) >
+<table width="100%">
+  <tr>
+<td width="50%" align="left"><a href="tutorial_8_service_discovery.md">&larr; Service Discovery</a></td>
+<td width="50%" align="right"><a href="tutorial_10_circuit_relay.md">Circuit Relay – Connecting Through Firewalls &rarr;</a></td>
+  </tr>
+</table>

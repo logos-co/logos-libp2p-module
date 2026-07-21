@@ -167,16 +167,14 @@ In this tutorial you learned:
 
 ## Run tutorial
 
-Build the module (one time):
 ```bash
-nix develop
-./tutorial/build_tutorials.sh
-```
-
-Run this tutorial:
-```bash
-./build/tutorial_2_custom_config
+./build/tutorial/tutorial_2_custom_config
 ```
 ---
 
-< [Creating and Starting a libp2p Node](tutorial_1_node_lifecycle.md) -- [Connecting Peers and Exchanging Data](tutorial_3_connecting_peers.md) >
+<table width="100%">
+  <tr>
+<td width="50%" align="left"><a href="tutorial_1_node_lifecycle.md">&larr; Creating and Starting a libp2p Node</a></td>
+<td width="50%" align="right"><a href="tutorial_3_connecting_peers.md">Connecting Peers and Exchanging Data &rarr;</a></td>
+  </tr>
+</table>

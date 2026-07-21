@@ -119,16 +119,14 @@ In this tutorial you learned how to:
 
 ## Run tutorial
 
-Build the module (one time):
 ```bash
-nix develop
-./tutorial/build_tutorials.sh
-```
-
-Run this tutorial:
-```bash
-./build/tutorial_1_node_lifecycle
+./build/tutorial/tutorial_1_node_lifecycle
 ```
 ---
 
-[Custom Node Configuration](tutorial_2_custom_config.md) >
+<table width="100%">
+  <tr>
+<td width="50%"></td>
+<td width="50%" align="right"><a href="tutorial_2_custom_config.md">Custom Node Configuration &rarr;</a></td>
+  </tr>
+</table>

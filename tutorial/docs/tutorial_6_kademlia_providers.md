@@ -181,16 +181,14 @@ When Node A no longer has the content, it can stop advertising.
 
 ## Run tutorial
 
-Build the module (one time):
 ```bash
-nix develop
-./tutorial/build_tutorials.sh
-```
-
-Run this tutorial:
-```bash
-./build/tutorial_6_kademlia_providers
+./build/tutorial/tutorial_6_kademlia_providers
 ```
 ---
 
-< [Kademlia DHT Basics](tutorial_5_kademlia_basics.md) -- [GossipSub – Pub/Sub Messaging](tutorial_7_gossipsub.md) >
+<table width="100%">
+  <tr>
+<td width="50%" align="left"><a href="tutorial_5_kademlia_basics.md">&larr; Kademlia DHT Basics</a></td>
+<td width="50%" align="right"><a href="tutorial_7_gossipsub.md">GossipSub – Pub/Sub Messaging &rarr;</a></td>
+  </tr>
+</table>

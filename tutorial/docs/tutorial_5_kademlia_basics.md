@@ -190,16 +190,14 @@ controls the consistency level:
 
 ## Run tutorial
 
-Build the module (one time):
 ```bash
-nix develop
-./tutorial/build_tutorials.sh
-```
-
-Run this tutorial:
-```bash
-./build/tutorial_5_kademlia_basics
+./build/tutorial/tutorial_5_kademlia_basics
 ```
 ---
 
-< [Custom Protocol Handlers](tutorial_4_custom_protocol.md) -- [Kademlia Provider Records](tutorial_6_kademlia_providers.md) >
+<table width="100%">
+  <tr>
+<td width="50%" align="left"><a href="tutorial_4_custom_protocol.md">&larr; Custom Protocol Handlers</a></td>
+<td width="50%" align="right"><a href="tutorial_6_kademlia_providers.md">Kademlia Provider Records &rarr;</a></td>
+  </tr>
+</table>

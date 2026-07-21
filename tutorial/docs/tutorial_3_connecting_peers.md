@@ -213,16 +213,14 @@ Always close and release streams when done:
 
 ## Run tutorial
 
-Build the module (one time):
 ```bash
-nix develop
-./tutorial/build_tutorials.sh
-```
-
-Run this tutorial:
-```bash
-./build/tutorial_3_connecting_peers
+./build/tutorial/tutorial_3_connecting_peers
 ```
 ---
 
-< [Custom Node Configuration](tutorial_2_custom_config.md) -- [Custom Protocol Handlers](tutorial_4_custom_protocol.md) >
+<table width="100%">
+  <tr>
+<td width="50%" align="left"><a href="tutorial_2_custom_config.md">&larr; Custom Node Configuration</a></td>
+<td width="50%" align="right"><a href="tutorial_4_custom_protocol.md">Custom Protocol Handlers &rarr;</a></td>
+  </tr>
+</table>

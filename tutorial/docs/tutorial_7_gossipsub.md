@@ -230,16 +230,14 @@ for event-driven applications.
 
 ## Run tutorial
 
-Build the module (one time):
 ```bash
-nix develop
-./tutorial/build_tutorials.sh
-```
-
-Run this tutorial:
-```bash
-./build/tutorial_7_gossipsub
+./build/tutorial/tutorial_7_gossipsub
 ```
 ---
 
-< [Kademlia Provider Records](tutorial_6_kademlia_providers.md) -- [Service Discovery](tutorial_8_service_discovery.md) >
+<table width="100%">
+  <tr>
+<td width="50%" align="left"><a href="tutorial_6_kademlia_providers.md">&larr; Kademlia Provider Records</a></td>
+<td width="50%" align="right"><a href="tutorial_8_service_discovery.md">Service Discovery &rarr;</a></td>
+  </tr>
+</table>

@@ -236,16 +236,14 @@ foundation for building peer-to-peer applications with
 
 ## Run tutorial
 
-Build the module (one time):
 ```bash
-nix develop
-./tutorial/build_tutorials.sh
-```
-
-Run this tutorial:
-```bash
-./build/tutorial_10_circuit_relay
+./build/tutorial/tutorial_10_circuit_relay
 ```
 ---
 
-< [Peer Store Management](tutorial_9_peerstore.md)
+<table width="100%">
+  <tr>
+<td width="50%" align="left"><a href="tutorial_9_peerstore.md">&larr; Peer Store Management</a></td>
+<td width="50%"></td>
+  </tr>
+</table>
