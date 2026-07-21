@@ -7,7 +7,7 @@
 # LOGOS_MODULE_BUILDER_ROOT, libp2p.so, and other dependencies are available.
 #
 # Usage:
-#   nix develop --command ./tutorial/build_tutorials.sh
+#   nix --extra-experimental-features 'nix-command flakes' develop --command ./tutorial/build_tutorials.sh
 #   # or from inside the dev shell:
 #   ./tutorial/build_tutorials.sh
 #
@@ -30,6 +30,21 @@ BUILD_DIR="${PROJECT_DIR}/build"
 if [ ! -f "${BUILD_DIR}/CMakeCache.txt" ] || [ ! -f "${BUILD_DIR}/Makefile" ]; then
     echo "Configuring CMake..."
     cmake -B "${BUILD_DIR}" -S "${PROJECT_DIR}"
+else
+    cached_cxx="$(sed -n 's/^CMAKE_CXX_COMPILER:[^=]*=//p' "${BUILD_DIR}/CMakeCache.txt" | head -n1)"
+    cached_libp2p="$(sed -n 's/^LIBP2P_INCLUDE_DIR:[^=]*=//p' "${BUILD_DIR}/CMakeCache.txt" | head -n1)"
+    if [[ "${cached_cxx}" == /usr/bin/* && "${cached_libp2p}" == /nix/store/* ]]; then
+        cat >&2 <<EOF
+The existing CMake build uses the host compiler (${cached_cxx}) with Nix libp2p.
+That can produce tutorial binaries that load the host dynamic linker with Nix
+glibc and abort before main with "stack smashing detected".
+
+Recreate the build directory from inside the Nix development shell, then rerun:
+  rm -rf "${BUILD_DIR}"
+  nix --extra-experimental-features 'nix-command flakes' develop --command ./tutorial/build_tutorials.sh
+EOF
+        exit 1
+    fi
 fi
 
 # Discover and build only the tutorial targets. CMake target names match the
