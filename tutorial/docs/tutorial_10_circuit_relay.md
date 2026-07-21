@@ -159,8 +159,11 @@ the traffic goes through the relay).
 
     // Get the destination's address
     std::string destAddr;
-    if (infoDest["addrs"].is_array() && infoDest["addrs"].size() > 0) {
+    if (infoDest.contains("addrs") && infoDest["addrs"].is_array() && !infoDest["addrs"].empty()) {
         destAddr = infoDest["addrs"][0].get<std::string>();
+    } else {
+        fprintf(stderr, "Destination has no known addresses to dial\n");
+        return 1;
     }
 
 ```
@@ -184,7 +187,7 @@ The ping protocol works well for this.
         printf("Circuit relay stream opened! id: %llu\n",
                (unsigned long long)streamId);
 
-        /// Send a ping through the relay:
+        // Send a ping through the relay:
         std::string payload(32, '\0');
         for (int i = 0; i < 32; ++i) payload[i] = static_cast<char>(i);
 

@@ -40,7 +40,7 @@ int main()
 
 ```
 
-## Step 1: Create three nodes
+## Step 1: Create two nodes
 
 We need at least two nodes to demonstrate DHT operations. In a
 real network, one node would be a well-known bootstrap peer.

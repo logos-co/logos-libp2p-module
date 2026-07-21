@@ -160,9 +160,9 @@ for event-driven applications.
 ```cpp
     printf("\n--- Alternative: Event-driven reception ---\n");
 
+    std::mutex eventMtx;
     bool messageReceived = false;
     std::string eventMessage;
-
     nodeA.emitEvent = [&](const std::string& name,
                           const std::string& data) {
         if (name == "gossipsubMessage") {
@@ -171,8 +171,11 @@ for event-driven applications.
             std::string msg = j["data"].get<std::string>();
             printf("Node A (event): received on topic \"%s\": \"%s\"\n",
                    eventTopic.c_str(), msg.c_str());
-            messageReceived = true;
-            eventMessage = msg;
+            {
+                std::lock_guard<std::mutex> lock(eventMtx);
+                messageReceived = true;
+                eventMessage = msg;
+            }
         }
     };
 
@@ -183,9 +186,17 @@ for event-driven applications.
     // Give it a moment to arrive
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    if (messageReceived) {
+    bool received = false;
+    std::string msgCopy;
+    {
+        std::lock_guard<std::mutex> lock(eventMtx);
+        received = messageReceived;
+        msgCopy = eventMessage;
+    }
+
+    if (received) {
         printf("Event-driven reception worked: \"%s\"\n",
-               eventMessage.c_str());
+               msgCopy.c_str());
     }
 
 ```
