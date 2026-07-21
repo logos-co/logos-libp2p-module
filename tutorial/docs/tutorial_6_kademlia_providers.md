@@ -45,7 +45,6 @@ int main()
     optsB.mountKad = true;
 
     Libp2pModuleImpl nodeA(optsA);
-    Libp2pModuleImpl nodeB(optsB);
 
     if (!nodeA.start().success) {
         fprintf(stderr, "Node A failed\n");
@@ -60,16 +59,13 @@ int main()
 
     // Bootstrap and connect Node B
     optsB.bootstrapNodes = {{peerIdA, addrsA}};
-    Libp2pModuleImpl nodeB_final(optsB);
-    // Moving to a fresh node... but nodeB was already created.
-    // Let's instead just connect after creating properly:
-    Libp2pModuleImpl nodeB_real(optsB);
-    if (!nodeB_real.start().success) {
+    Libp2pModuleImpl nodeB(optsB);
+    if (!nodeB.start().success) {
         fprintf(stderr, "Node B failed\n");
         return 1;
     }
 
-    if (!nodeB_real.connectPeer(peerIdA, addrsA, 5000).success) {
+    if (!nodeB.connectPeer(peerIdA, addrsA, 5000).success) {
         fprintf(stderr, "Failed to connect\n");
         return 1;
     }
@@ -113,7 +109,7 @@ This advertises to the DHT that Node A has this content.
 Node B queries the DHT to find who provides this CID.
 ```cpp
     printf("\nNode B looking up providers...\n");
-    auto provRes = nodeB_real.kadGetProviders(cid);
+    auto provRes = nodeB.kadGetProviders(cid);
     if (!provRes.success) {
         fprintf(stderr, "kadGetProviders failed: %s\n",
                 provRes.error.c_str());
@@ -139,7 +135,7 @@ We can also use `kadFindNode()` to locate a specific peer in the
 DHT routing table.
 ```cpp
     printf("\nNode B finding Node A in the DHT...\n");
-    auto findRes = nodeB_real.kadFindNode(peerIdA);
+    auto findRes = nodeB.kadFindNode(peerIdA);
     if (findRes.success && findRes.value.is_array()) {
         printf("Closest peers to Node A:\n");
         for (const auto& p : findRes.value) {
@@ -165,7 +161,7 @@ When Node A no longer has the content, it can stop advertising.
 ## Step 7: Clean up
 ```cpp
     nodeA.stop();
-    nodeB_real.stop();
+    nodeB.stop();
 
     printf("\n=== Tutorial 6 Complete ===\n");
 
