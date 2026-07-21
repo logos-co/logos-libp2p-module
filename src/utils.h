@@ -9,7 +9,7 @@
 #include <nlohmann/json.hpp>
 
 extern "C" {
-#include "lib/libp2p.h"
+#include <libp2p.h>
 }
 
 // Borrows each string's c_str() into the const char* array the cbinding layer
