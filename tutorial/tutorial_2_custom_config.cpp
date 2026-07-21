@@ -155,13 +155,6 @@ int main()
 
 /// ## Run tutorial
 ///
-/// Build the module (one time):
 /// ```bash
-/// nix develop
-/// ./tutorial/build_tutorials.sh
-/// ```
-///
-/// Run this tutorial:
-/// ```bash
-/// ./build/tutorial_2_custom_config
+/// ./build/tutorial/tutorial_2_custom_config
 /// ```

@@ -101,13 +101,6 @@ int main()
 
 /// ## Run tutorial
 ///
-/// Build the module (one time):
 /// ```bash
-/// nix develop
-/// ./tutorial/build_tutorials.sh
-/// ```
-///
-/// Run this tutorial:
-/// ```bash
-/// ./build/tutorial_1_node_lifecycle
+/// ./build/tutorial/tutorial_1_node_lifecycle
 /// ```

@@ -172,13 +172,6 @@ int main()
 
 /// ## Run tutorial
 ///
-/// Build the module (one time):
 /// ```bash
-/// nix develop
-/// ./tutorial/build_tutorials.sh
-/// ```
-///
-/// Run this tutorial:
-/// ```bash
-/// ./build/tutorial_5_kademlia_basics
+/// ./build/tutorial/tutorial_5_kademlia_basics
 /// ```
