@@ -6,16 +6,20 @@
 # Should be invoked within the Nix development shell (nix develop) so that
 # LOGOS_MODULE_BUILDER_ROOT, libp2p.so, and other dependencies are available.
 #
-# Usage:
-#   nix --extra-experimental-features 'nix-command flakes' develop --command ./tutorial/build_tutorials.sh
-#   # or from inside the dev shell:
-#   ./tutorial/build_tutorials.sh
-#
-# The script cleans only the tutorial targets so existing test/example builds
-# remain intact.
+# The script cleans only the tutorial targets so that other builds remain intact.
 #
 
 set -euo pipefail
+
+if [[ -z "${IN_NIX_SHELL:-}" ]]; then
+    cat >&2 <<EOF
+This script must be run inside the Nix development shell.
+
+Run:
+  nix --extra-experimental-features 'nix-command flakes' develop --command ./tutorial/build_tutorials.sh
+EOF
+    exit 1
+fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." &>/dev/null && pwd)"
