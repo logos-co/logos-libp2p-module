@@ -22,7 +22,6 @@ nix --extra-experimental-features 'nix-command flakes' develop --command ./tutor
 ```
 
 **Build prerequisites**
-- `logos-libp2p-module` built with CMake (see root `README.md` for build instructions)
 - Nix development shell (`nix develop`) or equivalent dependencies
 
 No need to rebuild between runs unless the source code changes.
