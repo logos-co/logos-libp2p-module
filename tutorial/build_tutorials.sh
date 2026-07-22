@@ -27,7 +27,7 @@ BUILD_DIR="${PROJECT_DIR}/build"
 
 # Ensure cmake is configured. A previous failed configure can leave a
 # CMakeCache.txt without a generated build system.
-if [ ! -f "${BUILD_DIR}/CMakeCache.txt" ] || [ ! -f "${BUILD_DIR}/Makefile" ]; then
+if [[ ! -f "${BUILD_DIR}/CMakeCache.txt" ]] || [[ ! -f "${BUILD_DIR}/Makefile" ]]; then
     echo "Configuring CMake..."
     cmake -B "${BUILD_DIR}" -S "${PROJECT_DIR}"
 else
@@ -52,12 +52,12 @@ fi
 echo "Building tutorials..."
 tutorial_targets=()
 for tutorial_src in "${SCRIPT_DIR}"/tutorial_*.cpp; do
-    [ -f "${tutorial_src}" ] || continue
+    [[ -f "${tutorial_src}" ]] || continue
     tutorial_file="$(basename "${tutorial_src}")"
     tutorial_targets+=("${tutorial_file%.cpp}")
 done
 
-if [ "${#tutorial_targets[@]}" -eq 0 ]; then
+if [[ "${#tutorial_targets[@]}" -eq 0 ]]; then
     echo "No tutorial sources found in ${SCRIPT_DIR}" >&2
     exit 1
 fi
