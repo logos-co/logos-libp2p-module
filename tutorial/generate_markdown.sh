@@ -22,7 +22,7 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" &>/dev/null && pwd)"
 OUTPUT_DIR="${SCRIPT_DIR}/docs"
 SRC_DIR="${SCRIPT_DIR}"
 
