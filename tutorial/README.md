@@ -48,8 +48,8 @@ The `docs/` folder is generated from `///` comments in the `.cpp` sources:
 ./tutorial/generate_markdown.sh
 ```
 
+---
+
 <div align="center">
-<br>
 <a href="docs/tutorial_1_node_lifecycle.md"><b>START HERE — Tutorial 1: Node Lifecycle</b></a>
-<br><br>
 </div>
