@@ -1,4 +1,4 @@
-# logos-libp2p-module Tutorials
+# Tutorials
 
 
 Step-by-step tutorials for the `logos-libp2p-module` — from basic node lifecycle to NAT traversal with circuit relay.
