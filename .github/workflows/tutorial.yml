@@ -1,0 +1,85 @@
+name: Tutorial CI
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'tutorial/**'
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - 'tutorial/CMakeLists.txt'
+  pull_request:
+    paths:
+      - 'tutorial/**'
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - 'tutorial/CMakeLists.txt'
+  workflow_dispatch:
+
+concurrency:
+  group: tutorial-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NIX_CONFIG: |
+    experimental-features = nix-command flakes
+
+jobs:
+  compile-check:
+    name: Compile check (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux (x86_64-linux)
+            runner: ubuntu-latest
+            system: x86_64-linux
+
+          - name: macOS (aarch64-darwin)
+            runner: macos-latest
+            system: aarch64-darwin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v5
+
+      - name: Build tutorials inside Nix dev shell
+        run: |
+          nix develop --command ./tutorial/build_tutorials.sh
+
+  markdown-check:
+    name: Markdown freshness check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate markdown from tutorial sources
+        run: |
+          chmod +x ./tutorial/generate_markdown.sh
+          rm -rf ./tutorial/docs
+          ./tutorial/generate_markdown.sh
+
+      - name: Check git diff (no changes expected)
+        run: |
+          if ! git diff --quiet -- ./tutorial/docs/; then
+            echo "❌ Generated markdown does not match committed version."
+            echo ""
+            echo "Differences found:"
+            git diff -- ./tutorial/docs/
+            echo ""
+            echo "Run './tutorial/generate_markdown.sh' locally and commit the updated docs/"
+            exit 1
+          fi
+          echo "✅ Generated markdown matches committed version."

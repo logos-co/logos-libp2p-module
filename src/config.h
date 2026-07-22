@@ -11,7 +11,7 @@
 #include <nlohmann/json.hpp>
 
 extern "C" {
-#include "lib/libp2p.h"
+#include <libp2p.h>
 }
 
 #include "utils.h"

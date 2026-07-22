@@ -27,3 +27,4 @@ logos_module(
 )
 
 add_subdirectory(examples)
+add_subdirectory(tutorial)

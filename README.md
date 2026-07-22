@@ -10,6 +10,7 @@ It provides:
 - Sync and async APIs compatible with Qt
 
 Check the examples/ directory for complete usage demonstrations.
+For guided walkthroughs, see the [tutorials](./tutorial/README.md).
 
 ---
 
