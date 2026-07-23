@@ -109,19 +109,25 @@ int main()
 ///   - `0` means "outgoing connections" (this node connected to other peers).
 ///   - `1` means "incoming connections" (other peers connected to this node).
     auto peersA = nodeA.connectedPeers(0);
-    if (peersA.success) {
-        printf("\nNode A's connected peers:\n");
-        for (const auto& p : peersA.value) {
-            printf("  %s\n", p.get<std::string>().c_str());
-        }
+    if (!peersA.success) {
+        fprintf(stderr, "Failed to list Node A peers: %s\n",
+                peersA.error.c_str());
+        return 1;
+    }
+    printf("\nNode A's connected peers:\n");
+    for (const auto& p : peersA.value) {
+        printf("  %s\n", p.get<std::string>().c_str());
     }
 
     auto peersB = nodeB.connectedPeers(0);
-    if (peersB.success) {
-        printf("Node B's connected peers:\n");
-        for (const auto& p : peersB.value) {
-            printf("  %s\n", p.get<std::string>().c_str());
-        }
+    if (!peersB.success) {
+        fprintf(stderr, "Failed to list Node B peers: %s\n",
+                peersB.error.c_str());
+        return 1;
+    }
+    printf("Node B's connected peers:\n");
+    for (const auto& p : peersB.value) {
+        printf("  %s\n", p.get<std::string>().c_str());
     }
 
 /// ## Step 5: Dial the ping protocol and exchange data
