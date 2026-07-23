@@ -172,9 +172,9 @@ In this tutorial you learned:
 ```
 ---
 
-<table width="100%">
-  <tr>
-<td width="50%" align="left"><a href="tutorial_1_node_lifecycle.md">&larr; Creating and Starting a libp2p Node</a></td>
-<td width="50%" align="right"><a href="tutorial_3_connecting_peers.md">Connecting Peers and Exchanging Data &rarr;</a></td>
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border: 0;">
+  <tr style="border: 0;">
+<td width="50%" align="left" style="border: 0;"><a href="tutorial_1_node_lifecycle.md">&larr; Creating and Starting a libp2p Node</a></td>
+<td width="50%" align="right" style="border: 0;"><a href="tutorial_3_connecting_peers.md">Connecting Peers and Exchanging Data &rarr;</a></td>
   </tr>
 </table>

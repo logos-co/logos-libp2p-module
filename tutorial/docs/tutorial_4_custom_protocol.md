@@ -267,9 +267,9 @@ should use non-blocking patterns to maintain system responsiveness.
 ```
 ---
 
-<table width="100%">
-  <tr>
-<td width="50%" align="left"><a href="tutorial_3_connecting_peers.md">&larr; Connecting Peers and Exchanging Data</a></td>
-<td width="50%"></td>
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border: 0;">
+  <tr style="border: 0;">
+<td width="50%" align="left" style="border: 0;"><a href="tutorial_3_connecting_peers.md">&larr; Connecting Peers and Exchanging Data</a></td>
+<td width="50%" style="border: 0;"></td>
   </tr>
 </table>
