@@ -23,6 +23,7 @@
 /// > peers have subscribed. A short delay (1-2 seconds) is usually enough.
 #include <cstdio>
 #include <chrono>
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 #include <string>
@@ -60,7 +61,13 @@ int main()
 /// ## Step 2: Connect the nodes
 ///
 /// GossipSub needs connectivity between peers to build the mesh.
-    auto infoA = nodeA.peerInfo().value;
+    auto infoARes = nodeA.peerInfo();
+    if (!infoARes.success) {
+        fprintf(stderr, "Failed to get Node A info: %s\n",
+                infoARes.error.c_str());
+        return 1;
+    }
+    auto infoA = infoARes.value;
     std::string peerIdA = infoA["peerId"].get<std::string>();
     std::vector<std::string> addrsA;
     for (const auto& a : infoA["addrs"])
@@ -72,6 +79,27 @@ int main()
         return 1;
     }
     printf("Connected\n");
+
+    std::mutex eventMtx;
+    std::condition_variable eventCv;
+    bool messageReceived = false;
+    std::string eventMessage;
+    nodeA.emitEvent = [&](const std::string& name,
+                          const std::string& data) {
+        if (name == "gossipsubMessage") {
+            auto j = nlohmann::json::parse(data);
+            std::string eventTopic = j["topic"].get<std::string>();
+            std::string msg = j["data"].get<std::string>();
+            printf("Node A (event): received on topic \"%s\": \"%s\"\n",
+                   eventTopic.c_str(), msg.c_str());
+            {
+                std::lock_guard<std::mutex> lock(eventMtx);
+                messageReceived = true;
+                eventMessage = msg;
+            }
+            eventCv.notify_one();
+        }
+    };
 
 /// ## Step 3: Both nodes subscribe to a topic
 ///
@@ -129,8 +157,10 @@ int main()
     if (received == payload) {
         printf("Message verified!\n");
     } else {
-        printf("Message content differs (expected: \"%s\")\n",
-               payload.c_str());
+        fprintf(stderr,
+                "Message content differs (expected: \"%s\", got: \"%s\")\n",
+                payload.c_str(), received.c_str());
+        return 1;
     }
 
 /// ## Step 7: Alternative — listen via event callback
@@ -140,36 +170,24 @@ int main()
 /// for event-driven applications.
     printf("\n--- Alternative: Event-driven reception ---\n");
 
-    std::mutex eventMtx;
-    bool messageReceived = false;
-    std::string eventMessage;
-    nodeA.emitEvent = [&](const std::string& name,
-                          const std::string& data) {
-        if (name == "gossipsubMessage") {
-            auto j = nlohmann::json::parse(data);
-            std::string eventTopic = j["topic"].get<std::string>();
-            std::string msg = j["data"].get<std::string>();
-            printf("Node A (event): received on topic \"%s\": \"%s\"\n",
-                   eventTopic.c_str(), msg.c_str());
-            {
-                std::lock_guard<std::mutex> lock(eventMtx);
-                messageReceived = true;
-                eventMessage = msg;
-            }
-        }
-    };
-
     // Publish another message
     std::string payload2 = "Second message via event!";
-    nodeB.gossipsubPublish(topic, payload2);
-
-    // Give it a moment to arrive
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    {
+        std::lock_guard<std::mutex> lock(eventMtx);
+        messageReceived = false;
+        eventMessage.clear();
+    }
+    if (!nodeB.gossipsubPublish(topic, payload2).success) {
+        fprintf(stderr, "Second publish failed\n");
+        return 1;
+    }
 
     bool eventReceived = false;
     std::string msgCopy;
     {
-        std::lock_guard<std::mutex> lock(eventMtx);
+        std::unique_lock<std::mutex> lock(eventMtx);
+        eventCv.wait_for(lock, std::chrono::seconds(3),
+                         [&] { return messageReceived; });
         eventReceived = messageReceived;
         msgCopy = eventMessage;
     }
@@ -177,12 +195,28 @@ int main()
     if (eventReceived) {
         printf("Event-driven reception worked: \"%s\"\n",
                msgCopy.c_str());
+    } else {
+        fprintf(stderr, "Node A did not receive the event-driven message\n");
+        return 1;
+    }
+
+    if (msgCopy != payload2) {
+        fprintf(stderr,
+                "Event-driven message differs (expected: \"%s\", got: \"%s\")\n",
+                payload2.c_str(), msgCopy.c_str());
+        return 1;
     }
 
 /// ## Step 8: Unsubscribe and clean up
     printf("\nUnsubscribing...\n");
-    nodeB.gossipsubUnsubscribe(topic);
-    nodeA.gossipsubUnsubscribe(topic);
+    if (!nodeB.gossipsubUnsubscribe(topic).success) {
+        fprintf(stderr, "Node B unsubscribe failed\n");
+        return 1;
+    }
+    if (!nodeA.gossipsubUnsubscribe(topic).success) {
+        fprintf(stderr, "Node A unsubscribe failed\n");
+        return 1;
+    }
 
     nodeA.stop();
     nodeB.stop();
