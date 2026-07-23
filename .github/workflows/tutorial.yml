@@ -16,6 +16,9 @@ on:
       - 'tutorial/CMakeLists.txt'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: tutorial-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -45,12 +48,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v12
 
       - name: Setup Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@v5
+        with:
+          use-flakehub: false
 
       - name: Build tutorials inside Nix dev shell
         run: |
@@ -64,6 +71,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Generate markdown from tutorial sources
         run: |
