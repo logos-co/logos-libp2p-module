@@ -116,7 +116,10 @@ parameter is in milliseconds.
 ## Step 4: List connected peers
 
 We can verify the connection by listing connected peers on each node.
-The direction parameter `0` means "all connected peers".
+
+The direction parameter:
+  - `0` means "outgoing connections" (this node connected to other peers).
+  - `1` means "incoming connections" (other peers connected to this node).
 ```cpp
     auto peersA = nodeA.connectedPeers(0);
     if (peersA.success) {

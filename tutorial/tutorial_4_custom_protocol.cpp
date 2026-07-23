@@ -16,7 +16,8 @@
 /// To handle incoming streams you:
 ///   1. Call `mountProtocol()` to register a protocol ID
 ///   2. Set an `emitEvent` callback that listens for `"protocolStream"` events
-///   3. Read from and write to the stream in the event handler
+///   3. Read from and write to the stream in the event handler ⚠️
+///    (see performance notes below)
 ///
 /// The stream lifecycle on the server side is:
 ///   1. Receive `protocolStream` event with a `streamId`
@@ -184,12 +185,14 @@ int main()
 
 /// ## Step 9: Clean up
 ///
-/// The client (dialing side) closes its stream with `streamCloseWithEOF()`
-/// to signal that it's done writing. Both sides release their stream
-/// resources with `streamRelease()`.
+/// The initiator (the peer that dialed) is responsible for closing the
+/// stream. The responder only needs to release their handle:
+    // Server side (responder) - just release the handle
+    nodeA.streamRelease(serverStreamId);
+
+    // Client side (initiator) - close with EOF, then release
     nodeB.streamCloseWithEOF(clientStreamId);
     nodeB.streamRelease(clientStreamId);
-    nodeA.streamRelease(serverStreamId);
 
     nodeA.stop();
     nodeB.stop();
@@ -206,6 +209,17 @@ int main()
 ///   - The dialing side uses `streamClose()`/`streamCloseWithEOF()`
 ///   - The server side uses `streamRelease()` (no close)
 ///   - Use `streamWriteLp()` / `streamReadLp()` for length-prefixed messages
+
+/// ## Important: Performance Considerations
+///
+/// For production code, avoid blocking reads/writes in event handlers.
+/// Instead, use asynchronous patterns where:
+/// 1. Event handler quickly passes stream to a queue/worker
+/// 2. Separate mechanism handles the actual I/O
+/// 3. Event loop stays responsive for other connections
+///
+/// The tutorial is simplified for learning; real implementations
+/// should use non-blocking patterns to maintain system responsiveness.
 
 /// ## Run tutorial
 ///
