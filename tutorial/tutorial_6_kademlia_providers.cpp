@@ -47,7 +47,13 @@ int main()
         return 1;
     }
 
-    auto infoA = nodeA.peerInfo().value;
+    auto infoARes = nodeA.peerInfo();
+    if (!infoARes.success) {
+        fprintf(stderr, "Failed to get Node A info: %s\n",
+                infoARes.error.c_str());
+        return 1;
+    }
+    auto infoA = infoARes.value;
     std::string peerIdA = infoA["peerId"].get<std::string>();
     std::vector<std::string> addrsA;
     for (const auto& a : infoA["addrs"])
@@ -104,14 +110,28 @@ int main()
     }
 
     auto providers = provRes.value;
+    if (!providers.is_array()) {
+        fprintf(stderr, "kadGetProviders returned a non-array value\n");
+        return 1;
+    }
+
     printf("Node B found %zu provider(s):\n", providers.size());
+    bool foundNodeA = false;
     for (const auto& p : providers) {
-        printf("  Peer: %s\n",
-               p["peerId"].get<std::string>().c_str());
+        std::string providerId = p["peerId"].get<std::string>();
+        if (providerId == peerIdA) {
+            foundNodeA = true;
+        }
+        printf("  Peer: %s\n", providerId.c_str());
         for (const auto& addr : p["addrs"]) {
             printf("    Address: %s\n",
                    addr.get<std::string>().c_str());
         }
+    }
+    if (!foundNodeA) {
+        fprintf(stderr, "Node A was not found as a provider for %s\n",
+                cid.c_str());
+        return 1;
     }
 
 /// ## Step 5: Find a specific node in the DHT
@@ -120,11 +140,19 @@ int main()
 /// DHT routing table.
     printf("\nNode B finding Node A in the DHT...\n");
     auto findRes = nodeB.kadFindNode(peerIdA);
-    if (findRes.success && findRes.value.is_array()) {
-        printf("Closest peers to Node A:\n");
-        for (const auto& p : findRes.value) {
-            printf("  %s\n", p.get<std::string>().c_str());
-        }
+    if (!findRes.success) {
+        fprintf(stderr, "kadFindNode failed: %s\n",
+                findRes.error.c_str());
+        return 1;
+    }
+    if (!findRes.value.is_array()) {
+        fprintf(stderr, "kadFindNode returned a non-array value\n");
+        return 1;
+    }
+
+    printf("Closest peers to Node A:\n");
+    for (const auto& p : findRes.value) {
+        printf("  %s\n", p.get<std::string>().c_str());
     }
 
 /// ## Step 6: Stop providing
