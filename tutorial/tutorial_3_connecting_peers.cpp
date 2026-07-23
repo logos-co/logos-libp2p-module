@@ -30,6 +30,9 @@
 ///   3. `streamReadLp()` / `streamReadExactly()` — Receive data
 ///   4. `streamClose()` or `streamCloseWithEOF()` — Close gracefully
 ///   5. `streamRelease()` — Free server-side resources
+///
+/// -----------
+
 #include <cstdio>
 #include <cstdint>
 #include <string>

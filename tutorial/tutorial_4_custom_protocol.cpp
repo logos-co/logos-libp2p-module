@@ -28,6 +28,9 @@
 /// > **Note**: Unlike the dialing side, the server side does **not** call
 /// > `streamClose()` — the peer that initiated the stream is responsible
 /// > for closing it.
+///
+/// -----------
+
 #include <cstdio>
 #include <chrono>
 #include <condition_variable>

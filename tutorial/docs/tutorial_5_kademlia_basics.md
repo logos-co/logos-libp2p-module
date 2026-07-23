@@ -27,6 +27,9 @@ When you call `kadGetValue(key, quorum)`:
 
 New nodes need at least one bootstrap peer to join the DHT. In this
 tutorial, Node A acts as the bootstrap for Node B.
+
+-----------
+
 ```cpp
 #include <cstdio>
 #include <string>

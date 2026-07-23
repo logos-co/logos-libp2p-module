@@ -28,6 +28,9 @@ The stream lifecycle on the server side is:
 > **Note**: Unlike the dialing side, the server side does **not** call
 > `streamClose()` — the peer that initiated the stream is responsible
 > for closing it.
+
+-----------
+
 ```cpp
 #include <cstdio>
 #include <chrono>

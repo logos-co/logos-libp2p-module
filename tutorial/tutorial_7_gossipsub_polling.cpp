@@ -22,6 +22,9 @@
 ///
 /// > **Note**: The GossipSub mesh takes some time to form after both
 /// > peers have subscribed. A short delay of 1-2 seconds is usually enough.
+///
+/// -----------
+
 #include <chrono>
 #include <cstdio>
 #include <string>

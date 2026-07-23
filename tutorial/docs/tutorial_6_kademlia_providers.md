@@ -23,6 +23,9 @@ and other peers can discover who provides that content.
 CIDs are self-describing content hashes used in IPFS and IPLD. The
 `toCid()` function converts a string key into a CID that can be used
 with the provider API.
+
+-----------
+
 ```cpp
 #include <cstdio>
 #include <string>

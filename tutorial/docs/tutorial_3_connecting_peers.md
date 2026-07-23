@@ -30,6 +30,9 @@ A stream must follow this lifecycle:
   3. `streamReadLp()` / `streamReadExactly()` — Receive data
   4. `streamClose()` or `streamCloseWithEOF()` — Close gracefully
   5. `streamRelease()` — Free server-side resources
+
+-----------
+
 ```cpp
 #include <cstdio>
 #include <cstdint>
