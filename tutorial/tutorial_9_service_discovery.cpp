@@ -1,4 +1,4 @@
-/// # Tutorial 8: Service Discovery
+/// # Tutorial 9: Service Discovery
 ///
 /// In decentralized networks, peers join and leave dynamically. How do you
 /// find a peer that offers a specific service? That's what **Service
@@ -61,7 +61,7 @@ static nlohmann::json lookupWithRetry(
 
 int main()
 {
-    printf("=== Tutorial 8: Service Discovery ===\n\n");
+    printf("=== Tutorial 9: Service Discovery ===\n\n");
 
 /// ## Step 1: Create a bootstrap node
 ///
@@ -240,7 +240,7 @@ int main()
     advertiser.stop();
     bootstrap.stop();
 
-    printf("\n=== Tutorial 8 Complete ===\n");
+    printf("\n=== Tutorial 9 Complete ===\n");
 
     return 0;
 }
@@ -259,5 +259,5 @@ int main()
 /// ## Run tutorial
 ///
 /// ```bash
-/// ./build/tutorial/tutorial_8_service_discovery
+/// ./build/tutorial/tutorial_9_service_discovery
 /// ```

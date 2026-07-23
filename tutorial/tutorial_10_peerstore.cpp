@@ -1,4 +1,4 @@
-/// # Tutorial 9: Peer Store Management
+/// # Tutorial 10: Peer Store Management
 ///
 /// The **peer store** is libp2p's database of known peers. It maps peer IDs
 /// to their known addresses, protocols, public keys, and metadata.
@@ -21,7 +21,7 @@
 
 int main()
 {
-    printf("=== Tutorial 9: Peer Store Management ===\n\n");
+    printf("=== Tutorial 10: Peer Store Management ===\n\n");
 
 /// ## Step 1: Create a node
 ///
@@ -162,7 +162,7 @@ int main()
 /// ## Step 7: Clean up
     node.stop();
 
-    printf("\n=== Tutorial 9 Complete ===\n");
+    printf("\n=== Tutorial 10 Complete ===\n");
 
     return 0;
 }
@@ -182,5 +182,5 @@ int main()
 /// ## Run tutorial
 ///
 /// ```bash
-/// ./build/tutorial/tutorial_9_peerstore
+/// ./build/tutorial/tutorial_10_peerstore
 /// ```

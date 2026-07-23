@@ -1,4 +1,4 @@
-/// # Tutorial 10: Circuit Relay – Connecting Through Firewalls
+/// # Tutorial 11: Circuit Relay – Connecting Through Firewalls
 ///
 /// Not all peers are directly reachable. Some are behind NAT, firewalls,
 /// or have no public IP. Circuit Relay solves this by having a
@@ -39,7 +39,7 @@
 
 int main()
 {
-    printf("=== Tutorial 10: Circuit Relay ===\n\n");
+    printf("=== Tutorial 11: Circuit Relay ===\n\n");
 
 /// ## Step 1: Create three nodes
 ///
@@ -189,7 +189,7 @@ int main()
     dest.stop();
     client.stop();
 
-    printf("\n=== Tutorial 10 Complete ===\n");
+    printf("\n=== Tutorial 11 Complete ===\n");
 
     return 0;
 }
@@ -213,5 +213,5 @@ int main()
 /// ## Run tutorial
 ///
 /// ```bash
-/// ./build/tutorial/tutorial_10_circuit_relay
+/// ./build/tutorial/tutorial_11_circuit_relay
 /// ```
