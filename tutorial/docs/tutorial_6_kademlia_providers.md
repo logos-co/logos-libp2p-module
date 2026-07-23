@@ -41,29 +41,28 @@ int main()
     optsA.addrs = {"/ip4/127.0.0.1/tcp/9490"};
     optsA.mountKad = true;
 
-    optsB.addrs = {"/ip4/127.0.0.1/tcp/9491"};
-    optsB.mountKad = true;
-
     Libp2pModuleImpl nodeA(optsA);
 
     if (!nodeA.start().success) {
         fprintf(stderr, "Node A failed\n");
         return 1;
     }
-
+    
     auto infoARes = nodeA.peerInfo();
     if (!infoARes.success) {
         fprintf(stderr, "Failed to get Node A info: %s\n",
-                infoARes.error.c_str());
-        return 1;
-    }
-    auto infoA = infoARes.value;
-    std::string peerIdA = infoA["peerId"].get<std::string>();
-    std::vector<std::string> addrsA;
-    for (const auto& a : infoA["addrs"])
+            infoARes.error.c_str());
+            return 1;
+        }
+        auto infoA = infoARes.value;
+        std::string peerIdA = infoA["peerId"].get<std::string>();
+        std::vector<std::string> addrsA;
+        for (const auto& a : infoA["addrs"])
         addrsA.push_back(a.get<std::string>());
-
+    
     // Bootstrap and connect Node B
+    optsB.addrs = {"/ip4/127.0.0.1/tcp/9491"};
+    optsB.mountKad = true;
     optsB.bootstrapNodes = {{peerIdA, addrsA}};
     Libp2pModuleImpl nodeB(optsB);
     if (!nodeB.start().success) {
