@@ -65,7 +65,13 @@ real network, one node would be a well-known bootstrap peer.
     }
 
     // Get Node A's peer info for bootstrapping Node B
-    auto infoA = nodeA.peerInfo().value;
+    auto infoARes = nodeA.peerInfo();
+    if (!infoARes.success) {
+        fprintf(stderr, "Failed to get Node A info: %s\n",
+                infoARes.error.c_str());
+        return 1;
+    }
+    auto infoA = infoARes.value;
     std::string peerIdA = infoA["peerId"].get<std::string>();
     std::vector<std::string> addrsA;
     for (const auto& a : infoA["addrs"])
@@ -101,13 +107,20 @@ Before we store anything, let's check what random records Node B
 can find. This helps verify that the DHT is working.
 ```cpp
     auto recordsRes = nodeB.kadGetRandomRecords();
-    if (recordsRes.success && recordsRes.value.is_array()) {
-        printf("Node B found %zu random records\n",
-               recordsRes.value.size());
-        for (const auto& rec : recordsRes.value) {
-            printf("  Peer: %s\n",
-                   rec["peerId"].get<std::string>().c_str());
-        }
+    if (!recordsRes.success) {
+        fprintf(stderr, "kadGetRandomRecords failed: %s\n",
+                recordsRes.error.c_str());
+        return 1;
+    }
+    if (!recordsRes.value.is_array()) {
+        fprintf(stderr, "kadGetRandomRecords returned a non-array value\n");
+        return 1;
+    }
+    printf("Node B found %zu random records\n",
+           recordsRes.value.size());
+    for (const auto& rec : recordsRes.value) {
+        printf("  Peer: %s\n",
+               rec["peerId"].get<std::string>().c_str());
     }
 
 ```
@@ -148,22 +161,24 @@ controls the consistency level:
         return 1;
     }
 
-    std::string received;
-    if (getRes.value.is_string()) {
-        received = base64Decode(getRes.value.get<std::string>());
+    if (!getRes.value.is_string()) {
+        fprintf(stderr, "GetValue returned a non-string value\n");
+        return 1;
     }
+    std::string received = base64Decode(getRes.value.get<std::string>());
 
     if (received.empty()) {
-        printf("Node B did not find the value (may need more time)\n");
-    } else {
-        printf("Node B received: \"%s\"\n", received.c_str());
-        if (received == value) {
-            printf("Value matches!\n");
-        } else {
-            printf("Value mismatch (expected: \"%s\")\n",
-                   value.c_str());
-        }
+        fprintf(stderr, "Node B did not find the value\n");
+        return 1;
     }
+
+    printf("Node B received: \"%s\"\n", received.c_str());
+    if (received != value) {
+        fprintf(stderr, "Value mismatch (expected: \"%s\", got: \"%s\")\n",
+                value.c_str(), received.c_str());
+        return 1;
+    }
+    printf("Value matches!\n");
 
 ```
 
