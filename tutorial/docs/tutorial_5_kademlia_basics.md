@@ -181,9 +181,4 @@ controls the consistency level:
 ```
 ---
 
-<table width="100%">
-  <tr>
-<td width="50%" align="left"><a href="tutorial_4_custom_protocol.md">&larr; Custom Protocol Handlers</a></td>
-<td width="50%" align="right"><a href="tutorial_6_kademlia_providers.md">Kademlia Provider Records &rarr;</a></td>
-  </tr>
-</table>
+<p align="center"><a href="tutorial_4_custom_protocol.md">&larr; Custom Protocol Handlers</a> &nbsp;|&nbsp; <a href="tutorial_6_kademlia_providers.md">Kademlia Provider Records &rarr;</a></p>

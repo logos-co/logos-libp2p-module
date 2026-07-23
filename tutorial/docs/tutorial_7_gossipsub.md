@@ -286,9 +286,4 @@ Step 3.
 ```
 ---
 
-<table width="100%">
-  <tr>
-<td width="50%" align="left"><a href="tutorial_6_kademlia_providers.md">&larr; Kademlia Provider Records</a></td>
-<td width="50%"></td>
-  </tr>
-</table>
+<p align="center"><a href="tutorial_6_kademlia_providers.md">&larr; Kademlia Provider Records</a></p>
