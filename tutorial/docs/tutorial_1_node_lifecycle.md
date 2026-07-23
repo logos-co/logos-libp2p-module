@@ -124,9 +124,4 @@ In this tutorial you learned how to:
 ```
 ---
 
-<table width="100%">
-  <tr>
-<td width="50%"></td>
-<td width="50%" align="right"><a href="tutorial_2_custom_config.md">Custom Node Configuration &rarr;</a></td>
-  </tr>
-</table>
+<p align="center"><a href="tutorial_2_custom_config.md">Custom Node Configuration &rarr;</a></p>
