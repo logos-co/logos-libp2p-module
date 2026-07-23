@@ -71,6 +71,36 @@ for tutorial_target in "${tutorial_targets[@]}"; do
     cmake --build "${BUILD_DIR}" --target "${tutorial_target}" -j "${build_jobs}"
 done
 
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    plugin_dylib="${BUILD_DIR}/modules/libp2p_module_plugin.dylib"
+    libp2p_dylib="${BUILD_DIR}/modules/libp2p.dylib"
+
+    if [[ ! -f "${plugin_dylib}" ]]; then
+        echo "Expected plugin dylib not found: ${plugin_dylib}" >&2
+        exit 1
+    fi
+    if [[ ! -f "${libp2p_dylib}" ]]; then
+        echo "Expected libp2p dylib not found: ${libp2p_dylib}" >&2
+        exit 1
+    fi
+
+    libp2p_install_name="$(otool -L "${plugin_dylib}" \
+        | awk '/libp2p[.]dylib/ { print $1; exit }')"
+
+    if [[ -z "${libp2p_install_name}" ]]; then
+        echo "Could not find libp2p.dylib dependency in ${plugin_dylib}" >&2
+        exit 1
+    fi
+
+    if [[ "${libp2p_install_name}" != "@loader_path/libp2p.dylib" ]]; then
+        echo "Patching ${plugin_dylib} libp2p.dylib dependency"
+        install_name_tool -change \
+            "${libp2p_install_name}" \
+            "@loader_path/libp2p.dylib" \
+            "${plugin_dylib}"
+    fi
+fi
+
 echo ""
 echo "✅ All tutorials compiled successfully."
 echo ""
