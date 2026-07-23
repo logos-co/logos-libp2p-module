@@ -80,6 +80,19 @@ int main()
     }
     printf("Connected\n");
 
+/// ## Step 3: Prepare an event callback for Node A
+///
+/// This callback is only needed for Step 8, where Node A receives a
+/// message through the event-driven API. The polling flow in Steps 4-7
+/// uses `gossipsubNextMessage()` instead and does not depend on this
+/// callback.
+///
+/// `emitEvent` lets the module notify application code when something
+/// happens asynchronously. Register it before Node A subscribes, because
+/// the subscription path snapshots the callback used by worker threads.
+/// The callback listens for `"gossipsubMessage"` events, parses the JSON
+/// payload, stores the received message, and wakes any code waiting on
+/// the condition variable.
     std::mutex eventMtx;
     std::condition_variable eventCv;
     bool messageReceived = false;
@@ -101,7 +114,7 @@ int main()
         }
     };
 
-/// ## Step 3: Both nodes subscribe to a topic
+/// ## Step 4: Both nodes subscribe to a topic
 ///
 /// A topic is just a string identifier. Peers who subscribe to the
 /// same topic will receive each other's messages.
@@ -118,14 +131,14 @@ int main()
         return 1;
     }
 
-/// ## Step 4: Wait for the GossipSub mesh to form
+/// ## Step 5: Wait for the GossipSub mesh to form
 ///
 /// After subscribing, libp2p needs time to discover subscribers
 /// and build the message-forwarding mesh.
     printf("Waiting for GossipSub mesh to form...\n");
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-/// ## Step 5: Publish a message
+/// ## Step 6: Publish a message
 ///
 /// Node A publishes a message to the topic. It will be forwarded
 /// to all subscribers (including Node B).
@@ -139,7 +152,7 @@ int main()
     }
     printf("Message published!\n");
 
-/// ## Step 6: Receive the message on Node B
+/// ## Step 7: Receive the message on Node B
 ///
 /// `gossipsubNextMessage()` blocks until a message arrives or the
 /// timeout expires. The timeout is in milliseconds.
@@ -163,11 +176,12 @@ int main()
         return 1;
     }
 
-/// ## Step 7: Alternative — listen via event callback
+/// ## Step 8: Alternative — listen via event callback
 ///
 /// Instead of polling with `gossipsubNextMessage()`, you can listen
 /// for the `"gossipsubMessage"` event via `emitEvent`. This is useful
-/// for event-driven applications.
+/// for event-driven applications. This uses the callback registered in
+/// Step 3.
     printf("\n--- Alternative: Event-driven reception ---\n");
 
     // Publish another message
@@ -207,7 +221,7 @@ int main()
         return 1;
     }
 
-/// ## Step 8: Unsubscribe and clean up
+/// ## Step 9: Unsubscribe and clean up
     printf("\nUnsubscribing...\n");
     if (!nodeB.gossipsubUnsubscribe(topic).success) {
         fprintf(stderr, "Node B unsubscribe failed\n");
