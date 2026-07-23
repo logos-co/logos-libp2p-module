@@ -2,14 +2,12 @@
 ///
 /// Kademlia is a Distributed Hash Table (DHT) that lets peers store and
 /// retrieve values without a central server. The `logos-libp2p-module`
-/// exposes this through the `kadPutValue()`, `kadGetValue()`, and
-/// `kadGetRandomRecords()` functions.
+/// exposes this through the `kadPutValue()` and `kadGetValue()` functions.
 ///
 /// In this tutorial we'll:
 ///   - Start two nodes that bootstrap to each other
 ///   - Store a value from one node
 ///   - Retrieve it from the other node
-///   - List random records to verify DHT participation
 ///
 /// ## How Kademlia works in libp2p
 ///
@@ -22,7 +20,8 @@
 /// When you call `kadGetValue(key, quorum)`:
 ///   1. The key is hashed and closest peers are looked up
 ///   2. The value is requested from them
-///   3. The quorum parameter controls how many responses are needed
+///   3. The quorum parameter controls how many peers must return the same
+///      value for the key before the lookup succeeds
 ///
 /// ## Bootstrap nodes
 ///
@@ -44,14 +43,10 @@ int main()
 ///
 /// > **Important**: Kademlia is mounted by default (`mountKad: true`).
 /// > We explicitly enable it in our options.
-    Libp2pModuleOptions optsA, optsB;
+    Libp2pModuleOptions optsA;
     optsA.addrs = {"/ip4/127.0.0.1/tcp/9390"};
     optsA.mountKad = true;
     // Node A is the bootstrap — no special config needed, just its address.
-
-    optsB.addrs = {"/ip4/127.0.0.1/tcp/9391"};
-    optsB.mountKad = true;
-    // We'll add Node A as bootstrap after we know its peer ID.
 
     Libp2pModuleImpl nodeA(optsA);
     printf("Starting Node A (bootstrap)...\n");
@@ -75,12 +70,12 @@ int main()
     printf("Node A peer ID: %s\n", peerIdA.c_str());
 
     // Now create Node B with Node A as its bootstrap
-    Libp2pModuleOptions optsBFinal;
-    optsBFinal.addrs = {"/ip4/127.0.0.1/tcp/9391"};
-    optsBFinal.bootstrapNodes = {{peerIdA, addrsA}};
-    optsBFinal.mountKad = true;
+    Libp2pModuleOptions optsB;
+    optsB.addrs = {"/ip4/127.0.0.1/tcp/9391"};
+    optsB.mountKad = true;
+    optsB.bootstrapNodes = {{peerIdA, addrsA}};
 
-    Libp2pModuleImpl nodeB(optsBFinal);
+    Libp2pModuleImpl nodeB(optsB);
     printf("Starting Node B (with Node A as bootstrap)...\n");
     if (!nodeB.start().success) {
         fprintf(stderr, "Node B failed to start\n");
@@ -95,28 +90,7 @@ int main()
     }
     printf("Nodes connected\n");
 
-/// ## Step 2: Check initial DHT state
-///
-/// Before we store anything, let's check what random records Node B
-/// can find. This helps verify that the DHT is working.
-    auto recordsRes = nodeB.kadGetRandomRecords();
-    if (!recordsRes.success) {
-        fprintf(stderr, "kadGetRandomRecords failed: %s\n",
-                recordsRes.error.c_str());
-        return 1;
-    }
-    if (!recordsRes.value.is_array()) {
-        fprintf(stderr, "kadGetRandomRecords returned a non-array value\n");
-        return 1;
-    }
-    printf("Node B found %zu random records\n",
-           recordsRes.value.size());
-    for (const auto& rec : recordsRes.value) {
-        printf("  Peer: %s\n",
-               rec["peerId"].get<std::string>().c_str());
-    }
-
-/// ## Step 3: Store a value in the DHT
+/// ## Step 2: Store a value in the DHT
 ///
 /// Node A puts a key-value pair into the DHT. The key is a string,
 /// and the value is also a string.
@@ -133,13 +107,14 @@ int main()
     }
     printf("Value stored!\n");
 
-/// ## Step 4: Retrieve the value from Node B
+/// ## Step 3: Retrieve the value from Node B
 ///
 /// Node B fetches the value from the DHT. The `quorum` parameter
 /// controls the consistency level:
-///   - `0` = default (usually 1 response is enough)
-///   - `1` = wait for at least 1 peer's response
-///   - Higher values = more consistency, slower
+///   - `0` = default (usually 1 matching response is enough)
+///   - `1` = wait for at least 1 peer to return the value for the key
+///   - Higher values = require at least that many peers to return the same
+///     value for the key, which improves consistency but can be slower
     printf("\nNode B fetching value from DHT...\n");
     auto getRes = nodeB.kadGetValue(key, 1);
     if (!getRes.success) {
@@ -167,7 +142,7 @@ int main()
     }
     printf("Value matches!\n");
 
-/// ## Step 5: Clean up
+/// ## Step 4: Clean up
     nodeA.stop();
     nodeB.stop();
 
@@ -182,7 +157,6 @@ int main()
 ///   - Bootstrap nodes help new peers join the DHT
 ///   - `kadPutValue(key, value)` stores a value
 ///   - `kadGetValue(key, quorum)` retrieves it
-///   - `kadGetRandomRecords()` discovers random peers in the DHT
 ///   - Values may take a moment to propagate after storing
 
 /// ## Run tutorial
