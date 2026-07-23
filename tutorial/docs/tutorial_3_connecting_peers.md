@@ -221,9 +221,4 @@ Always close and release streams when done:
 ```
 ---
 
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border: 0;">
-  <tr style="border: 0;">
-<td width="50%" align="left" style="border: 0;"><a href="tutorial_2_custom_config.md">&larr; Custom Node Configuration</a></td>
-<td width="50%" align="right" style="border: 0;"><a href="tutorial_4_custom_protocol.md">Custom Protocol Handlers &rarr;</a></td>
-  </tr>
-</table>
+<p align="center"><a href="tutorial_2_custom_config.md">&larr; Custom Node Configuration</a> &nbsp;|&nbsp; <a href="tutorial_4_custom_protocol.md">Custom Protocol Handlers &rarr;</a></p>
