@@ -66,8 +66,10 @@ if [[ "${#tutorial_targets[@]}" -eq 0 ]]; then
     exit 1
 fi
 
-cmake --build "${BUILD_DIR}" --target "${tutorial_targets[@]}" \
-    -j "$(nproc 2>/dev/null || echo 4)"
+build_jobs="$(nproc 2>/dev/null || echo 4)"
+for tutorial_target in "${tutorial_targets[@]}"; do
+    cmake --build "${BUILD_DIR}" --target "${tutorial_target}" -j "${build_jobs}"
+done
 
 echo ""
 echo "✅ All tutorials compiled successfully."

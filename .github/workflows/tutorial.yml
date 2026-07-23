@@ -56,6 +56,36 @@ jobs:
         run: |
           nix develop --command ./tutorial/build_tutorials.sh
 
+      # Run tutorials after compilation as a simple check that the tutorial code is also correct.
+      - name: Run tutorial examples inside Nix dev shell
+        run: |
+          nix develop --command bash -c '
+            set -euo pipefail
+            shopt -s nullglob
+
+            tutorial_binaries=(./build/tutorial/tutorial_*)
+            if [[ ${#tutorial_binaries[@]} -eq 0 ]]; then
+              echo "No tutorial binaries found in ./build/tutorial/"
+              exit 1
+            fi
+
+            ran_any=0
+            for tutorial_binary in "${tutorial_binaries[@]}"; do
+              if [[ ! -f "${tutorial_binary}" || ! -x "${tutorial_binary}" ]]; then
+                continue
+              fi
+
+              echo "Running ${tutorial_binary}"
+              "${tutorial_binary}"
+              ran_any=1
+            done
+
+            if [[ "${ran_any}" -eq 0 ]]; then
+              echo "No executable tutorial binaries found in ./build/tutorial/"
+              exit 1
+            fi
+          '
+
   markdown-check:
     name: Markdown freshness check
     runs-on: ubuntu-latest
