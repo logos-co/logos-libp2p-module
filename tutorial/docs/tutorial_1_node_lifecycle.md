@@ -65,16 +65,20 @@ network addresses using `peerInfo()`.
 
 ```cpp
     auto info = node.peerInfo();
-    if (info.success) {
-        // Extract the peer ID — a unique cryptographic identifier
-        std::string peerId = info.value["peerId"].get<std::string>();
-        printf("Peer ID: %s\n", peerId.c_str());
+    if (!info.success) {
+        fprintf(stderr, "Failed to get peer info: %s\n",
+                info.error.c_str());
+        return 1;
+    }
 
-        // List all multiaddresses the node is listening on
-        printf("Listening addresses:\n");
-        for (const auto& addr : info.value["addrs"]) {
-            printf("  %s\n", addr.get<std::string>().c_str());
-        }
+    // Extract the peer ID — a unique cryptographic identifier
+    std::string peerId = info.value["peerId"].get<std::string>();
+    printf("Peer ID: %s\n", peerId.c_str());
+
+    // List all multiaddresses the node is listening on
+    printf("Listening addresses:\n");
+    for (const auto& addr : info.value["addrs"]) {
+        printf("  %s\n", addr.get<std::string>().c_str());
     }
 
 ```
@@ -83,16 +87,22 @@ We can also query specific fields using `getNodeInfo()`:
 
 ```cpp
     auto version = node.getNodeInfo("Version");
-    if (version.success) {
-        printf("Module version: %s\n",
-               version.value.get<std::string>().c_str());
+    if (!version.success) {
+        fprintf(stderr, "Failed to get module version: %s\n",
+                version.error.c_str());
+        return 1;
     }
+    printf("Module version: %s\n",
+           version.value.get<std::string>().c_str());
 
     auto peerIdResult = node.getNodeInfo("PeerId");
-    if (peerIdResult.success) {
-        printf("Peer ID (via getNodeInfo): %s\n",
-               peerIdResult.value.get<std::string>().c_str());
+    if (!peerIdResult.success) {
+        fprintf(stderr, "Failed to get peer ID: %s\n",
+                peerIdResult.error.c_str());
+        return 1;
     }
+    printf("Peer ID (via getNodeInfo): %s\n",
+           peerIdResult.value.get<std::string>().c_str());
 
 ```
 
