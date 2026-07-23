@@ -213,4 +213,4 @@ When Node A no longer has the content, it can stop advertising.
 ```
 ---
 
-<p align="center"><a href="tutorial_5_kademlia_basics.md">&larr; Kademlia DHT Basics</a> &nbsp;|&nbsp; <a href="tutorial_7_gossipsub.md">GossipSub – Pub/Sub Messaging &rarr;</a></p>
+<p align="center"><a href="tutorial_5_kademlia_basics.md">&larr; Kademlia DHT Basics</a> &nbsp;|&nbsp; <a href="tutorial_7_gossipsub_polling.md">GossipSub - Polling for Messages &rarr;</a></p>

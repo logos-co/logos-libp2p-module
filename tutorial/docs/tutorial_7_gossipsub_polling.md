@@ -1,39 +1,38 @@
-# Tutorial 7: GossipSub – Pub/Sub Messaging
+# Tutorial 7: GossipSub - Polling for Messages
 
 GossipSub is a pub/sub protocol that lets peers broadcast messages to
 everyone subscribed to a topic. It's the foundation for many
-decentralized applications — from chat rooms to blockchain transaction
+decentralized applications, from chat rooms to blockchain transaction
 propagation.
 
 In this tutorial we'll:
   - Subscribe two nodes to the same topic
   - Wait for the GossipSub mesh to form
   - Publish a message from one node
-  - Receive it on the other node
+  - Receive it on the other node by polling
 
-## How GossipSub Works
+## How GossipSub Polling Works
 
 1. Peers subscribe to topics by calling `gossipsubSubscribe(topic)`
-2. libp2p builds a **mesh** — a set of peer connections per topic
+2. libp2p builds a mesh, which is a set of peer connections per topic
 3. When a peer publishes to a topic, the message is forwarded through
    the mesh to all subscribers
-4. Subscribers receive messages via `gossipsubNextMessage(topic, timeout)`
+4. Subscribers call `gossipsubNextMessage(topic, timeout)` to wait for
+   the next message
 
 > **Note**: The GossipSub mesh takes some time to form after both
-> peers have subscribed. A short delay (1-2 seconds) is usually enough.
+> peers have subscribed. A short delay of 1-2 seconds is usually enough.
 ```cpp
-#include <cstdio>
 #include <chrono>
-#include <condition_variable>
-#include <mutex>
-#include <thread>
+#include <cstdio>
 #include <string>
+#include <thread>
 #include <vector>
 #include "plugin.h"
 
 int main()
 {
-    printf("=== Tutorial 7: GossipSub – Pub/Sub Messaging ===\n\n");
+    printf("=== Tutorial 7: GossipSub - Polling for Messages ===\n\n");
 
 ```
 
@@ -89,44 +88,7 @@ GossipSub needs connectivity between peers to build the mesh.
 
 ```
 
-## Step 3: Prepare an event callback for Node A
-
-This callback is only needed for Step 8, where Node A receives a
-message through the event-driven API. The polling flow in Steps 4-7
-uses `gossipsubNextMessage()` instead and does not depend on this
-callback.
-
-`emitEvent` lets the module notify application code when something
-happens asynchronously. Register it before Node A subscribes, because
-the subscription path snapshots the callback used by worker threads.
-The callback listens for `"gossipsubMessage"` events, parses the JSON
-payload, stores the received message, and wakes any code waiting on
-the condition variable.
-```cpp
-    std::mutex eventMtx;
-    std::condition_variable eventCv;
-    bool messageReceived = false;
-    std::string eventMessage;
-    nodeA.emitEvent = [&](const std::string& name,
-                          const std::string& data) {
-        if (name == "gossipsubMessage") {
-            auto j = nlohmann::json::parse(data);
-            std::string eventTopic = j["topic"].get<std::string>();
-            std::string msg = j["data"].get<std::string>();
-            printf("Node A (event): received on topic \"%s\": \"%s\"\n",
-                   eventTopic.c_str(), msg.c_str());
-            {
-                std::lock_guard<std::mutex> lock(eventMtx);
-                messageReceived = true;
-                eventMessage = msg;
-            }
-            eventCv.notify_one();
-        }
-    };
-
-```
-
-## Step 4: Both nodes subscribe to a topic
+## Step 3: Both nodes subscribe to a topic
 
 A topic is just a string identifier. Peers who subscribe to the
 same topic will receive each other's messages.
@@ -146,7 +108,7 @@ same topic will receive each other's messages.
 
 ```
 
-## Step 5: Wait for the GossipSub mesh to form
+## Step 4: Wait for the GossipSub mesh to form
 
 After subscribing, libp2p needs time to discover subscribers
 and build the message-forwarding mesh.
@@ -156,10 +118,10 @@ and build the message-forwarding mesh.
 
 ```
 
-## Step 6: Publish a message
+## Step 5: Publish a message
 
 Node A publishes a message to the topic. It will be forwarded
-to all subscribers (including Node B).
+to all subscribers, including Node B.
 ```cpp
     std::string payload = "Hello from Node A via GossipSub!";
     printf("\nNode A publishing: \"%s\"\n", payload.c_str());
@@ -173,7 +135,7 @@ to all subscribers (including Node B).
 
 ```
 
-## Step 7: Receive the message on Node B
+## Step 6: Receive the message on Node B
 
 `gossipsubNextMessage()` blocks until a message arrives or the
 timeout expires. The timeout is in milliseconds.
@@ -200,55 +162,7 @@ timeout expires. The timeout is in milliseconds.
 
 ```
 
-## Step 8: Alternative — listen via event callback
-
-Instead of polling with `gossipsubNextMessage()`, you can listen
-for the `"gossipsubMessage"` event via `emitEvent`. This is useful
-for event-driven applications. This uses the callback registered in
-Step 3.
-```cpp
-    printf("\n--- Alternative: Event-driven reception ---\n");
-
-    // Publish another message
-    std::string payload2 = "Second message via event!";
-    {
-        std::lock_guard<std::mutex> lock(eventMtx);
-        messageReceived = false;
-        eventMessage.clear();
-    }
-    if (!nodeB.gossipsubPublish(topic, payload2).success) {
-        fprintf(stderr, "Second publish failed\n");
-        return 1;
-    }
-
-    bool eventReceived = false;
-    std::string msgCopy;
-    {
-        std::unique_lock<std::mutex> lock(eventMtx);
-        eventCv.wait_for(lock, std::chrono::seconds(3),
-                         [&] { return messageReceived; });
-        eventReceived = messageReceived;
-        msgCopy = eventMessage;
-    }
-
-    if (eventReceived) {
-        printf("Event-driven reception worked: \"%s\"\n",
-               msgCopy.c_str());
-    } else {
-        fprintf(stderr, "Node A did not receive the event-driven message\n");
-        return 1;
-    }
-
-    if (msgCopy != payload2) {
-        fprintf(stderr,
-                "Event-driven message differs (expected: \"%s\", got: \"%s\")\n",
-                payload2.c_str(), msgCopy.c_str());
-        return 1;
-    }
-
-```
-
-## Step 9: Unsubscribe and clean up
+## Step 7: Unsubscribe and clean up
 ```cpp
     printf("\nUnsubscribing...\n");
     if (!nodeB.gossipsubUnsubscribe(topic).success) {
@@ -276,7 +190,6 @@ Step 3.
   - Both publisher and subscriber must subscribe to the topic
   - Allow 1-2 seconds for the mesh to form
   - Use `gossipsubNextMessage(topic, timeout)` for polling
-  - Use `emitEvent` for event-driven message reception
   - Always unsubscribe and stop cleanly
 
 ## Run tutorial
@@ -286,4 +199,4 @@ Step 3.
 ```
 ---
 
-<p align="center"><a href="tutorial_6_kademlia_providers.md">&larr; Kademlia Provider Records</a></p>
+<p align="center"><a href="tutorial_6_kademlia_providers.md">&larr; Kademlia Provider Records</a> &nbsp;|&nbsp; <a href="tutorial_8_gossipsub_event_callback.md">GossipSub - Event Callback Messages &rarr;</a></p>
