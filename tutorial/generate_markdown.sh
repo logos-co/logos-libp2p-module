@@ -164,9 +164,9 @@ generate() {
         local text="$3"
 
         if [[ -z "$href" ]]; then
-            printf '<td width="50%%"></td>\n'
+            printf '<td width="50%%" style="border: 0;"></td>\n'
         else
-            printf '<td width="50%%" align="%s"><a href="%s">%s</a></td>\n' \
+            printf '<td width="50%%" align="%s" style="border: 0;"><a href="%s">%s</a></td>\n' \
                 "$align" "$href" "$text"
         fi
     }
@@ -216,8 +216,8 @@ generate() {
         # Append navigation links
         printf '%s\n\n' "---"
         if [[ -n "$prev_link" ]] || [[ -n "$next_link" ]]; then
-            printf '%s\n' "<table width=\"100%\">"
-            printf '%s\n' "  <tr>"
+            printf '%s\n' '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border: 0;">'
+            printf '%s\n' '  <tr style="border: 0;">'
             nav_cell "left" "$prev_link" "&larr; ${prev_title}"
             nav_cell "right" "$next_link" "${next_title} &rarr;"
             printf '%s\n' "  </tr>"
