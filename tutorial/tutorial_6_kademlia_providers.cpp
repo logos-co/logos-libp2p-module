@@ -47,14 +47,14 @@ int main()
     auto infoARes = nodeA.peerInfo();
     if (!infoARes.success) {
         fprintf(stderr, "Failed to get Node A info: %s\n",
-            infoARes.error.c_str());
-            return 1;
-        }
-        auto infoA = infoARes.value;
-        std::string peerIdA = infoA["peerId"].get<std::string>();
-        std::vector<std::string> addrsA;
-        for (const auto& a : infoA["addrs"])
-        addrsA.push_back(a.get<std::string>());
+                infoARes.error.c_str());
+        return 1;
+    }
+    auto infoA = infoARes.value;
+    std::string peerIdA = infoA["peerId"].get<std::string>();
+    std::vector<std::string> addrsA;
+    for (const auto& a : infoA["addrs"])
+    addrsA.push_back(a.get<std::string>());
     
     // Bootstrap and connect Node B
     optsB.addrs = {"/ip4/127.0.0.1/tcp/9491"};
