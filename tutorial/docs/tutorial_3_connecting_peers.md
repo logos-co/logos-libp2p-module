@@ -81,7 +81,8 @@ peer ID and listening addresses from `peerInfo()`.
 ```cpp
     auto infoA = nodeA.peerInfo();
     if (!infoA.success) {
-        fprintf(stderr, "Failed to get node A info\n");
+        fprintf(stderr, "Failed to get node A info: %s\n",
+                infoA.error.c_str());
         return 1;
     }
 
