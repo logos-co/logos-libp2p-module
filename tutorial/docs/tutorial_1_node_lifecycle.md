@@ -20,6 +20,8 @@ peer identity, stream multiplexing, secure channels, and content routing
 The `logos-libp2p-module` wraps nim-libp2p's C bindings into a C++ class
 called `Libp2pModuleImpl` that you can embed directly into your application.
 
+-----------
+
 ## Step 1: Include the module header and instantiate a node
 
 Every program starts by including the module's single public header:

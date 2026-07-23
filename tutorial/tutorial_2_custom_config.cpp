@@ -25,6 +25,9 @@
 ///
 /// By default nodes bind to port 0 (random). To listen on a specific port,
 /// provide a custom address in the `addrs` field.
+///
+/// -----------
+
 #include <cstdio>
 #include <string>
 #include "plugin.h"

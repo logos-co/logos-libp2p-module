@@ -19,6 +19,9 @@ and message data.
 Register the callback before subscribing. The subscription path snapshots
 the callback used by worker threads, so registering it late can miss
 messages.
+
+-----------
+
 ```cpp
 #include <chrono>
 #include <condition_variable>

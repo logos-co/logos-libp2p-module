@@ -19,6 +19,9 @@
 /// Register the callback before subscribing. The subscription path snapshots
 /// the callback used by worker threads, so registering it late can miss
 /// messages.
+///
+/// -----------
+
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
