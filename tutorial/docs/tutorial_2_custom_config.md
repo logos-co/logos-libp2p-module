@@ -72,14 +72,18 @@ The most explicit way to configure a node is by constructing
 Verify that the node is actually listening on the configured port:
 ```cpp
     auto info = node.peerInfo();
-    if (info.success) {
-        printf("\nNode is live!\n");
-        printf("  Peer ID: %s\n",
-               info.value["peerId"].get<std::string>().c_str());
-        for (const auto& addr : info.value["addrs"]) {
-            printf("  Listening on: %s\n",
-                   addr.get<std::string>().c_str());
-        }
+    if (!info.success) {
+        fprintf(stderr, "Failed to get node info: %s\n",
+                info.error.c_str());
+        return 1;
+    }
+
+    printf("\nNode is live!\n");
+    printf("  Peer ID: %s\n",
+           info.value["peerId"].get<std::string>().c_str());
+    for (const auto& addr : info.value["addrs"]) {
+        printf("  Listening on: %s\n",
+               addr.get<std::string>().c_str());
     }
 
     node.stop();
@@ -124,14 +128,18 @@ supplied via `Libp2pModuleOptions::fromJson()`.
     }
 
     auto info2 = nodeFromJson.peerInfo();
-    if (info2.success) {
-        printf("\nJSON-configured node is live!\n");
-        printf("  Peer ID: %s\n",
-               info2.value["peerId"].get<std::string>().c_str());
-        for (const auto& addr : info2.value["addrs"]) {
-            printf("  Listening on: %s\n",
-                   addr.get<std::string>().c_str());
-        }
+    if (!info2.success) {
+        fprintf(stderr, "Failed to get JSON-configured node info: %s\n",
+                info2.error.c_str());
+        return 1;
+    }
+
+    printf("\nJSON-configured node is live!\n");
+    printf("  Peer ID: %s\n",
+           info2.value["peerId"].get<std::string>().c_str());
+    for (const auto& addr : info2.value["addrs"]) {
+        printf("  Listening on: %s\n",
+               addr.get<std::string>().c_str());
     }
 
     nodeFromJson.stop();
