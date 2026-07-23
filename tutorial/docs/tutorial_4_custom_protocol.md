@@ -273,4 +273,4 @@ should use non-blocking patterns to maintain system responsiveness.
 ```
 ---
 
-<p align="center"><a href="tutorial_3_connecting_peers.md">&larr; Connecting Peers and Exchanging Data</a></p>
+<p align="center"><a href="tutorial_3_connecting_peers.md">&larr; Connecting Peers and Exchanging Data</a> &nbsp;|&nbsp; <a href="tutorial_5_kademlia_basics.md">Kademlia DHT Basics &rarr;</a></p>
