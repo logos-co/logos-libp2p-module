@@ -175,7 +175,11 @@ Verify it was added:
     }
     printf("Now have %zu known peer(s)\n", peersAfter.value.size());
     if (peersAfter.value.size() != 2) {
+<<<<<<< HEAD
         fprintf(stderr, "Expected to have 2 peers in the peer store after manually adding one");
+=======
+        fprintf(stderr, "Expecting to have 2 peers in Peer Store after manually adding one");
+>>>>>>> fc6cc77 (md)
         return 1;
     }
 
@@ -183,7 +187,12 @@ Verify it was added:
 
 ## Step 5: Update peer info
 
+<<<<<<< HEAD
 `peerstoreSetPeerAddresses()` to update a peer's stored data.
+=======
+`peerstoreSetPeerAddresses()` and `peerstoreSetPeerProtocols()`
+update a peer's stored data.
+>>>>>>> fc6cc77 (md)
 ```cpp
     printf("\nUpdating peer addresses...\n");
     std::vector<std::string> updatedAddrs = {
@@ -258,7 +267,12 @@ Verify deletion:
   - `peerstoreGetPeers()` lists all known peer IDs
   - `peerstoreGetPeerInfo()` returns detailed peer metadata
   - `peerstoreAddPeer()` adds peers manually (with addresses + protocols)
+<<<<<<< HEAD
   - `peerstoreSetPeerAddresses()` update existing entries
+=======
+  - `peerstoreSetPeerAddresses()` / `peerstoreSetPeerProtocols()`
+    update existing entries
+>>>>>>> fc6cc77 (md)
   - `peerstoreDeletePeer()` removes peers
   - A populated peer store speeds up reconnection and reduces
     network overhead
