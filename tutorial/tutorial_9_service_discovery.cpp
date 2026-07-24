@@ -29,43 +29,7 @@
 #include <thread>
 #include <string>
 #include <vector>
-#include <utility>
 #include "plugin.h"
-
-/// Helper to extract peer info from a successful peerInfo response:
-static std::pair<std::string, std::vector<std::string>> getPeerInfo(
-    const nlohmann::json& info)
-{
-    std::string peerId = info["peerId"].get<std::string>();
-    std::vector<std::string> addrs;
-    for (const auto& a : info["addrs"])
-        addrs.push_back(a.get<std::string>());
-    return {peerId, addrs};
-}
-
-/// Helper to retry a lookup with backoff:
-static StdLogosResult lookupWithRetry(
-    Libp2pModuleImpl& node,
-    const std::string& serviceId,
-    const std::string& serviceData,
-    int attempts,
-    int delayMs)
-{
-    for (int i = 0; i < attempts; ++i) {
-        auto res = node.discoLookup(serviceId, serviceData);
-        if (!res.success) {
-            return res;
-        }
-        if (!res.value.is_array()) {
-            return {false, {}, "discoLookup returned a non-array value"};
-        }
-        if (!res.value.empty()) {
-            return res;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
-    }
-    return {false, {}, "discoLookup did not find any providers"};
-}
 
 int main()
 {
@@ -95,7 +59,12 @@ int main()
                 bootstrapInfoRes.error.c_str());
         return 1;
     }
-    auto [bootstrapId, bootstrapAddrs] = getPeerInfo(bootstrapInfoRes.value);
+    std::string bootstrapId =
+        bootstrapInfoRes.value["peerId"].get<std::string>();
+    std::vector<std::string> bootstrapAddrs;
+    for (const auto& a : bootstrapInfoRes.value["addrs"]) {
+        bootstrapAddrs.push_back(a.get<std::string>());
+    }
     printf("Bootstrap node started: %s\n", bootstrapId.c_str());
 
 /// ## Step 2: Create an advertiser node
@@ -177,12 +146,21 @@ int main()
 
     constexpr int kLookupAttempts = 10;
     constexpr int kLookupDelayMs = 500;
-    auto lookupRes = lookupWithRetry(
-        discoverer, serviceId, serviceData,
-        kLookupAttempts, kLookupDelayMs);
-    if (!lookupRes.success) {
-        fprintf(stderr, "Service lookup failed: %s\n",
-                lookupRes.error.c_str());
+    StdLogosResult lookupRes;
+    for (int i = 0; i < kLookupAttempts; ++i) {
+        lookupRes = discoverer.discoLookup(serviceId, serviceData);
+        if (!lookupRes.success) {
+            fprintf(stderr, "Service lookup failed: %s\n",
+                    lookupRes.error.c_str());
+            return 1;
+        }
+        if (!lookupRes.value.empty()) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(kLookupDelayMs));
+    }
+    if (lookupRes.value.empty()) {
+        fprintf(stderr, "Service lookup did not find any providers\n");
         return 1;
     }
     auto records = lookupRes.value;
