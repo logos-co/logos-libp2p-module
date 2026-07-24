@@ -11,7 +11,6 @@ logos_module(
     NAME libp2p_module
     SOURCES
         src/plugin.h
-        src/libp2p_consts.h
         src/utils.h
         src/utils.cpp
         src/plugin.cpp

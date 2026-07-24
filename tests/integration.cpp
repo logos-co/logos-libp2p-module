@@ -12,7 +12,7 @@ LOGOS_TEST(integration_bootstrap_auto_connect) {
     });
     LOGOS_ASSERT_TRUE(nodeB.start().success);
 
-    auto peersRes = nodeB.connectedPeers(Direction_Out);
+    auto peersRes = nodeB.connectedPeers(PEER_DIRECTION_OUTBOUND);
     LOGOS_ASSERT_TRUE(peersRes.success);
     auto peers = peersRes.value;
     LOGOS_ASSERT_FALSE(peers.empty());
@@ -34,9 +34,9 @@ LOGOS_TEST(integration_connect_and_disconnect) {
     LOGOS_ASSERT_FALSE(nodeB.disconnectPeer("fakePeerId").success);
     LOGOS_ASSERT_TRUE(nodeB.connectPeer(peerIdA, addrsA, 500).success);
 
-    auto outPeers = nodeB.connectedPeers(Direction_Out).value;
+    auto outPeers = nodeB.connectedPeers(PEER_DIRECTION_OUTBOUND).value;
     LOGOS_ASSERT_EQ(outPeers.size(), size_t(1));
-    auto inPeers = nodeA.connectedPeers(Direction_In).value;
+    auto inPeers = nodeA.connectedPeers(PEER_DIRECTION_INBOUND).value;
     LOGOS_ASSERT_EQ(inPeers.size(), size_t(1));
 
     LOGOS_ASSERT_TRUE(nodeB.disconnectPeer(peerIdA).success);
@@ -55,13 +55,13 @@ LOGOS_TEST(integration_reconnect_after_disconnect) {
     auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
 
     LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 500).success);
-    LOGOS_ASSERT_EQ(nodeA.connectedPeers(Direction_Out).value.size(), size_t(1));
+    LOGOS_ASSERT_EQ(nodeA.connectedPeers(PEER_DIRECTION_OUTBOUND).value.size(), size_t(1));
 
     LOGOS_ASSERT_TRUE(nodeA.disconnectPeer(peerIdB).success);
-    LOGOS_ASSERT_EQ(nodeA.connectedPeers(Direction_Out).value.size(), size_t(0));
+    LOGOS_ASSERT_EQ(nodeA.connectedPeers(PEER_DIRECTION_OUTBOUND).value.size(), size_t(0));
 
     LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 500).success);
-    LOGOS_ASSERT_EQ(nodeA.connectedPeers(Direction_Out).value.size(), size_t(1));
+    LOGOS_ASSERT_EQ(nodeA.connectedPeers(PEER_DIRECTION_OUTBOUND).value.size(), size_t(1));
 
     const int PING_SIZE = 32;
     auto dialResult = nodeA.dial(peerIdB, "/ipfs/ping/1.0.0");
@@ -283,7 +283,7 @@ LOGOS_TEST(integration_create_node_invalid_config_fails) {
 LOGOS_TEST(integration_quic_ping_round_trip) {
     const int PING_SIZE = 32;
 
-    Libp2pModuleOptions opts{ .transport = LIBP2P_TRANSPORT_QUIC };
+    Libp2pModuleOptions opts{ .transport = TRANSPORT_TYPE_QUIC };
 
     Libp2pModuleImpl nodeA(opts);
     Libp2pModuleImpl nodeB(opts);

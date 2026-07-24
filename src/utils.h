@@ -9,7 +9,6 @@
 #include <nlohmann/json.hpp>
 
 #include "lib/libp2p.h"
-#include "libp2p_consts.h"
 
 // Copies a borrowed NimFfiStr into an owned std::string (empty on null data).
 // Response strings are only valid during the callback, so they must be copied.

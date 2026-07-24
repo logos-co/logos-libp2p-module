@@ -14,7 +14,7 @@ configuration fields:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `addrs` | `vector<string>` | `["/ip4/127.0.0.1/tcp/0"]` | Listen addresses |
-| `transport` | `int` | `LIBP2P_TRANSPORT_TCP` | Transport protocol |
+| `transport` | `TransportType` | `TRANSPORT_TYPE_TCP` | Transport protocol |
 | `maxConnections` | `int` | `50` | Max total connections |
 | `maxConnsPerPeer` | `int` | `1` | Max connections per peer |
 | `mountGossipsub` | `bool` | `true` | Enable GossipSub |
@@ -162,7 +162,7 @@ Experiment with these variations:
 
 ```cpp
 // QUIC transport instead of TCP
-options.transport = LIBP2P_TRANSPORT_QUIC;
+options.transport = TRANSPORT_TYPE_QUIC;
 options.addrs = {"/ip4/127.0.0.1/udp/9092/quic-v1"};
 
 // Listen on multiple addresses

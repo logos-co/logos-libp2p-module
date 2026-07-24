@@ -35,10 +35,11 @@
 #include "metric.h"
 #include "utils.h"
 
-// Timeouts (milliseconds) for the sync-over-async libp2p bridge.
+// Timeouts (milliseconds) for the sync-over-async libp2p bridge. nim-ffi never
+// cancels a handler, so these bound the C++ wait only: a call that outlives its
+// timeout keeps running and still resolves (and reclaims) its promise later.
 inline constexpr int kDefaultOpTimeoutMs = 10000;
 inline constexpr int kNewContextTimeoutMs = 5000;
-inline constexpr int kDestroyTimeoutMs = 5000;
 // Added on top of a caller-supplied op timeout so the C++ await outlives the
 // libp2p operation it wraps instead of racing it.
 inline constexpr int kAwaitSlackMs = 5000;
@@ -219,10 +220,10 @@ private:
     std::vector<BootstrapNode> m_bootstrapNodes;
 
     SecureBytes m_privKey;
-    int m_keyType = LIBP2P_PK_SECP256K1;
+    int64_t m_keyType = KEY_SCHEME_SECP256K1;
 
-    SyncResult generatePrivateKey(int scheme);
-    SyncResult requestPrivateKey(LibP2PCtx* c, int scheme);
+    SyncResult generatePrivateKey(int64_t scheme);
+    SyncResult requestPrivateKey(LibP2PCtx* c, int64_t scheme);
     // Creates a context from `cfg` without adopting it as the member `ctx`.
     SyncResult spawnContext(Libp2pConfig& cfg);
 
@@ -287,6 +288,15 @@ private:
     StdLogosResult callSyncWith(const char* errPrefix, Invoke&& invoke, Transform&& transform,
                                 int awaitMs = kDefaultOpTimeoutMs) {
         if (!ctx) return {false, {}, "No libp2p context"};
+        return callStaticWith(errPrefix, std::forward<Invoke>(invoke),
+                              std::forward<Transform>(transform), awaitMs);
+    }
+
+    // Same dance without the context check, for the `{.ffiStatic.}` bindings:
+    // they take no ctx and run on the library's own static context.
+    template <class Invoke, class Transform>
+    StdLogosResult callStaticWith(const char* errPrefix, Invoke&& invoke, Transform&& transform,
+                                  int awaitMs = kDefaultOpTimeoutMs) {
         auto* p = new SyncPromise();
         auto f = p->get_future();
         int ret = invoke(p);

@@ -9,11 +9,21 @@
 using json = nlohmann::json;
 
 namespace {
-std::string defaultListenAddr(int transport) {
-    if (transport == LIBP2P_TRANSPORT_QUIC) {
+std::string defaultListenAddr(TransportType transport) {
+    if (transport == TRANSPORT_TYPE_QUIC) {
         return "/ip4/127.0.0.1/udp/0/quic-v1";
     }
     return "/ip4/127.0.0.1/tcp/0";
+}
+
+// Tears a context down and reports a failed teardown. The context is gone
+// either way, but a non-OK code means the Nim side could not stop cleanly and
+// its worker threads may still be live, which is worth a line in the log.
+void destroyContextChecked(LibP2PCtx* c) {
+    int rc = libp2p_ctx_destroy(c);
+    if (rc != NIMFFI_RET_OK) {
+        fprintf(stderr, "libp2p_module: libp2p_ctx_destroy failed (rc=%d)\n", rc);
+    }
 }
 
 // Pulls the port out of a multiaddr (the segment after /tcp/ or /udp/).
@@ -40,7 +50,7 @@ bool extractPort(const std::string& multiaddr, int& out) {
 void reapLateContext(std::future<SyncResult> f) {
     std::thread([f = std::move(f)]() mutable {
         auto r = f.get();
-        if (r.newCtx) libp2p_ctx_destroy(r.newCtx);
+        if (r.newCtx) destroyContextChecked(r.newCtx);
     }).detach();
 }
 
@@ -87,7 +97,7 @@ void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
     m_libp2pConfig.mountKad = options.mountKad;
     m_libp2pConfig.mountServiceDiscovery = options.mountServiceDiscovery;
 
-    m_libp2pConfig.muxer = LIBP2P_MUXER_MPLEX;
+    m_libp2pConfig.muxer = MUXER_TYPE_MPLEX;
     m_libp2pConfig.transport = options.transport;
 
     m_libp2pConfig.maxConnections = options.maxConnections;
@@ -215,12 +225,13 @@ StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
 }
 
 void Libp2pModuleImpl::destroyContext() {
-    if (ctx) {
-        // Synchronous: runs the Nim destructor (which drops the node and its
-        // streams) and frees the C-side context wrapper and listener boxes.
-        libp2p_ctx_destroy(ctx);
-        ctx = nullptr;
+    if (!ctx) {
+        return;
     }
+    // Synchronous: runs the Nim destructor (which drops the node and its
+    // streams) and frees the C-side context wrapper and listener boxes.
+    destroyContextChecked(ctx);
+    ctx = nullptr;
 }
 
 Libp2pModuleImpl::~Libp2pModuleImpl() {
@@ -263,7 +274,7 @@ StdLogosResult Libp2pModuleImpl::publicKey() {
         bufferToResult);
 }
 
-SyncResult Libp2pModuleImpl::requestPrivateKey(LibP2PCtx* c, int scheme) {
+SyncResult Libp2pModuleImpl::requestPrivateKey(LibP2PCtx* c, int64_t scheme) {
     NewPrivateKeyRequest req{};
     req.scheme = scheme;
 
@@ -281,14 +292,14 @@ SyncResult Libp2pModuleImpl::requestPrivateKey(LibP2PCtx* c, int scheme) {
     return awaitResult(f);
 }
 
-SyncResult Libp2pModuleImpl::generatePrivateKey(int scheme) {
+SyncResult Libp2pModuleImpl::generatePrivateKey(int64_t scheme) {
     if (ctx) return requestPrivateKey(ctx, scheme);
 
-    // Key generation is a context method upstream (nim-ffi exports every proc
-    // through a `lib` receiver), but the key it returns only depends on the
-    // node's rng. Borrow a bare throwaway node rather than adopting one as
-    // `ctx`, which would make a later createNode() fail with "node already
-    // created". Nothing is started, so it binds no ports.
+    // Key generation is a context method upstream (`libp2pNewPrivateKey` draws
+    // from the node's rng, so it can't be `{.ffiStatic.}`), but the key it
+    // returns is independent of that node. Borrow a bare throwaway node rather
+    // than adopting one as `ctx`, which would make a later createNode() fail
+    // with "node already created". Nothing is started, so it binds no ports.
     Libp2pConfig cfg = m_libp2pConfig;
     cfg.privKey = NimFfiBytes{nullptr, 0};
     cfg.mountGossipsub = false;
@@ -303,7 +314,7 @@ SyncResult Libp2pModuleImpl::generatePrivateKey(int scheme) {
     }
 
     auto r = requestPrivateKey(tmp.newCtx, scheme);
-    libp2p_ctx_destroy(tmp.newCtx);
+    destroyContextChecked(tmp.newCtx);
     return r;
 }
 
@@ -316,13 +327,13 @@ StdLogosResult Libp2pModuleImpl::newPrivateKey() {
 StdLogosResult Libp2pModuleImpl::toCid(const std::string& key) {
     if (key.empty()) return {false, {}, "Key is empty"};
     CreateCidRequest req{};
-    req.version = 1;
+    req.version = CID_VERSION_V1;
     req.multicodec = nimffi_str("dag-pb");
     req.hash = nimffi_str("sha2-256");
     req.data = nimffiBytes(key);
-    return callSyncWith("Failed to create CID",
+    return callStaticWith("Failed to create CID",
         [&](SyncPromise* p) {
-            return libp2p_ctx_create_cid(ctx, &req, &Libp2pModuleImpl::cbStr, p);
+            return libp2p_static_create_cid(&req, &Libp2pModuleImpl::cbStr, p);
         },
         [](const SyncResult& r) -> StdLogosResult {
             return {true, r.message, ""};
@@ -391,9 +402,16 @@ StdLogosResult Libp2pModuleImpl::getNodeInfo(const std::string& field) {
 }
 
 StdLogosResult Libp2pModuleImpl::connectedPeers(int64_t direction) {
+    // The binding takes a PeerDirection enum, so an out-of-range ordinal can no
+    // longer reach the Nim side to be rejected there; screen it here instead.
+    if (direction != PEER_DIRECTION_INBOUND && direction != PEER_DIRECTION_OUTBOUND) {
+        return {false, {}, "Failed to get connected peers: invalid direction: " +
+                           std::to_string(direction)};
+    }
+    auto dir = static_cast<PeerDirection>(direction);
     return callSyncWith("Failed to get connected peers",
         [&](SyncPromise* p) {
-            return libp2p_ctx_connected_peers(ctx, direction,
+            return libp2p_ctx_connected_peers(ctx, dir,
                                               &Libp2pModuleImpl::cbPeers, p);
         },
         [](const SyncResult& r) { return jsonResult(r, json::array()); });

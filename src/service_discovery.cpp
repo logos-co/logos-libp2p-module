@@ -119,9 +119,9 @@ StdLogosResult Libp2pModuleImpl::decodeXpr(const std::string& xpr) {
     DecodeXprRequest req{};
     req.encoded = nimffiBytes(bytes);
 
-    return callSyncWith("Failed to decode XPR",
+    return callStaticWith("Failed to decode XPR",
         [&](SyncPromise* p) {
-            return libp2p_ctx_decode_xpr(ctx, &req, &Libp2pModuleImpl::cbRecord, p);
+            return libp2p_static_decode_xpr(&req, &Libp2pModuleImpl::cbRecord, p);
         },
         [](const SyncResult& r) -> StdLogosResult {
             if (!r.data.is_object()) {

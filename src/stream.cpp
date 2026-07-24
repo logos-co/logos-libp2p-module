@@ -1,15 +1,21 @@
 #include "plugin.h"
 
 namespace {
-// The cbinding carries read sizes as int64, so anything past INT64_MAX would
-// arrive on the Nim side as a negative length.
-bool fitsInt64(uint64_t v) {
-    return v <= static_cast<uint64_t>(INT64_MAX);
+// The Nim side caps a single read at MAX_READ_BYTES and carries the size as an
+// int64, so screening here both honours the cap and keeps a huge uint64 from
+// arriving as a negative length.
+bool withinReadCap(uint64_t v) {
+    return v <= static_cast<uint64_t>(MAX_READ_BYTES);
+}
+
+std::string tooLarge(const char* what) {
+    return std::string(what) + " exceeds the " + std::to_string(MAX_READ_BYTES) +
+           " byte read cap";
 }
 }  // namespace
 
 StdLogosResult Libp2pModuleImpl::streamReadExactly(uint64_t streamId, uint64_t len) {
-    if (!fitsInt64(len)) return {false, {}, "Failed to read from stream: length too large"};
+    if (!withinReadCap(len)) return {false, {}, tooLarge("Failed to read from stream: length")};
     StreamReadExactlyRequest req{};
     req.streamId = streamId;
     req.numBytes = static_cast<int64_t>(len);
@@ -21,7 +27,9 @@ StdLogosResult Libp2pModuleImpl::streamReadExactly(uint64_t streamId, uint64_t l
 }
 
 StdLogosResult Libp2pModuleImpl::streamReadLp(uint64_t streamId, uint64_t maxSize) {
-    if (!fitsInt64(maxSize)) return {false, {}, "Failed to read LP from stream: maxSize too large"};
+    if (!withinReadCap(maxSize)) {
+        return {false, {}, tooLarge("Failed to read LP from stream: maxSize")};
+    }
     StreamReadLpRequest req{};
     req.streamId = streamId;
     req.maxSize = static_cast<int64_t>(maxSize);
