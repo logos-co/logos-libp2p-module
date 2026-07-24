@@ -49,6 +49,12 @@ Recreate the build directory from inside the Nix development shell, then rerun:
 EOF
         exit 1
     fi
+
+    # Refresh the generated build system before building tutorial targets.
+    # New tutorial_*.cpp files create new CMake targets, and target-specific
+    # builds fail with "No rule to make target" until CMake regenerates.
+    echo "Refreshing CMake..."
+    cmake -B "${BUILD_DIR}" -S "${PROJECT_DIR}"
 fi
 
 # Discover and build only the tutorial targets. CMake target names match the
