@@ -75,7 +75,7 @@ int main()
 ///
 /// Node B needs to know where to find Node A. We get Node A's
 /// peer ID and listening addresses from `peerInfo()`.
-    auto infoA = nodeA.peerInfo();
+    StdLogosResult infoA = nodeA.peerInfo();
     if (!infoA.success) {
         fprintf(stderr, "Failed to get node A info: %s\n",
                 infoA.error.c_str());
@@ -112,7 +112,7 @@ int main()
 /// The direction parameter:
 ///   - `Direction_In` means "incoming connections" (other peers connected to this node).
 ///   - `Direction_Out` means "outgoing connections" (this node connected to other peers).
-    auto peersA = nodeA.connectedPeers(Direction_In);
+    StdLogosResult peersA = nodeA.connectedPeers(Direction_In);
     if (!peersA.success) {
         fprintf(stderr, "Failed to list Node A peers: %s\n",
                 peersA.error.c_str());
@@ -123,7 +123,7 @@ int main()
         printf("  %s\n", p.get<std::string>().c_str());
     }
 
-    auto peersB = nodeB.connectedPeers(Direction_Out);
+    StdLogosResult peersB = nodeB.connectedPeers(Direction_Out);
     if (!peersB.success) {
         fprintf(stderr, "Failed to list Node B peers: %s\n",
                 peersB.error.c_str());
@@ -142,7 +142,7 @@ int main()
 /// `dial()` opens a stream on the remote peer for a specific protocol.
 /// It returns the `streamId` we use for subsequent operations.
     printf("\nDialing /ipfs/ping/1.0.0 on Node A...\n");
-    auto dialRes = nodeB.dial(peerIdA, "/ipfs/ping/1.0.0");
+    StdLogosResult dialRes = nodeB.dial(peerIdA, "/ipfs/ping/1.0.0");
     if (!dialRes.success) {
         fprintf(stderr, "Dial failed: %s\n", dialRes.error.c_str());
         return 1;
@@ -164,7 +164,7 @@ int main()
     }
 
 /// Read the echo (32 bytes back):
-    auto readRes = nodeB.streamReadExactly(streamId, 32);
+    StdLogosResult readRes = nodeB.streamReadExactly(streamId, 32);
     if (!readRes.success) {
         fprintf(stderr, "Read failed: %s\n", readRes.error.c_str());
         return 1;

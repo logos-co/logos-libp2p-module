@@ -49,7 +49,7 @@ int main()
         return 1;
     }
 
-    auto infoRes = node.peerInfo();
+    StdLogosResult infoRes = node.peerInfo();
     if (!infoRes.success) {
         fprintf(stderr, "Failed to get node info: %s\n",
                 infoRes.error.c_str());
@@ -59,7 +59,7 @@ int main()
     std::string nodePeerId = info["peerId"].get<std::string>();
     printf("Node started, peer ID: %s\n", nodePeerId.c_str());
 
-    auto remoteInfoRes = remote.peerInfo();
+    StdLogosResult remoteInfoRes = remote.peerInfo();
     if (!remoteInfoRes.success) {
         fprintf(stderr, "Failed to get remote node info: %s\n",
                 remoteInfoRes.error.c_str());
@@ -79,7 +79,7 @@ int main()
 /// been discovered or added yet.
 /// `peerstoreGetPeers()` returns a JSON array of peer IDs.
     printf("\nListing known peers...\n");
-    auto peersRes = node.peerstoreGetPeers();
+    StdLogosResult peersRes = node.peerstoreGetPeers();
     if (!peersRes.success) {
         fprintf(stderr, "Failed to list peers: %s\n",
                 peersRes.error.c_str());
@@ -102,7 +102,7 @@ int main()
     printf("Connected to remote peer\n");
 
     printf("\nGetting remote peer info from the store:\n");
-    auto remoteStoreInfo = node.peerstoreGetPeerInfo(remotePeerId);
+    StdLogosResult remoteStoreInfo = node.peerstoreGetPeerInfo(remotePeerId);
     if (!remoteStoreInfo.success) {
         fprintf(stderr, "Failed to get remote peer info: %s\n",
                 remoteStoreInfo.error.c_str());
@@ -170,7 +170,7 @@ int main()
 
 /// Verify it was added:
     printf("\nVerifying: listing peers again...\n");
-    auto peersAfter = node.peerstoreGetPeers();
+    StdLogosResult peersAfter = node.peerstoreGetPeers();
     if (!peersAfter.success) {
         fprintf(stderr, "Failed to list peers after add: %s\n",
                 peersAfter.error.c_str());
@@ -202,7 +202,7 @@ int main()
     printf("Addresses updated\n");
 
     // Check the updated info:
-    auto updatedInfo = node.peerstoreGetPeerInfo(manualPeerId);
+    StdLogosResult updatedInfo = node.peerstoreGetPeerInfo(manualPeerId);
     if (!updatedInfo.success) {
         fprintf(stderr, "Failed to get updated peer info: %s\n",
                 updatedInfo.error.c_str());
@@ -224,7 +224,7 @@ int main()
     printf("Peer deleted\n");
 
 /// Verify deletion:
-    auto peersFinal = node.peerstoreGetPeers();
+    StdLogosResult peersFinal = node.peerstoreGetPeers();
     if (!peersFinal.success) {
         fprintf(stderr, "Failed to list peers after delete: %s\n",
                 peersFinal.error.c_str());

@@ -59,7 +59,7 @@ int main()
     }
 
     // Get Node A's peer info for bootstrapping Node B
-    auto infoARes = nodeA.peerInfo();
+    StdLogosResult infoARes = nodeA.peerInfo();
     if (!infoARes.success) {
         fprintf(stderr, "Failed to get Node A info: %s\n",
                 infoARes.error.c_str());
@@ -119,7 +119,7 @@ int main()
 ///   - Higher values = require at least that many peers to return the same
 ///     value for the key, which improves consistency but can be slower
     printf("\nNode B fetching value from DHT...\n");
-    auto getRes = nodeB.kadGetValue(key, 1);
+    StdLogosResult getRes = nodeB.kadGetValue(key, 1);
     if (!getRes.success) {
         fprintf(stderr, "GetValue failed: %s\n",
                 getRes.error.c_str());

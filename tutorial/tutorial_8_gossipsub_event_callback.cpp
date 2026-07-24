@@ -57,7 +57,7 @@ int main()
     printf("Both nodes started\n");
 
 /// ## Step 2: Connect the nodes
-    auto infoARes = nodeA.peerInfo();
+    StdLogosResult infoARes = nodeA.peerInfo();
     if (!infoARes.success) {
         fprintf(stderr, "Failed to get Node A info: %s\n",
                 infoARes.error.c_str());

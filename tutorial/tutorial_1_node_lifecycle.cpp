@@ -56,7 +56,7 @@ int main()
 /// Once the node is running, we can inspect its identity and
 /// network addresses using `peerInfo()`.
 
-    auto info = node.peerInfo();
+    StdLogosResult info = node.peerInfo();
     if (!info.success) {
         fprintf(stderr, "Failed to get peer info: %s\n",
                 info.error.c_str());
@@ -75,7 +75,7 @@ int main()
 
 /// We can also query specific fields using `getNodeInfo()`:
 
-    auto version = node.getNodeInfo("Version");
+    StdLogosResult version = node.getNodeInfo("Version");
     if (!version.success) {
         fprintf(stderr, "Failed to get module version: %s\n",
                 version.error.c_str());
@@ -84,7 +84,7 @@ int main()
     printf("Module version: %s\n",
            version.value.get<std::string>().c_str());
 
-    auto peerIdResult = node.getNodeInfo("PeerId");
+    StdLogosResult peerIdResult = node.getNodeInfo("PeerId");
     if (!peerIdResult.success) {
         fprintf(stderr, "Failed to get peer ID: %s\n",
                 peerIdResult.error.c_str());

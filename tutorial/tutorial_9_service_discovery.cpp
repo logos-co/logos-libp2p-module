@@ -53,7 +53,7 @@ int main()
         return 1;
     }
 
-    auto bootstrapInfoRes = bootstrap.peerInfo();
+    StdLogosResult bootstrapInfoRes = bootstrap.peerInfo();
     if (!bootstrapInfoRes.success) {
         fprintf(stderr, "Failed to get bootstrap info: %s\n",
                 bootstrapInfoRes.error.c_str());
@@ -182,7 +182,7 @@ int main()
 /// You can also discover random peers via `discoRandomLookup()`,
 /// which is useful for network exploration.
     printf("\nRandom lookup by advertiser...\n");
-    auto randomRes = advertiser.discoRandomLookup();
+    StdLogosResult randomRes = advertiser.discoRandomLookup();
     if (!randomRes.success) {
         fprintf(stderr, "Random lookup failed: %s\n",
                 randomRes.error.c_str());
@@ -210,7 +210,7 @@ int main()
         {"file-sharing", "v2"},
     };
 
-    auto xpr = advertiser.createXpr({}, xprServices, 0);
+    StdLogosResult xpr = advertiser.createXpr({}, xprServices, 0);
     if (!xpr.success) {
         fprintf(stderr, "Failed to create XPR: %s\n", xpr.error.c_str());
         return 1;
@@ -223,7 +223,7 @@ int main()
     printf("Created signed XPR\n");
 
     // Decode it to verify
-    auto decoded = advertiser.decodeXpr(xprStr);
+    StdLogosResult decoded = advertiser.decodeXpr(xprStr);
     if (!decoded.success) {
         fprintf(stderr, "Failed to decode XPR: %s\n", decoded.error.c_str());
         return 1;
