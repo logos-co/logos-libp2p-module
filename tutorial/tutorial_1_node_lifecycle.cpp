@@ -1,7 +1,5 @@
 /// # Tutorial 1: Creating and Starting a libp2p Node
 ///
-/// Welcome to the first `logos-libp2p-module` tutorial!
-///
 /// This tutorial will guide you through the basics of creating, configuring,
 /// starting, and stopping a libp2p node using the Logos libp2p module.
 ///
