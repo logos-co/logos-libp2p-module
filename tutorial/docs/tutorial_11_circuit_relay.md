@@ -98,7 +98,7 @@ The Client connects to the Relay before dialing the Destination.
 
 ## Step 2: Get node addresses
 ```cpp
-    auto infoRelayRes = relay.peerInfo();
+    StdLogosResult infoRelayRes = relay.peerInfo();
     if (!infoRelayRes.success) {
         fprintf(stderr, "Failed to get relay info: %s\n",
                 infoRelayRes.error.c_str());
@@ -110,7 +110,7 @@ The Client connects to the Relay before dialing the Destination.
     for (const auto& a : infoRelay["addrs"])
         relayAddrs.push_back(a.get<std::string>());
 
-    auto infoDestRes = dest.peerInfo();
+    StdLogosResult infoDestRes = dest.peerInfo();
     if (!infoDestRes.success) {
         fprintf(stderr, "Failed to get destination info: %s\n",
                 infoDestRes.error.c_str());
@@ -138,7 +138,7 @@ returns the addresses the Destination can be reached at (via relay).
     printf("Destination connected to relay\n");
 
     printf("Destination requesting relay reservation...\n");
-    auto reserveRes = dest.circuitRelayReserve(relayPeerId, relayAddrs);
+    StdLogosResult reserveRes = dest.circuitRelayReserve(relayPeerId, relayAddrs);
     if (!reserveRes.success) {
         fprintf(stderr, "Relay reservation failed: %s\n",
                 reserveRes.error.c_str());
@@ -185,7 +185,7 @@ appended so libp2p routes the stream through the Relay.
 For circuit relay, we use a well-known protocol to test connectivity.
 The ping protocol works well for this.
 ```cpp
-    auto dialRes = client.dialCircuitRelay(
+    StdLogosResult dialRes = client.dialCircuitRelay(
         destPeerId,
         relayDialAddr,
         "/ipfs/ping/1.0.0");

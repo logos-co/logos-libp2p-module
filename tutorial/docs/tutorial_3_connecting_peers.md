@@ -82,7 +82,7 @@ For simplicity, both mount the built-in `/ipfs/ping/1.0.0` protocol
 Node B needs to know where to find Node A. We get Node A's
 peer ID and listening addresses from `peerInfo()`.
 ```cpp
-    auto infoA = nodeA.peerInfo();
+    StdLogosResult infoA = nodeA.peerInfo();
     if (!infoA.success) {
         fprintf(stderr, "Failed to get node A info: %s\n",
                 infoA.error.c_str());
@@ -125,15 +125,7 @@ The direction parameter:
   - `Direction_In` means "incoming connections" (other peers connected to this node).
   - `Direction_Out` means "outgoing connections" (this node connected to other peers).
 ```cpp
-<<<<<<< HEAD
-<<<<<<< HEAD
-    auto peersA = nodeA.connectedPeers(Direction_In);
-=======
-    auto peersA = nodeA.connectedPeers(1);
->>>>>>> 656c6d8 (fix 3)
-=======
-    auto peersA = nodeA.connectedPeers(Direction_In);
->>>>>>> 26fce9d (use const)
+    StdLogosResult peersA = nodeA.connectedPeers(Direction_In);
     if (!peersA.success) {
         fprintf(stderr, "Failed to list Node A peers: %s\n",
                 peersA.error.c_str());
@@ -144,7 +136,7 @@ The direction parameter:
         printf("  %s\n", p.get<std::string>().c_str());
     }
 
-    auto peersB = nodeB.connectedPeers(Direction_Out);
+    StdLogosResult peersB = nodeB.connectedPeers(Direction_Out);
     if (!peersB.success) {
         fprintf(stderr, "Failed to list Node B peers: %s\n",
                 peersB.error.c_str());
@@ -166,7 +158,7 @@ the client sends a payload and the server echoes it back.
 It returns the `streamId` we use for subsequent operations.
 ```cpp
     printf("\nDialing /ipfs/ping/1.0.0 on Node A...\n");
-    auto dialRes = nodeB.dial(peerIdA, "/ipfs/ping/1.0.0");
+    StdLogosResult dialRes = nodeB.dial(peerIdA, "/ipfs/ping/1.0.0");
     if (!dialRes.success) {
         fprintf(stderr, "Dial failed: %s\n", dialRes.error.c_str());
         return 1;
@@ -194,7 +186,7 @@ Write a 32-byte ping payload:
 
 Read the echo (32 bytes back):
 ```cpp
-    auto readRes = nodeB.streamReadExactly(streamId, 32);
+    StdLogosResult readRes = nodeB.streamReadExactly(streamId, 32);
     if (!readRes.success) {
         fprintf(stderr, "Read failed: %s\n", readRes.error.c_str());
         return 1;

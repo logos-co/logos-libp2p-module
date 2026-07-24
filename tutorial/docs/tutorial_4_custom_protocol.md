@@ -121,7 +121,7 @@ Register the echo protocol on Node A:
 
 ## Step 3: Get Node A's address and connect Node B
 ```cpp
-    auto infoARes = nodeA.peerInfo();
+    StdLogosResult infoARes = nodeA.peerInfo();
     if (!infoARes.success) {
         fprintf(stderr, "Failed to get Node A info: %s\n",
                 infoARes.error.c_str());
@@ -148,7 +148,7 @@ When Node B dials our custom protocol, Node A's protocol handler
 fires, and Node A receives a new stream.
 ```cpp
     printf("Node B dialing '%s'...\n", kEchoProtocol.c_str());
-    auto dialRes = nodeB.dial(peerIdA, kEchoProtocol);
+    StdLogosResult dialRes = nodeB.dial(peerIdA, kEchoProtocol);
     if (!dialRes.success) {
         fprintf(stderr, "Dial failed: %s\n", dialRes.error.c_str());
         return 1;
@@ -189,7 +189,7 @@ fires, and Node A receives a new stream.
 
 ## Step 7: Node A reads the message and echoes it back
 ```cpp
-    auto readRes = nodeA.streamReadLp(serverStreamId, 4096);
+    StdLogosResult readRes = nodeA.streamReadLp(serverStreamId, 4096);
     if (!readRes.success) {
         fprintf(stderr, "Node A read failed: %s\n",
                 readRes.error.c_str());
@@ -211,7 +211,7 @@ Echo it back:
 
 ## Step 8: Node B reads the echo
 ```cpp
-    auto echoRes = nodeB.streamReadLp(clientStreamId, 4096);
+    StdLogosResult echoRes = nodeB.streamReadLp(clientStreamId, 4096);
     if (!echoRes.success) {
         fprintf(stderr, "Node B read echo failed: %s\n",
                 echoRes.error.c_str());

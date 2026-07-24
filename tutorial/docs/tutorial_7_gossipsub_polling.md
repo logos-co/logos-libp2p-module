@@ -70,7 +70,7 @@ We keep it explicit here for clarity.
 
 GossipSub needs connectivity between peers to build the mesh.
 ```cpp
-    auto infoARes = nodeA.peerInfo();
+    StdLogosResult infoARes = nodeA.peerInfo();
     if (!infoARes.success) {
         fprintf(stderr, "Failed to get Node A info: %s\n",
                 infoARes.error.c_str());
@@ -144,7 +144,7 @@ to all subscribers, including Node B.
 timeout expires. The timeout is in milliseconds.
 ```cpp
     printf("\nNode B waiting for message...\n");
-    auto res = nodeB.gossipsubNextMessage(topic, 3000);
+    StdLogosResult res = nodeB.gossipsubNextMessage(topic, 3000);
     if (!res.success) {
         fprintf(stderr, "Node B did not receive any messages: %s\n",
                 res.error.c_str());

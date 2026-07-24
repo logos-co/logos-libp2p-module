@@ -64,7 +64,7 @@ int main()
 
 ## Step 2: Connect the nodes
 ```cpp
-    auto infoARes = nodeA.peerInfo();
+    StdLogosResult infoARes = nodeA.peerInfo();
     if (!infoARes.success) {
         fprintf(stderr, "Failed to get Node A info: %s\n",
                 infoARes.error.c_str());

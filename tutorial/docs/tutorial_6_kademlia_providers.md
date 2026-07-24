@@ -51,7 +51,7 @@ int main()
         return 1;
     }
     
-    auto infoARes = nodeA.peerInfo();
+    StdLogosResult infoARes = nodeA.peerInfo();
     if (!infoARes.success) {
         fprintf(stderr, "Failed to get Node A info: %s\n",
                 infoARes.error.c_str());
@@ -88,7 +88,7 @@ that can be used with Kademlia's provider API.
 ```cpp
     std::string contentKey = "my-awesome-file.txt";
     printf("Converting \"%s\" to CID...\n", contentKey.c_str());
-    auto cidRes = nodeA.toCid(contentKey);
+    StdLogosResult cidRes = nodeA.toCid(contentKey);
     if (!cidRes.success) {
         fprintf(stderr, "Failed to create CID: %s\n",
                 cidRes.error.c_str());
@@ -117,7 +117,7 @@ This advertises to the DHT that Node A has this content.
 Node B queries the DHT to find who provides this CID.
 ```cpp
     printf("\nNode B looking up providers...\n");
-    auto provRes = nodeB.kadGetProviders(cid);
+    StdLogosResult provRes = nodeB.kadGetProviders(cid);
     if (!provRes.success) {
         fprintf(stderr, "kadGetProviders failed: %s\n",
                 provRes.error.c_str());
@@ -157,7 +157,7 @@ We can also use `kadFindNode()` to locate a specific peer in the
 DHT routing table.
 ```cpp
     printf("\nNode B finding Node A in the DHT...\n");
-    auto findRes = nodeB.kadFindNode(peerIdA);
+    StdLogosResult findRes = nodeB.kadFindNode(peerIdA);
     if (!findRes.success) {
         fprintf(stderr, "kadFindNode failed: %s\n",
                 findRes.error.c_str());

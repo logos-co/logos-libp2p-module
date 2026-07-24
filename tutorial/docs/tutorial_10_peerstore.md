@@ -53,7 +53,7 @@ contains real peer data after a connection is established.
         return 1;
     }
 
-    auto infoRes = node.peerInfo();
+    StdLogosResult infoRes = node.peerInfo();
     if (!infoRes.success) {
         fprintf(stderr, "Failed to get node info: %s\n",
                 infoRes.error.c_str());
@@ -63,7 +63,7 @@ contains real peer data after a connection is established.
     std::string nodePeerId = info["peerId"].get<std::string>();
     printf("Node started, peer ID: %s\n", nodePeerId.c_str());
 
-    auto remoteInfoRes = remote.peerInfo();
+    StdLogosResult remoteInfoRes = remote.peerInfo();
     if (!remoteInfoRes.success) {
         fprintf(stderr, "Failed to get remote node info: %s\n",
                 remoteInfoRes.error.c_str());
@@ -86,7 +86,7 @@ been discovered or added yet.
 `peerstoreGetPeers()` returns a JSON array of peer IDs.
 ```cpp
     printf("\nListing known peers...\n");
-    auto peersRes = node.peerstoreGetPeers();
+    StdLogosResult peersRes = node.peerstoreGetPeers();
     if (!peersRes.success) {
         fprintf(stderr, "Failed to list peers: %s\n",
                 peersRes.error.c_str());
@@ -112,10 +112,29 @@ protocols, and the public key.
     printf("Connected to remote peer\n");
 
     printf("\nGetting remote peer info from the store:\n");
-    auto remoteStoreInfo = node.peerstoreGetPeerInfo(remotePeerId);
+    StdLogosResult remoteStoreInfo = node.peerstoreGetPeerInfo(remotePeerId);
     if (!remoteStoreInfo.success) {
         fprintf(stderr, "Failed to get remote peer info: %s\n",
                 remoteStoreInfo.error.c_str());
+        return 1;
+    }
+
+    printf("  Peer ID: %s\n",
+           remoteStoreInfo.value["peerId"].get<std::string>().c_str());
+    printf("  Public key: %s\n",
+           remoteStoreInfo.value["publicKey"].get<std::string>().c_str());
+
+    printf("  Addresses:\n");
+    for (const auto& a : remoteStoreInfo.value["addrs"]) {
+        printf("    %s\n", a.get<std::string>().c_str());
+    }
+
+    printf("  Protocols:\n");
+    for (const auto& p : remoteStoreInfo.value["protocols"]) {
+        printf("    %s\n", p.get<std::string>().c_str());
+    }
+    if (!ownInfo.value.is_object()) {
+        fprintf(stderr, "peerstoreGetPeerInfo returned a non-object value\n");
         return 1;
     }
 
@@ -167,7 +186,7 @@ QR code, or DNS).
 Verify it was added:
 ```cpp
     printf("\nVerifying: listing peers again...\n");
-    auto peersAfter = node.peerstoreGetPeers();
+    StdLogosResult peersAfter = node.peerstoreGetPeers();
     if (!peersAfter.success) {
         fprintf(stderr, "Failed to list peers after add: %s\n",
                 peersAfter.error.c_str());
@@ -175,11 +194,11 @@ Verify it was added:
     }
     printf("Now have %zu known peer(s)\n", peersAfter.value.size());
     if (peersAfter.value.size() != 2) {
-<<<<<<< HEAD
         fprintf(stderr, "Expected to have 2 peers in the peer store after manually adding one");
-=======
-        fprintf(stderr, "Expecting to have 2 peers in Peer Store after manually adding one");
->>>>>>> fc6cc77 (md)
+        return 1;
+    }
+    if (!peersAfter.value.is_array()) {
+        fprintf(stderr, "peerstoreGetPeers returned a non-array value\n");
         return 1;
     }
 
@@ -187,12 +206,7 @@ Verify it was added:
 
 ## Step 5: Update peer info
 
-<<<<<<< HEAD
 `peerstoreSetPeerAddresses()` to update a peer's stored data.
-=======
-`peerstoreSetPeerAddresses()` and `peerstoreSetPeerProtocols()`
-update a peer's stored data.
->>>>>>> fc6cc77 (md)
 ```cpp
     printf("\nUpdating peer addresses...\n");
     std::vector<std::string> updatedAddrs = {
@@ -207,7 +221,7 @@ update a peer's stored data.
     printf("Addresses updated\n");
 
     // Check the updated info:
-    auto updatedInfo = node.peerstoreGetPeerInfo(manualPeerId);
+    StdLogosResult updatedInfo = node.peerstoreGetPeerInfo(manualPeerId);
     if (!updatedInfo.success) {
         fprintf(stderr, "Failed to get updated peer info: %s\n",
                 updatedInfo.error.c_str());
@@ -235,7 +249,7 @@ update a peer's stored data.
 
 Verify deletion:
 ```cpp
-    auto peersFinal = node.peerstoreGetPeers();
+    StdLogosResult peersFinal = node.peerstoreGetPeers();
     if (!peersFinal.success) {
         fprintf(stderr, "Failed to list peers after delete: %s\n",
                 peersFinal.error.c_str());
@@ -267,12 +281,7 @@ Verify deletion:
   - `peerstoreGetPeers()` lists all known peer IDs
   - `peerstoreGetPeerInfo()` returns detailed peer metadata
   - `peerstoreAddPeer()` adds peers manually (with addresses + protocols)
-<<<<<<< HEAD
   - `peerstoreSetPeerAddresses()` update existing entries
-=======
-  - `peerstoreSetPeerAddresses()` / `peerstoreSetPeerProtocols()`
-    update existing entries
->>>>>>> fc6cc77 (md)
   - `peerstoreDeletePeer()` removes peers
   - A populated peer store speeds up reconnection and reduces
     network overhead
