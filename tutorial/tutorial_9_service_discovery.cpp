@@ -17,8 +17,8 @@
 /// Looking up a service queries the bootstrap, which returns matching peers.
 ///
 /// ```
-///     Bootstrap
-///     /       \
+///         Bootstrap
+///         /       \
 ///   Advertiser  Discoverer
 /// ```
 ///

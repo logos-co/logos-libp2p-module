@@ -17,8 +17,8 @@ All peers connect to the bootstrap and register their services there.
 Looking up a service queries the bootstrap, which returns matching peers.
 
 ```
-    Bootstrap
-    /       \
+        Bootstrap
+        /       \
   Advertiser  Discoverer
 ```
 
