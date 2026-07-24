@@ -226,4 +226,4 @@ asynchronous delivery.
 ```
 ---
 
-<p align="center"><a href="tutorial_7_gossipsub_polling.md">&larr; GossipSub - Polling for Messages</a></p>
+<p align="center"><a href="tutorial_7_gossipsub_polling.md">&larr; GossipSub - Polling for Messages</a> &nbsp;|&nbsp; <a href="tutorial_9_service_discovery.md">Service Discovery &rarr;</a></p>
