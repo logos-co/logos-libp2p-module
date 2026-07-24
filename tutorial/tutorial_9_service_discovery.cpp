@@ -170,9 +170,10 @@ int main()
         printf("  Peer: %s\n",
                rec["peerId"].get<std::string>().c_str());
         for (const auto& s : rec["services"]) {
+            std::string decodedData = base64Decode(s["data"].get<std::string>());
             printf("    Service: %s (data: %s)\n",
                    s["id"].get<std::string>().c_str(),
-                   s["data"].get<std::string>().c_str());
+                   decodedData.c_str());
         }
     }
 
