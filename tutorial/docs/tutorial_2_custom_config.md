@@ -65,8 +65,10 @@ The most explicit way to configure a node is by constructing
 
     Libp2pModuleImpl node(options);
 
-    if (!node.start().success) {
-        fprintf(stderr, "Failed to start node\n");
+    StdLogosResult startRes = node.start();
+    if (!startRes.success) {
+        fprintf(stderr, "Failed to start node: %s\n",
+                startRes.error.c_str());
         return 1;
     }
 
@@ -74,7 +76,7 @@ The most explicit way to configure a node is by constructing
 
 Verify that the node is actually listening on the configured port:
 ```cpp
-    auto info = node.peerInfo();
+    StdLogosResult info = node.peerInfo();
     if (!info.success) {
         fprintf(stderr, "Failed to get node info: %s\n",
                 info.error.c_str());
@@ -125,12 +127,14 @@ supplied via `Libp2pModuleOptions::fromJson()`.
 
     Libp2pModuleImpl nodeFromJson(jsonOpts);
 
-    if (!nodeFromJson.start().success) {
-        fprintf(stderr, "Failed to start JSON-configured node\n");
+    StdLogosResult jsonStartRes = nodeFromJson.start();
+    if (!jsonStartRes.success) {
+        fprintf(stderr, "Failed to start JSON-configured node: %s\n",
+                jsonStartRes.error.c_str());
         return 1;
     }
 
-    auto info2 = nodeFromJson.peerInfo();
+    StdLogosResult info2 = nodeFromJson.peerInfo();
     if (!info2.success) {
         fprintf(stderr, "Failed to get JSON-configured node info: %s\n",
                 info2.error.c_str());

@@ -57,13 +57,15 @@ real network, one node would be a well-known bootstrap peer.
 
     Libp2pModuleImpl nodeA(optsA);
     printf("Starting Node A (bootstrap)...\n");
-    if (!nodeA.start().success) {
-        fprintf(stderr, "Node A failed to start\n");
+    StdLogosResult startARes = nodeA.start();
+    if (!startARes.success) {
+        fprintf(stderr, "Node A failed to start: %s\n",
+                startARes.error.c_str());
         return 1;
     }
 
     // Get Node A's peer info for bootstrapping Node B
-    auto infoARes = nodeA.peerInfo();
+    StdLogosResult infoARes = nodeA.peerInfo();
     if (!infoARes.success) {
         fprintf(stderr, "Failed to get Node A info: %s\n",
                 infoARes.error.c_str());
@@ -84,15 +86,19 @@ real network, one node would be a well-known bootstrap peer.
 
     Libp2pModuleImpl nodeB(optsB);
     printf("Starting Node B (with Node A as bootstrap)...\n");
-    if (!nodeB.start().success) {
-        fprintf(stderr, "Node B failed to start\n");
+    StdLogosResult startBRes = nodeB.start();
+    if (!startBRes.success) {
+        fprintf(stderr, "Node B failed to start: %s\n",
+                startBRes.error.c_str());
         return 1;
     }
 
     // Connect Node B to Node A so they can participate in the DHT
     printf("Connecting Node B to Node A...\n");
-    if (!nodeB.connectPeer(peerIdA, addrsA, 5000).success) {
-        fprintf(stderr, "Failed to connect\n");
+    StdLogosResult connectRes = nodeB.connectPeer(peerIdA, addrsA, 5000);
+    if (!connectRes.success) {
+        fprintf(stderr, "Failed to connect: %s\n",
+                connectRes.error.c_str());
         return 1;
     }
     printf("Nodes connected\n");
@@ -111,8 +117,9 @@ and the value is also a string.
     printf("  Key: \"%s\"\n", key.c_str());
     printf("  Value: \"%s\"\n", value.c_str());
 
-    if (!nodeA.kadPutValue(key, value).success) {
-        fprintf(stderr, "PutValue failed\n");
+    StdLogosResult putRes = nodeA.kadPutValue(key, value);
+    if (!putRes.success) {
+        fprintf(stderr, "PutValue failed: %s\n", putRes.error.c_str());
         return 1;
     }
     printf("Value stored!\n");
@@ -129,17 +136,13 @@ controls the consistency level:
     value for the key, which improves consistency but can be slower
 ```cpp
     printf("\nNode B fetching value from DHT...\n");
-    auto getRes = nodeB.kadGetValue(key, 1);
+    StdLogosResult getRes = nodeB.kadGetValue(key, 1);
     if (!getRes.success) {
         fprintf(stderr, "GetValue failed: %s\n",
                 getRes.error.c_str());
         return 1;
     }
 
-    if (!getRes.value.is_string()) {
-        fprintf(stderr, "GetValue returned a non-string value\n");
-        return 1;
-    }
     std::string received = base64Decode(getRes.value.get<std::string>());
 
     if (received.empty()) {

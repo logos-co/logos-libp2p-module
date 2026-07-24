@@ -74,24 +74,29 @@ int main()
 
     printf("Starting nodes...\n");
 
-    if (!relay.start().success) {
-        fprintf(stderr, "Relay failed\n");
+    StdLogosResult relayStartRes = relay.start();
+    if (!relayStartRes.success) {
+        fprintf(stderr, "Relay failed: %s\n", relayStartRes.error.c_str());
         return 1;
     }
 
-    if (!dest.start().success) {
-        fprintf(stderr, "Destination failed\n");
+    StdLogosResult destStartRes = dest.start();
+    if (!destStartRes.success) {
+        fprintf(stderr, "Destination failed: %s\n",
+                destStartRes.error.c_str());
         return 1;
     }
 
-    if (!client.start().success) {
-        fprintf(stderr, "Client failed\n");
+    StdLogosResult clientStartRes = client.start();
+    if (!clientStartRes.success) {
+        fprintf(stderr, "Client failed: %s\n",
+                clientStartRes.error.c_str());
         return 1;
     }
     printf("All three nodes started\n");
 
 /// ## Step 2: Get node addresses
-    auto infoRelayRes = relay.peerInfo();
+    StdLogosResult infoRelayRes = relay.peerInfo();
     if (!infoRelayRes.success) {
         fprintf(stderr, "Failed to get relay info: %s\n",
                 infoRelayRes.error.c_str());
@@ -103,7 +108,7 @@ int main()
     for (const auto& a : infoRelay["addrs"])
         relayAddrs.push_back(a.get<std::string>());
 
-    auto infoDestRes = dest.peerInfo();
+    StdLogosResult infoDestRes = dest.peerInfo();
     if (!infoDestRes.success) {
         fprintf(stderr, "Failed to get destination info: %s\n",
                 infoDestRes.error.c_str());
@@ -121,14 +126,17 @@ int main()
 /// `circuitRelayReserve()` to request a reservation. The relay
 /// returns the addresses the Destination can be reached at (via relay).
     printf("\nDestination connecting to relay...\n");
-    if (!dest.connectPeer(relayPeerId, relayAddrs, 5000).success) {
-        fprintf(stderr, "Destination failed to connect to relay\n");
+    StdLogosResult destConnectRes =
+        dest.connectPeer(relayPeerId, relayAddrs, 5000);
+    if (!destConnectRes.success) {
+        fprintf(stderr, "Destination failed to connect to relay: %s\n",
+                destConnectRes.error.c_str());
         return 1;
     }
     printf("Destination connected to relay\n");
 
     printf("Destination requesting relay reservation...\n");
-    auto reserveRes = dest.circuitRelayReserve(relayPeerId, relayAddrs);
+    StdLogosResult reserveRes = dest.circuitRelayReserve(relayPeerId, relayAddrs);
     if (!reserveRes.success) {
         fprintf(stderr, "Relay reservation failed: %s\n",
                 reserveRes.error.c_str());
@@ -150,8 +158,11 @@ int main()
 /// The Client connects to the Relay (same as any other peer), then
 /// uses `dialCircuitRelay()` to reach the Destination through the Relay.
     printf("\nClient connecting to relay...\n");
-    if (!client.connectPeer(relayPeerId, relayAddrs, 5000).success) {
-        fprintf(stderr, "Client failed to connect to relay\n");
+    StdLogosResult clientConnectRes =
+        client.connectPeer(relayPeerId, relayAddrs, 5000);
+    if (!clientConnectRes.success) {
+        fprintf(stderr, "Client failed to connect to relay: %s\n",
+                clientConnectRes.error.c_str());
         return 1;
     }
     printf("Client connected to relay\n");
@@ -166,7 +177,7 @@ int main()
 
 /// For circuit relay, we use a well-known protocol to test connectivity.
 /// The ping protocol works well for this.
-    auto dialRes = client.dialCircuitRelay(
+    StdLogosResult dialRes = client.dialCircuitRelay(
         destPeerId,
         relayDialAddr,
         "/ipfs/ping/1.0.0");
@@ -187,8 +198,9 @@ int main()
     std::string payload(32, '\0');
     for (int i = 0; i < 32; ++i) payload[i] = static_cast<char>(i);
 
-    if (!client.streamWrite(streamId, payload).success) {
-        fprintf(stderr, "Write failed\n");
+    StdLogosResult writeRes = client.streamWrite(streamId, payload);
+    if (!writeRes.success) {
+        fprintf(stderr, "Write failed: %s\n", writeRes.error.c_str());
         return 1;
     }
     printf("Sent %zu bytes through relay\n", payload.size());

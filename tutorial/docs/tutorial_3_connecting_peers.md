@@ -63,14 +63,18 @@ For simplicity, both mount the built-in `/ipfs/ping/1.0.0` protocol
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
 
-    if (!nodeA.start().success) {
-        fprintf(stderr, "Node A failed to start\n");
+    StdLogosResult startARes = nodeA.start();
+    if (!startARes.success) {
+        fprintf(stderr, "Node A failed to start: %s\n",
+                startARes.error.c_str());
         return 1;
     }
     printf("Node A started\n");
 
-    if (!nodeB.start().success) {
-        fprintf(stderr, "Node B failed to start\n");
+    StdLogosResult startBRes = nodeB.start();
+    if (!startBRes.success) {
+        fprintf(stderr, "Node B failed to start: %s\n",
+                startBRes.error.c_str());
         return 1;
     }
     printf("Node B started\n");
@@ -82,7 +86,7 @@ For simplicity, both mount the built-in `/ipfs/ping/1.0.0` protocol
 Node B needs to know where to find Node A. We get Node A's
 peer ID and listening addresses from `peerInfo()`.
 ```cpp
-    auto infoA = nodeA.peerInfo();
+    StdLogosResult infoA = nodeA.peerInfo();
     if (!infoA.success) {
         fprintf(stderr, "Failed to get node A info: %s\n",
                 infoA.error.c_str());
@@ -109,8 +113,10 @@ peer ID and listening addresses from `peerInfo()`.
 parameter is in milliseconds.
 ```cpp
     printf("\nConnecting Node B to Node A...\n");
-    if (!nodeB.connectPeer(peerIdA, addrsA, 5000).success) {
-        fprintf(stderr, "Failed to connect\n");
+    StdLogosResult connectRes = nodeB.connectPeer(peerIdA, addrsA, 5000);
+    if (!connectRes.success) {
+        fprintf(stderr, "Failed to connect: %s\n",
+                connectRes.error.c_str());
         return 1;
     }
     printf("Connected!\n");
@@ -125,7 +131,7 @@ The direction parameter:
   - `Direction_In` means "incoming connections" (other peers connected to this node).
   - `Direction_Out` means "outgoing connections" (this node connected to other peers).
 ```cpp
-    auto peersA = nodeA.connectedPeers(Direction_In);
+    StdLogosResult peersA = nodeA.connectedPeers(Direction_In);
     if (!peersA.success) {
         fprintf(stderr, "Failed to list Node A peers: %s\n",
                 peersA.error.c_str());
@@ -136,7 +142,7 @@ The direction parameter:
         printf("  %s\n", p.get<std::string>().c_str());
     }
 
-    auto peersB = nodeB.connectedPeers(Direction_Out);
+    StdLogosResult peersB = nodeB.connectedPeers(Direction_Out);
     if (!peersB.success) {
         fprintf(stderr, "Failed to list Node B peers: %s\n",
                 peersB.error.c_str());
@@ -158,7 +164,7 @@ the client sends a payload and the server echoes it back.
 It returns the `streamId` we use for subsequent operations.
 ```cpp
     printf("\nDialing /ipfs/ping/1.0.0 on Node A...\n");
-    auto dialRes = nodeB.dial(peerIdA, "/ipfs/ping/1.0.0");
+    StdLogosResult dialRes = nodeB.dial(peerIdA, "/ipfs/ping/1.0.0");
     if (!dialRes.success) {
         fprintf(stderr, "Dial failed: %s\n", dialRes.error.c_str());
         return 1;
@@ -177,8 +183,9 @@ Write a 32-byte ping payload:
     }
 
     printf("Sending %zu bytes...\n", payload.size());
-    if (!nodeB.streamWrite(streamId, payload).success) {
-        fprintf(stderr, "Write failed\n");
+    StdLogosResult writeRes = nodeB.streamWrite(streamId, payload);
+    if (!writeRes.success) {
+        fprintf(stderr, "Write failed: %s\n", writeRes.error.c_str());
         return 1;
     }
 
@@ -186,7 +193,7 @@ Write a 32-byte ping payload:
 
 Read the echo (32 bytes back):
 ```cpp
-    auto readRes = nodeB.streamReadExactly(streamId, 32);
+    StdLogosResult readRes = nodeB.streamReadExactly(streamId, 32);
     if (!readRes.success) {
         fprintf(stderr, "Read failed: %s\n", readRes.error.c_str());
         return 1;

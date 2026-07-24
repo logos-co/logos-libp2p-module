@@ -46,12 +46,13 @@ int main()
 
     Libp2pModuleImpl nodeA(optsA);
 
-    if (!nodeA.start().success) {
-        fprintf(stderr, "Node A failed\n");
+    StdLogosResult startARes = nodeA.start();
+    if (!startARes.success) {
+        fprintf(stderr, "Node A failed: %s\n", startARes.error.c_str());
         return 1;
     }
     
-    auto infoARes = nodeA.peerInfo();
+    StdLogosResult infoARes = nodeA.peerInfo();
     if (!infoARes.success) {
         fprintf(stderr, "Failed to get Node A info: %s\n",
                 infoARes.error.c_str());
@@ -68,13 +69,16 @@ int main()
     optsB.mountKad = true;
     optsB.bootstrapNodes = {{peerIdA, addrsA}};
     Libp2pModuleImpl nodeB(optsB);
-    if (!nodeB.start().success) {
-        fprintf(stderr, "Node B failed\n");
+    StdLogosResult startBRes = nodeB.start();
+    if (!startBRes.success) {
+        fprintf(stderr, "Node B failed: %s\n", startBRes.error.c_str());
         return 1;
     }
 
-    if (!nodeB.connectPeer(peerIdA, addrsA, 5000).success) {
-        fprintf(stderr, "Failed to connect\n");
+    StdLogosResult connectRes = nodeB.connectPeer(peerIdA, addrsA, 5000);
+    if (!connectRes.success) {
+        fprintf(stderr, "Failed to connect: %s\n",
+                connectRes.error.c_str());
         return 1;
     }
     printf("Nodes connected\n");
@@ -88,7 +92,7 @@ that can be used with Kademlia's provider API.
 ```cpp
     std::string contentKey = "my-awesome-file.txt";
     printf("Converting \"%s\" to CID...\n", contentKey.c_str());
-    auto cidRes = nodeA.toCid(contentKey);
+    StdLogosResult cidRes = nodeA.toCid(contentKey);
     if (!cidRes.success) {
         fprintf(stderr, "Failed to create CID: %s\n",
                 cidRes.error.c_str());
@@ -104,8 +108,10 @@ that can be used with Kademlia's provider API.
 This advertises to the DHT that Node A has this content.
 ```cpp
     printf("\nNode A starting to provide CID...\n");
-    if (!nodeA.kadStartProviding(cid).success) {
-        fprintf(stderr, "kadStartProviding failed\n");
+    StdLogosResult startProvidingRes = nodeA.kadStartProviding(cid);
+    if (!startProvidingRes.success) {
+        fprintf(stderr, "kadStartProviding failed: %s\n",
+                startProvidingRes.error.c_str());
         return 1;
     }
     printf("Node A is now a provider for: %s\n", cid.c_str());
@@ -117,7 +123,7 @@ This advertises to the DHT that Node A has this content.
 Node B queries the DHT to find who provides this CID.
 ```cpp
     printf("\nNode B looking up providers...\n");
-    auto provRes = nodeB.kadGetProviders(cid);
+    StdLogosResult provRes = nodeB.kadGetProviders(cid);
     if (!provRes.success) {
         fprintf(stderr, "kadGetProviders failed: %s\n",
                 provRes.error.c_str());
@@ -125,10 +131,6 @@ Node B queries the DHT to find who provides this CID.
     }
 
     auto providers = provRes.value;
-    if (!providers.is_array()) {
-        fprintf(stderr, "kadGetProviders returned a non-array value\n");
-        return 1;
-    }
 
     printf("Node B found %zu provider(s):\n", providers.size());
     bool foundNodeA = false;
@@ -157,17 +159,12 @@ We can also use `kadFindNode()` to locate a specific peer in the
 DHT routing table.
 ```cpp
     printf("\nNode B finding Node A in the DHT...\n");
-    auto findRes = nodeB.kadFindNode(peerIdA);
+    StdLogosResult findRes = nodeB.kadFindNode(peerIdA);
     if (!findRes.success) {
         fprintf(stderr, "kadFindNode failed: %s\n",
                 findRes.error.c_str());
         return 1;
     }
-    if (!findRes.value.is_array()) {
-        fprintf(stderr, "kadFindNode returned a non-array value\n");
-        return 1;
-    }
-
     printf("Closest peers to Node A:\n");
     for (const auto& p : findRes.value) {
         printf("  %s\n", p.get<std::string>().c_str());

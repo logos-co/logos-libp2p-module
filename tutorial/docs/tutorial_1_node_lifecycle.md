@@ -1,7 +1,5 @@
 # Tutorial 1: Creating and Starting a libp2p Node
 
-Welcome to the first `logos-libp2p-module` tutorial!
-
 This tutorial will guide you through the basics of creating, configuring,
 starting, and stopping a libp2p node using the Logos libp2p module.
 
@@ -51,8 +49,10 @@ Calling `start()` creates the libp2p context, binds the configured
 address, and begins accepting connections.
 
 ```cpp
-    if (!node.start().success) {
-        fprintf(stderr, "Failed to start node\n");
+    StdLogosResult startRes = node.start();
+    if (!startRes.success) {
+        fprintf(stderr, "Failed to start node: %s\n",
+                startRes.error.c_str());
         return 1;
     }
 
@@ -66,7 +66,7 @@ Once the node is running, we can inspect its identity and
 network addresses using `peerInfo()`.
 
 ```cpp
-    auto info = node.peerInfo();
+    StdLogosResult info = node.peerInfo();
     if (!info.success) {
         fprintf(stderr, "Failed to get peer info: %s\n",
                 info.error.c_str());
@@ -88,7 +88,7 @@ network addresses using `peerInfo()`.
 We can also query specific fields using `getNodeInfo()`:
 
 ```cpp
-    auto version = node.getNodeInfo("Version");
+    StdLogosResult version = node.getNodeInfo("Version");
     if (!version.success) {
         fprintf(stderr, "Failed to get module version: %s\n",
                 version.error.c_str());
@@ -97,7 +97,7 @@ We can also query specific fields using `getNodeInfo()`:
     printf("Module version: %s\n",
            version.value.get<std::string>().c_str());
 
-    auto peerIdResult = node.getNodeInfo("PeerId");
+    StdLogosResult peerIdResult = node.getNodeInfo("PeerId");
     if (!peerIdResult.success) {
         fprintf(stderr, "Failed to get peer ID: %s\n",
                 peerIdResult.error.c_str());
@@ -136,4 +136,4 @@ In this tutorial you learned how to:
 ```
 ---
 
-<p align="center"><a href="tutorial_2_custom_config.md">Custom Node Configuration &rarr;</a></p>
+<p align="center"><a href="tutorial_0_introduction.md">&larr; Introduction and Common Patterns</a> &nbsp;|&nbsp; <a href="tutorial_2_custom_config.md">Custom Node Configuration &rarr;</a></p>

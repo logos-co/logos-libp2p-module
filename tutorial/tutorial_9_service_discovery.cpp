@@ -44,16 +44,20 @@ int main()
     optsBootstrap.mountServiceDiscovery = true;
 
     Libp2pModuleImpl bootstrap(optsBootstrap);
-    if (!bootstrap.start().success) {
-        fprintf(stderr, "Bootstrap failed\n");
+    StdLogosResult bootstrapStartRes = bootstrap.start();
+    if (!bootstrapStartRes.success) {
+        fprintf(stderr, "Bootstrap failed: %s\n",
+                bootstrapStartRes.error.c_str());
         return 1;
     }
-    if (!bootstrap.discoStart().success) {
-        fprintf(stderr, "Bootstrap discoStart failed\n");
+    StdLogosResult bootstrapDiscoStartRes = bootstrap.discoStart();
+    if (!bootstrapDiscoStartRes.success) {
+        fprintf(stderr, "Bootstrap discoStart failed: %s\n",
+                bootstrapDiscoStartRes.error.c_str());
         return 1;
     }
 
-    auto bootstrapInfoRes = bootstrap.peerInfo();
+    StdLogosResult bootstrapInfoRes = bootstrap.peerInfo();
     if (!bootstrapInfoRes.success) {
         fprintf(stderr, "Failed to get bootstrap info: %s\n",
                 bootstrapInfoRes.error.c_str());
@@ -76,18 +80,25 @@ int main()
     optsAdvertiser.mountServiceDiscovery = true;
 
     Libp2pModuleImpl advertiser(optsAdvertiser);
-    if (!advertiser.start().success) {
-        fprintf(stderr, "Advertiser failed\n");
+    StdLogosResult advertiserStartRes = advertiser.start();
+    if (!advertiserStartRes.success) {
+        fprintf(stderr, "Advertiser failed: %s\n",
+                advertiserStartRes.error.c_str());
         return 1;
     }
-    if (!advertiser.discoStart().success) {
-        fprintf(stderr, "Advertiser discoStart failed\n");
+    StdLogosResult advertiserDiscoStartRes = advertiser.discoStart();
+    if (!advertiserDiscoStartRes.success) {
+        fprintf(stderr, "Advertiser discoStart failed: %s\n",
+                advertiserDiscoStartRes.error.c_str());
         return 1;
     }
 
     // Connect to bootstrap
-    if (!advertiser.connectPeer(bootstrapId, bootstrapAddrs, 5000).success) {
-        fprintf(stderr, "Advertiser failed to connect to bootstrap\n");
+    StdLogosResult advertiserConnectRes =
+        advertiser.connectPeer(bootstrapId, bootstrapAddrs, 5000);
+    if (!advertiserConnectRes.success) {
+        fprintf(stderr, "Advertiser failed to connect to bootstrap: %s\n",
+                advertiserConnectRes.error.c_str());
         return 1;
     }
     printf("Advertiser connected to bootstrap\n");
@@ -99,17 +110,24 @@ int main()
     optsDiscoverer.mountServiceDiscovery = true;
 
     Libp2pModuleImpl discoverer(optsDiscoverer);
-    if (!discoverer.start().success) {
-        fprintf(stderr, "Discoverer failed\n");
+    StdLogosResult discovererStartRes = discoverer.start();
+    if (!discovererStartRes.success) {
+        fprintf(stderr, "Discoverer failed: %s\n",
+                discovererStartRes.error.c_str());
         return 1;
     }
-    if (!discoverer.discoStart().success) {
-        fprintf(stderr, "Discoverer discoStart failed\n");
+    StdLogosResult discovererDiscoStartRes = discoverer.discoStart();
+    if (!discovererDiscoStartRes.success) {
+        fprintf(stderr, "Discoverer discoStart failed: %s\n",
+                discovererDiscoStartRes.error.c_str());
         return 1;
     }
 
-    if (!discoverer.connectPeer(bootstrapId, bootstrapAddrs, 5000).success) {
-        fprintf(stderr, "Discoverer failed to connect to bootstrap\n");
+    StdLogosResult discovererConnectRes =
+        discoverer.connectPeer(bootstrapId, bootstrapAddrs, 5000);
+    if (!discovererConnectRes.success) {
+        fprintf(stderr, "Discoverer failed to connect to bootstrap: %s\n",
+                discovererConnectRes.error.c_str());
         return 1;
     }
     printf("Discoverer connected to bootstrap\n");
@@ -122,8 +140,11 @@ int main()
     std::string serviceData = "version=1.0;capacity=100";
 
     printf("\nAdvertiser advertising: \"%s\"\n", serviceId.c_str());
-    if (!advertiser.discoStartAdvertising(serviceId, serviceData).success) {
-        fprintf(stderr, "discoStartAdvertising failed\n");
+    StdLogosResult advertiseRes =
+        advertiser.discoStartAdvertising(serviceId, serviceData);
+    if (!advertiseRes.success) {
+        fprintf(stderr, "discoStartAdvertising failed: %s\n",
+                advertiseRes.error.c_str());
         return 1;
     }
     printf("Advertising started\n");
@@ -133,8 +154,11 @@ int main()
 /// Registering interest tells the service discovery system that
 /// this peer wants to know about providers of this service.
     printf("Discoverer registering interest in \"%s\"\n", serviceId.c_str());
-    if (!discoverer.discoRegisterInterest(serviceId).success) {
-        fprintf(stderr, "discoRegisterInterest failed\n");
+    StdLogosResult registerInterestRes =
+        discoverer.discoRegisterInterest(serviceId);
+    if (!registerInterestRes.success) {
+        fprintf(stderr, "discoRegisterInterest failed: %s\n",
+                registerInterestRes.error.c_str());
         return 1;
     }
 
@@ -182,14 +206,10 @@ int main()
 /// You can also discover random peers via `discoRandomLookup()`,
 /// which is useful for network exploration.
     printf("\nRandom lookup by advertiser...\n");
-    auto randomRes = advertiser.discoRandomLookup();
+    StdLogosResult randomRes = advertiser.discoRandomLookup();
     if (!randomRes.success) {
         fprintf(stderr, "Random lookup failed: %s\n",
                 randomRes.error.c_str());
-        return 1;
-    }
-    if (!randomRes.value.is_array()) {
-        fprintf(stderr, "Random lookup returned a non-array value\n");
         return 1;
     }
     printf("Found %zu random peer(s):\n", randomRes.value.size());
@@ -210,26 +230,18 @@ int main()
         {"file-sharing", "v2"},
     };
 
-    auto xpr = advertiser.createXpr({}, xprServices, 0);
+    StdLogosResult xpr = advertiser.createXpr({}, xprServices, 0);
     if (!xpr.success) {
         fprintf(stderr, "Failed to create XPR: %s\n", xpr.error.c_str());
-        return 1;
-    }
-    if (!xpr.value.is_string()) {
-        fprintf(stderr, "createXpr returned a non-string value\n");
         return 1;
     }
     std::string xprStr = xpr.value.get<std::string>();
     printf("Created signed XPR\n");
 
     // Decode it to verify
-    auto decoded = advertiser.decodeXpr(xprStr);
+    StdLogosResult decoded = advertiser.decodeXpr(xprStr);
     if (!decoded.success) {
         fprintf(stderr, "Failed to decode XPR: %s\n", decoded.error.c_str());
-        return 1;
-    }
-    if (!decoded.value.is_object()) {
-        fprintf(stderr, "decodeXpr returned a non-object value\n");
         return 1;
     }
     printf("Decoded XPR:\n");

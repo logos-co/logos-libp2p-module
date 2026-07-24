@@ -59,14 +59,18 @@ int main()
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
 
-    if (!nodeA.start().success) {
-        fprintf(stderr, "Node A failed to start\n");
+    StdLogosResult startARes = nodeA.start();
+    if (!startARes.success) {
+        fprintf(stderr, "Node A failed to start: %s\n",
+                startARes.error.c_str());
         return 1;
     }
     printf("Node A started\n");
 
-    if (!nodeB.start().success) {
-        fprintf(stderr, "Node B failed to start\n");
+    StdLogosResult startBRes = nodeB.start();
+    if (!startBRes.success) {
+        fprintf(stderr, "Node B failed to start: %s\n",
+                startBRes.error.c_str());
         return 1;
     }
     printf("Node B started\n");
@@ -75,7 +79,7 @@ int main()
 ///
 /// Node B needs to know where to find Node A. We get Node A's
 /// peer ID and listening addresses from `peerInfo()`.
-    auto infoA = nodeA.peerInfo();
+    StdLogosResult infoA = nodeA.peerInfo();
     if (!infoA.success) {
         fprintf(stderr, "Failed to get node A info: %s\n",
                 infoA.error.c_str());
@@ -99,8 +103,10 @@ int main()
 /// `connectPeer()` establishes the transport connection. The timeout
 /// parameter is in milliseconds.
     printf("\nConnecting Node B to Node A...\n");
-    if (!nodeB.connectPeer(peerIdA, addrsA, 5000).success) {
-        fprintf(stderr, "Failed to connect\n");
+    StdLogosResult connectRes = nodeB.connectPeer(peerIdA, addrsA, 5000);
+    if (!connectRes.success) {
+        fprintf(stderr, "Failed to connect: %s\n",
+                connectRes.error.c_str());
         return 1;
     }
     printf("Connected!\n");
@@ -112,7 +118,7 @@ int main()
 /// The direction parameter:
 ///   - `Direction_In` means "incoming connections" (other peers connected to this node).
 ///   - `Direction_Out` means "outgoing connections" (this node connected to other peers).
-    auto peersA = nodeA.connectedPeers(Direction_In);
+    StdLogosResult peersA = nodeA.connectedPeers(Direction_In);
     if (!peersA.success) {
         fprintf(stderr, "Failed to list Node A peers: %s\n",
                 peersA.error.c_str());
@@ -123,7 +129,7 @@ int main()
         printf("  %s\n", p.get<std::string>().c_str());
     }
 
-    auto peersB = nodeB.connectedPeers(Direction_Out);
+    StdLogosResult peersB = nodeB.connectedPeers(Direction_Out);
     if (!peersB.success) {
         fprintf(stderr, "Failed to list Node B peers: %s\n",
                 peersB.error.c_str());
@@ -142,7 +148,7 @@ int main()
 /// `dial()` opens a stream on the remote peer for a specific protocol.
 /// It returns the `streamId` we use for subsequent operations.
     printf("\nDialing /ipfs/ping/1.0.0 on Node A...\n");
-    auto dialRes = nodeB.dial(peerIdA, "/ipfs/ping/1.0.0");
+    StdLogosResult dialRes = nodeB.dial(peerIdA, "/ipfs/ping/1.0.0");
     if (!dialRes.success) {
         fprintf(stderr, "Dial failed: %s\n", dialRes.error.c_str());
         return 1;
@@ -158,13 +164,14 @@ int main()
     }
 
     printf("Sending %zu bytes...\n", payload.size());
-    if (!nodeB.streamWrite(streamId, payload).success) {
-        fprintf(stderr, "Write failed\n");
+    StdLogosResult writeRes = nodeB.streamWrite(streamId, payload);
+    if (!writeRes.success) {
+        fprintf(stderr, "Write failed: %s\n", writeRes.error.c_str());
         return 1;
     }
 
 /// Read the echo (32 bytes back):
-    auto readRes = nodeB.streamReadExactly(streamId, 32);
+    StdLogosResult readRes = nodeB.streamReadExactly(streamId, 32);
     if (!readRes.success) {
         fprintf(stderr, "Read failed: %s\n", readRes.error.c_str());
         return 1;

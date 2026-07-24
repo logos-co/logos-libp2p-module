@@ -40,16 +40,20 @@ int main()
     Libp2pModuleImpl node(opts);
     Libp2pModuleImpl remote(remoteOpts);
 
-    if (!node.start().success) {
-        fprintf(stderr, "Node failed to start\n");
+    StdLogosResult startRes = node.start();
+    if (!startRes.success) {
+        fprintf(stderr, "Node failed to start: %s\n",
+                startRes.error.c_str());
         return 1;
     }
-    if (!remote.start().success) {
-        fprintf(stderr, "Remote node failed to start\n");
+    StdLogosResult remoteStartRes = remote.start();
+    if (!remoteStartRes.success) {
+        fprintf(stderr, "Remote node failed to start: %s\n",
+                remoteStartRes.error.c_str());
         return 1;
     }
 
-    auto infoRes = node.peerInfo();
+    StdLogosResult infoRes = node.peerInfo();
     if (!infoRes.success) {
         fprintf(stderr, "Failed to get node info: %s\n",
                 infoRes.error.c_str());
@@ -59,7 +63,7 @@ int main()
     std::string nodePeerId = info["peerId"].get<std::string>();
     printf("Node started, peer ID: %s\n", nodePeerId.c_str());
 
-    auto remoteInfoRes = remote.peerInfo();
+    StdLogosResult remoteInfoRes = remote.peerInfo();
     if (!remoteInfoRes.success) {
         fprintf(stderr, "Failed to get remote node info: %s\n",
                 remoteInfoRes.error.c_str());
@@ -79,7 +83,7 @@ int main()
 /// been discovered or added yet.
 /// `peerstoreGetPeers()` returns a JSON array of peer IDs.
     printf("\nListing known peers...\n");
-    auto peersRes = node.peerstoreGetPeers();
+    StdLogosResult peersRes = node.peerstoreGetPeers();
     if (!peersRes.success) {
         fprintf(stderr, "Failed to list peers: %s\n",
                 peersRes.error.c_str());
@@ -95,14 +99,16 @@ int main()
 /// `peerstoreGetPeerInfo()` returns a rich JSON object with addresses,
 /// protocols, and the public key.
     printf("\nConnecting to remote peer...\n");
-    if (!node.connectPeer(remotePeerId, remoteAddrs, 5000).success) {
-        fprintf(stderr, "Failed to connect to remote peer\n");
+    StdLogosResult connectRes = node.connectPeer(remotePeerId, remoteAddrs, 5000);
+    if (!connectRes.success) {
+        fprintf(stderr, "Failed to connect to remote peer: %s\n",
+                connectRes.error.c_str());
         return 1;
     }
     printf("Connected to remote peer\n");
 
     printf("\nGetting remote peer info from the store:\n");
-    auto remoteStoreInfo = node.peerstoreGetPeerInfo(remotePeerId);
+    StdLogosResult remoteStoreInfo = node.peerstoreGetPeerInfo(remotePeerId);
     if (!remoteStoreInfo.success) {
         fprintf(stderr, "Failed to get remote peer info: %s\n",
                 remoteStoreInfo.error.c_str());
@@ -142,16 +148,18 @@ int main()
         "/examples/echo/1.0.0",
     };
 
-    if (!node.peerstoreAddPeer(manualPeerId, manualAddrs, manualProtos)
-             .success) {
-        fprintf(stderr, "Failed to add peer\n");
+    StdLogosResult addPeerRes =
+        node.peerstoreAddPeer(manualPeerId, manualAddrs, manualProtos);
+    if (!addPeerRes.success) {
+        fprintf(stderr, "Failed to add peer: %s\n",
+                addPeerRes.error.c_str());
         return 1;
     }
     printf("Peer added: %s\n", manualPeerId.c_str());
 
 /// Verify it was added:
     printf("\nVerifying: listing peers again...\n");
-    auto peersAfter = node.peerstoreGetPeers();
+    StdLogosResult peersAfter = node.peerstoreGetPeers();
     if (!peersAfter.success) {
         fprintf(stderr, "Failed to list peers after add: %s\n",
                 peersAfter.error.c_str());
@@ -171,15 +179,17 @@ int main()
         "/ip4/192.168.1.100/tcp/9002",
         "/dns4/peer.example.com/tcp/9000",
     };
-    if (!node.peerstoreSetPeerAddresses(manualPeerId, updatedAddrs)
-             .success) {
-        fprintf(stderr, "Failed to update addresses\n");
+    StdLogosResult updateAddrsRes =
+        node.peerstoreSetPeerAddresses(manualPeerId, updatedAddrs);
+    if (!updateAddrsRes.success) {
+        fprintf(stderr, "Failed to update addresses: %s\n",
+                updateAddrsRes.error.c_str());
         return 1;
     }
     printf("Addresses updated\n");
 
     // Check the updated info:
-    auto updatedInfo = node.peerstoreGetPeerInfo(manualPeerId);
+    StdLogosResult updatedInfo = node.peerstoreGetPeerInfo(manualPeerId);
     if (!updatedInfo.success) {
         fprintf(stderr, "Failed to get updated peer info: %s\n",
                 updatedInfo.error.c_str());
@@ -194,14 +204,16 @@ int main()
 ///
 /// `peerstoreDeletePeer()` removes a peer and all its metadata.
     printf("\nDeleting peer from store...\n");
-    if (!node.peerstoreDeletePeer(manualPeerId).success) {
-        fprintf(stderr, "Failed to delete peer\n");
+    StdLogosResult deletePeerRes = node.peerstoreDeletePeer(manualPeerId);
+    if (!deletePeerRes.success) {
+        fprintf(stderr, "Failed to delete peer: %s\n",
+                deletePeerRes.error.c_str());
         return 1;
     }
     printf("Peer deleted\n");
 
 /// Verify deletion:
-    auto peersFinal = node.peerstoreGetPeers();
+    StdLogosResult peersFinal = node.peerstoreGetPeers();
     if (!peersFinal.success) {
         fprintf(stderr, "Failed to list peers after delete: %s\n",
                 peersFinal.error.c_str());

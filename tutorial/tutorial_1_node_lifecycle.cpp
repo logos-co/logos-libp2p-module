@@ -1,7 +1,5 @@
 /// # Tutorial 1: Creating and Starting a libp2p Node
 ///
-/// Welcome to the first `logos-libp2p-module` tutorial!
-///
 /// This tutorial will guide you through the basics of creating, configuring,
 /// starting, and stopping a libp2p node using the Logos libp2p module.
 ///
@@ -44,8 +42,10 @@ int main()
 /// Calling `start()` creates the libp2p context, binds the configured
 /// address, and begins accepting connections.
 
-    if (!node.start().success) {
-        fprintf(stderr, "Failed to start node\n");
+    StdLogosResult startRes = node.start();
+    if (!startRes.success) {
+        fprintf(stderr, "Failed to start node: %s\n",
+                startRes.error.c_str());
         return 1;
     }
 
@@ -56,7 +56,7 @@ int main()
 /// Once the node is running, we can inspect its identity and
 /// network addresses using `peerInfo()`.
 
-    auto info = node.peerInfo();
+    StdLogosResult info = node.peerInfo();
     if (!info.success) {
         fprintf(stderr, "Failed to get peer info: %s\n",
                 info.error.c_str());
@@ -75,7 +75,7 @@ int main()
 
 /// We can also query specific fields using `getNodeInfo()`:
 
-    auto version = node.getNodeInfo("Version");
+    StdLogosResult version = node.getNodeInfo("Version");
     if (!version.success) {
         fprintf(stderr, "Failed to get module version: %s\n",
                 version.error.c_str());
@@ -84,7 +84,7 @@ int main()
     printf("Module version: %s\n",
            version.value.get<std::string>().c_str());
 
-    auto peerIdResult = node.getNodeInfo("PeerId");
+    StdLogosResult peerIdResult = node.getNodeInfo("PeerId");
     if (!peerIdResult.success) {
         fprintf(stderr, "Failed to get peer ID: %s\n",
                 peerIdResult.error.c_str());
