@@ -188,10 +188,6 @@ int main()
                 randomRes.error.c_str());
         return 1;
     }
-    if (!randomRes.value.is_array()) {
-        fprintf(stderr, "Random lookup returned a non-array value\n");
-        return 1;
-    }
     printf("Found %zu random peer(s):\n", randomRes.value.size());
     for (const auto& rec : randomRes.value) {
         printf("  Peer: %s\n",
@@ -215,10 +211,6 @@ int main()
         fprintf(stderr, "Failed to create XPR: %s\n", xpr.error.c_str());
         return 1;
     }
-    if (!xpr.value.is_string()) {
-        fprintf(stderr, "createXpr returned a non-string value\n");
-        return 1;
-    }
     std::string xprStr = xpr.value.get<std::string>();
     printf("Created signed XPR\n");
 
@@ -226,10 +218,6 @@ int main()
     StdLogosResult decoded = advertiser.decodeXpr(xprStr);
     if (!decoded.success) {
         fprintf(stderr, "Failed to decode XPR: %s\n", decoded.error.c_str());
-        return 1;
-    }
-    if (!decoded.value.is_object()) {
-        fprintf(stderr, "decodeXpr returned a non-object value\n");
         return 1;
     }
     printf("Decoded XPR:\n");

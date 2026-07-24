@@ -3,8 +3,8 @@
 /// Before creating nodes or connecting peers, it helps to understand the
 /// conventions used by every tutorial in this series.
 ///
-/// The C++ wrapper exposes a single main class, `Libp2pModuleImpl`. Most
-/// methods on that class return the Logos result type. In C++ module code that
+/// The C++ wrapper (`logos-libp2p-module`) exposes a single main class, `Libp2pModuleImpl`.
+/// Most methods on that class return the Logos result type. In C++ module code that
 /// type is named `StdLogosResult`.
 ///
 /// `StdLogosResult` has three fields:
@@ -32,6 +32,12 @@
 /// This keeps the code predictable: errors are handled immediately, and the
 /// rest of the step can assume the operation succeeded.
 ///
+/// ## Tutorial Executables Fail Fast
+///
+/// These programs are examples, not long-running services. When a required
+/// operation fails, they print a useful error message to `stderr` and return
+/// `1`. Successful tutorials print progress to `stdout` and return `0`.
+///
 /// ## Convert JSON Values Explicitly
 ///
 /// The `value` field is JSON. Convert it to the C++ type you need at the
@@ -48,18 +54,15 @@
 /// Scalar values use `get<T>()`. Objects are accessed by key. Arrays are
 /// iterated with range-for loops.
 ///
+/// Tutorial code assumes returned JSON values have the documented type, so it
+/// uses and converts values directly instead of checking the JSON type first.
+///
 /// ## Binary Data May Be Encoded
 ///
 /// Some APIs carry arbitrary bytes, such as stream reads, DHT values, public
 /// keys, or service discovery records. Those values may be returned as strings
 /// encoded for JSON transport. The tutorials decode them before comparing or
 /// printing human-readable payloads.
-///
-/// ## Tutorial Executables Fail Fast
-///
-/// These programs are examples, not long-running services. When a required
-/// operation fails, they print a useful error message to `stderr` and return
-/// `1`. Successful tutorials print progress to `stdout` and return `0`.
 ///
 /// -----------
 
@@ -84,26 +87,7 @@ int main()
     }
     printf("Node started\n");
 
-/// ## Step 2: Read JSON result data
-///
-/// `peerInfo()` returns a JSON object with fields such as `peerId` and
-/// `addrs`.
-    StdLogosResult info = node.peerInfo();
-    if (!info.success) {
-        fprintf(stderr, "Failed to get peer info: %s\n",
-                info.error.c_str());
-        return 1;
-    }
-
-    std::string peerId = info.value["peerId"].get<std::string>();
-    printf("Peer ID: %s\n", peerId.c_str());
-
-    printf("Listening addresses:\n");
-    for (const nlohmann::json& addr : info.value["addrs"]) {
-        printf("  %s\n", addr.get<std::string>().c_str());
-    }
-
-/// ## Step 3: Use scalar JSON values
+/// ## Step 2: Use scalar JSON values
 ///
 /// Some calls return a single string, number, or boolean in `value`.
     StdLogosResult version = node.getNodeInfo("Version");
@@ -115,7 +99,14 @@ int main()
     printf("Module version: %s\n",
            version.value.get<std::string>().c_str());
 
-/// ## Step 4: Stop cleanly
+/// ## Step 3: Stop cleanly
+///
+/// For production code it should always be better to attempt to gracefully
+/// close all resources first.
+///
+/// The tutorials do not always process every cleanup outcome, such as failures
+/// while stopping a node or closing streams, in order to keep the example code
+/// focused and easy to follow.
     StdLogosResult stopRes = node.stop();
     if (!stopRes.success) {
         fprintf(stderr, "Failed to stop node: %s\n",
