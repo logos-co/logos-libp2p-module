@@ -122,10 +122,10 @@ parameter is in milliseconds.
 We can verify the connection by listing connected peers on each node.
 
 The direction parameter:
-  - `0` means "outgoing connections" (this node connected to other peers).
-  - `1` means "incoming connections" (other peers connected to this node).
+  - `Direction_In` means "incoming connections" (other peers connected to this node).
+  - `Direction_Out` means "outgoing connections" (this node connected to other peers).
 ```cpp
-    auto peersA = nodeA.connectedPeers(1);
+    auto peersA = nodeA.connectedPeers(Direction_In);
     if (!peersA.success) {
         fprintf(stderr, "Failed to list Node A peers: %s\n",
                 peersA.error.c_str());
@@ -136,7 +136,7 @@ The direction parameter:
         printf("  %s\n", p.get<std::string>().c_str());
     }
 
-    auto peersB = nodeB.connectedPeers(0);
+    auto peersB = nodeB.connectedPeers(Direction_Out);
     if (!peersB.success) {
         fprintf(stderr, "Failed to list Node B peers: %s\n",
                 peersB.error.c_str());
