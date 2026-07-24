@@ -110,26 +110,26 @@ int main()
 /// We can verify the connection by listing connected peers on each node.
 ///
 /// The direction parameter:
-///   - `Direction_In` means "incoming connections" (other peers connected to this node).
-///   - `Direction_Out` means "outgoing connections" (this node connected to other peers).
-    auto peersA = nodeA.connectedPeers(Direction_In);
+///   - `0` means "outgoing connections" (this node connected to other peers).
+///   - `1` means "incoming connections" (other peers connected to this node).
+    auto peersA = nodeA.connectedPeers(0);
     if (!peersA.success) {
         fprintf(stderr, "Failed to list Node A peers: %s\n",
                 peersA.error.c_str());
         return 1;
     }
-    printf("\nNode A's incoming connected peers:\n");
+    printf("\nNode A's connected peers:\n");
     for (const auto& p : peersA.value) {
         printf("  %s\n", p.get<std::string>().c_str());
     }
 
-    auto peersB = nodeB.connectedPeers(Direction_Out);
+    auto peersB = nodeB.connectedPeers(0);
     if (!peersB.success) {
         fprintf(stderr, "Failed to list Node B peers: %s\n",
                 peersB.error.c_str());
         return 1;
     }
-    printf("Node B's outgoing connected peers:\n");
+    printf("Node B's connected peers:\n");
     for (const auto& p : peersB.value) {
         printf("  %s\n", p.get<std::string>().c_str());
     }

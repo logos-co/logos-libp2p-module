@@ -174,5 +174,5 @@ int main()
 /// ## Run tutorial
 ///
 /// ```bash
-/// ./build/tutorial/tutorial_7_gossipsub_polling
+/// ./build/tutorial/tutorial_7_gossipsub
 /// ```
