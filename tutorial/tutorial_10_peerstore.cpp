@@ -14,6 +14,9 @@
 ///   - Manually add peers to the store
 ///   - Update addresses and protocols
 ///   - Delete peers from the store
+///
+/// -----------
+
 #include <cstdio>
 #include <string>
 #include <vector>

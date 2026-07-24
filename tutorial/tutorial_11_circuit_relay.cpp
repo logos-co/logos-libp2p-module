@@ -29,6 +29,9 @@
 ///
 /// > **Note**: Circuit relay adds latency and bandwidth overhead on the
 /// > relay node. Use it only when direct connections are impossible.
+///
+/// -----------
+
 #include <cstdio>
 #include <chrono>
 #include <cstdint>

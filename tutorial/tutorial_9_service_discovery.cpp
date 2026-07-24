@@ -21,6 +21,9 @@
 ///     /       \
 ///   Advertiser  Discoverer
 /// ```
+///
+/// -----------
+
 #include <cstdio>
 #include <chrono>
 #include <thread>
