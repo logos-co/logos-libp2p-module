@@ -262,7 +262,7 @@ int main()
 
 /// ## Key Takeaways
 ///
-///   - Service Discovery requires a bootstrap node as rendezvous
+///   - Service Discovery requires a bootstrap node as rendezvous point
 ///   - `discoStart()` / `discoStop()` control the discovery service
 ///   - `discoStartAdvertising()` / `discoStopAdvertising()` manage ads
 ///   - `discoRegisterInterest()` / `discoUnregisterInterest()` manage subscriptions
