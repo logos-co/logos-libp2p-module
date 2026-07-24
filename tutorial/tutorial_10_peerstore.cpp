@@ -127,26 +127,21 @@ int main()
         fprintf(stderr, "peerstoreGetPeerInfo returned a non-object value\n");
         return 1;
     }
-    auto& j = ownInfo.value;
+
     printf("  Peer ID: %s\n",
-           j["peerId"].get<std::string>().c_str());
+           remoteStoreInfo.value["peerId"].get<std::string>().c_str());
+    printf("  Public key: %s\n",
+           remoteStoreInfo.value["publicKey"].get<std::string>().c_str());
 
     printf("  Addresses:\n");
-    if (j.contains("addrs") && j["addrs"].is_array()) {
-        for (const auto& a : j["addrs"]) {
-            printf("    %s\n", a.get<std::string>().c_str());
-        }
+    for (const auto& a : remoteStoreInfo.value["addrs"]) {
+        printf("    %s\n", a.get<std::string>().c_str());
     }
 
     printf("  Protocols:\n");
-    if (j.contains("protocols") && j["protocols"].is_array()) {
-        for (const auto& p : j["protocols"]) {
-            printf("    %s\n", p.get<std::string>().c_str());
-        }
+    for (const auto& p : remoteStoreInfo.value["protocols"]) {
+        printf("    %s\n", p.get<std::string>().c_str());
     }
-
-    printf("  Public key: %s\n",
-           j["publicKey"].get<std::string>().c_str());
 
 /// ## Step 4: Manually add a peer to the store
 ///
@@ -190,7 +185,6 @@ int main()
         fprintf(stderr, "peerstoreGetPeers returned a non-array value\n");
         return 1;
     }
-    printf("Now have %zu known peer(s)\n", peersAfter.value.size());
 
 /// ## Step 5: Update peer info
 ///
