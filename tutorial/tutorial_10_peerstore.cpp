@@ -165,8 +165,7 @@ int main()
 
 /// ## Step 5: Update peer info
 ///
-/// `peerstoreSetPeerAddresses()` and `peerstoreSetPeerProtocols()`
-/// update a peer's stored data.
+/// `peerstoreSetPeerAddresses()` to update a peer's stored data.
     printf("\nUpdating peer addresses...\n");
     std::vector<std::string> updatedAddrs = {
         "/ip4/192.168.1.100/tcp/9002",
@@ -229,8 +228,7 @@ int main()
 ///   - `peerstoreGetPeers()` lists all known peer IDs
 ///   - `peerstoreGetPeerInfo()` returns detailed peer metadata
 ///   - `peerstoreAddPeer()` adds peers manually (with addresses + protocols)
-///   - `peerstoreSetPeerAddresses()` / `peerstoreSetPeerProtocols()`
-///     update existing entries
+///   - `peerstoreSetPeerAddresses()` update existing entries
 ///   - `peerstoreDeletePeer()` removes peers
 ///   - A populated peer store speeds up reconnection and reduces
 ///     network overhead
