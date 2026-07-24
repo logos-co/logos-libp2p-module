@@ -125,7 +125,11 @@ The direction parameter:
   - `Direction_In` means "incoming connections" (other peers connected to this node).
   - `Direction_Out` means "outgoing connections" (this node connected to other peers).
 ```cpp
+<<<<<<< HEAD
     auto peersA = nodeA.connectedPeers(Direction_In);
+=======
+    auto peersA = nodeA.connectedPeers(1);
+>>>>>>> 656c6d8 (fix 3)
     if (!peersA.success) {
         fprintf(stderr, "Failed to list Node A peers: %s\n",
                 peersA.error.c_str());
