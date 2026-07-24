@@ -175,7 +175,7 @@ Verify it was added:
     }
     printf("Now have %zu known peer(s)\n", peersAfter.value.size());
     if (peersAfter.value.size() != 2) {
-        fprintf(stderr, "Expecting to have 2 peers in Peer Store after manually adding one");
+        fprintf(stderr, "Expected to have 2 peers in the peer store after manually adding one");
         return 1;
     }
 
