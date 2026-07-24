@@ -3,11 +3,6 @@
 This tutorial will guide you through the basics of creating, configuring,
 starting, and stopping a libp2p node using the Logos libp2p module.
 
-## Before You Start
-
-Make sure you can build the `logos-libp2p-module` project. See the
-project's `README.md` for build instructions using Nix or CMake.
-
 ## What is libp2p?
 
 [libp2p](https://libp2p.io/) is a modular networking stack for building
