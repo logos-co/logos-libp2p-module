@@ -245,7 +245,7 @@ side channels.
         return 1;
     }
     std::string xprStr = xpr.value.get<std::string>();
-    printf("Created signed XPR: %zu bytes\n", xprStr.size());
+    printf("Created signed XPR\n");
 
     // Decode it to verify
     auto decoded = advertiser.decodeXpr(xprStr);
