@@ -17,6 +17,7 @@ nix --extra-experimental-features 'nix-command flakes' develop --command ./tutor
 
 
 # Run any tutorial:
+./build/tutorial/tutorial_0_introduction
 ./build/tutorial/tutorial_1_node_lifecycle
 ./build/tutorial/tutorial_3_connecting_peers
 ```
@@ -30,7 +31,7 @@ No need to rebuild between runs unless the source code changes.
 
 To get the most out of these tutorials, it is strongly recommended to follow this workflow:
 
-1. **Read** a tutorial page (start with [Tutorial 1](docs/tutorial_1_node_lifecycle.md)).
+1. **Read** a tutorial page (start with [Introduction Tutorial](docs/tutorial_0_introduction.md)).
 2. **Run** the matching binary to see it in action.
    - Every tutorial page includes a command for running the tutorial's executable binary.
    - Observe the stdout output.
@@ -50,5 +51,5 @@ The `docs/` folder is generated from `///` comments in the `.cpp` sources:
 ---
 
 <div align="center">
-<a href="docs/tutorial_1_node_lifecycle.md"><b>START HERE — Tutorial 1: Node Lifecycle</b></a>
+<a href="docs/tutorial_0_introduction.md"><b>START HERE — Introduction and Common Patterns</b></a>
 </div>
