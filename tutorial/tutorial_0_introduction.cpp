@@ -104,7 +104,26 @@ int main()
     printf("Module version: %s\n",
            version.value.get<std::string>().c_str());
 
-/// ## Step 3: Stop cleanly
+/// ## Step 3: Use JSON objects and arrays
+///
+/// `peerInfo()` returns a JSON object. The `peerId` field is a string, while
+/// `addrs` is an array because a node may listen on multiple addresses.
+    StdLogosResult info = node.peerInfo();
+    if (!info.success) {
+        fprintf(stderr, "Failed to get peer info: %s\n",
+                info.error.c_str());
+        return 1;
+    }
+
+    std::string peerId = info.value["peerId"].get<std::string>();
+    printf("Peer ID: %s\n", peerId.c_str());
+
+    printf("Listening addresses:\n");
+    for (const nlohmann::json& addr : info.value["addrs"]) {
+        printf("  %s\n", addr.get<std::string>().c_str());
+    }
+
+/// ## Step 4: Stop cleanly
 ///
 /// Production code should always attempt to close resources gracefully first.
 ///
