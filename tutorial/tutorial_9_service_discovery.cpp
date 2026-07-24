@@ -32,11 +32,10 @@
 #include <utility>
 #include "plugin.h"
 
-/// Helper to extract peer info from a node:
+/// Helper to extract peer info from a successful peerInfo response:
 static std::pair<std::string, std::vector<std::string>> getPeerInfo(
-    Libp2pModuleImpl& node)
+    const nlohmann::json& info)
 {
-    auto info = node.peerInfo().value;
     std::string peerId = info["peerId"].get<std::string>();
     std::vector<std::string> addrs;
     for (const auto& a : info["addrs"])
@@ -45,7 +44,7 @@ static std::pair<std::string, std::vector<std::string>> getPeerInfo(
 }
 
 /// Helper to retry a lookup with backoff:
-static nlohmann::json lookupWithRetry(
+static StdLogosResult lookupWithRetry(
     Libp2pModuleImpl& node,
     const std::string& serviceId,
     const std::string& serviceData,
@@ -54,12 +53,18 @@ static nlohmann::json lookupWithRetry(
 {
     for (int i = 0; i < attempts; ++i) {
         auto res = node.discoLookup(serviceId, serviceData);
-        if (res.success && res.value.is_array() && !res.value.empty()) {
-            return res.value;
+        if (!res.success) {
+            return res;
+        }
+        if (!res.value.is_array()) {
+            return {false, {}, "discoLookup returned a non-array value"};
+        }
+        if (!res.value.empty()) {
+            return res;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
     }
-    return nlohmann::json::array();
+    return {false, {}, "discoLookup did not find any providers"};
 }
 
 int main()
@@ -84,7 +89,13 @@ int main()
         return 1;
     }
 
-    auto [bootstrapId, bootstrapAddrs] = getPeerInfo(bootstrap);
+    auto bootstrapInfoRes = bootstrap.peerInfo();
+    if (!bootstrapInfoRes.success) {
+        fprintf(stderr, "Failed to get bootstrap info: %s\n",
+                bootstrapInfoRes.error.c_str());
+        return 1;
+    }
+    auto [bootstrapId, bootstrapAddrs] = getPeerInfo(bootstrapInfoRes.value);
     printf("Bootstrap node started: %s\n", bootstrapId.c_str());
 
 /// ## Step 2: Create an advertiser node
@@ -166,9 +177,15 @@ int main()
 
     constexpr int kLookupAttempts = 10;
     constexpr int kLookupDelayMs = 500;
-    auto records = lookupWithRetry(
+    auto lookupRes = lookupWithRetry(
         discoverer, serviceId, serviceData,
         kLookupAttempts, kLookupDelayMs);
+    if (!lookupRes.success) {
+        fprintf(stderr, "Service lookup failed: %s\n",
+                lookupRes.error.c_str());
+        return 1;
+    }
+    auto records = lookupRes.value;
 
     printf("Discoverer found %zu provider(s):\n", records.size());
     for (const auto& rec : records) {
@@ -187,12 +204,19 @@ int main()
 /// which is useful for network exploration.
     printf("\nRandom lookup by advertiser...\n");
     auto randomRes = advertiser.discoRandomLookup();
-    if (randomRes.success && randomRes.value.is_array()) {
-        printf("Found %zu random peer(s):\n", randomRes.value.size());
-        for (const auto& rec : randomRes.value) {
-            printf("  Peer: %s\n",
-                   rec["peerId"].get<std::string>().c_str());
-        }
+    if (!randomRes.success) {
+        fprintf(stderr, "Random lookup failed: %s\n",
+                randomRes.error.c_str());
+        return 1;
+    }
+    if (!randomRes.value.is_array()) {
+        fprintf(stderr, "Random lookup returned a non-array value\n");
+        return 1;
+    }
+    printf("Found %zu random peer(s):\n", randomRes.value.size());
+    for (const auto& rec : randomRes.value) {
+        printf("  Peer: %s\n",
+               rec["peerId"].get<std::string>().c_str());
     }
 
 /// ## Step 8: Creating and decoding Extended Peer Records (XPR)
@@ -209,26 +233,34 @@ int main()
 
     auto xpr = advertiser.createXpr({}, xprServices, 0);
     if (!xpr.success) {
-        printf("Failed to create XPR: %s\n", xpr.error.c_str());
-    } else {
-        std::string xprStr = xpr.value.get<std::string>();
-        printf("Created signed XPR: %zu bytes\n", xprStr.size());
-
-        // Decode it to verify
-        auto decoded = advertiser.decodeXpr(xprStr);
-        if (!decoded.success) {
-            printf("Failed to decode XPR: %s\n", decoded.error.c_str());
-        } else {
-            printf("Decoded XPR:\n");
-            printf("  Peer ID: %s\n",
-                   decoded.value["peerId"].get<std::string>().c_str());
-            printf("  Sequence: %llu\n",
-                   (unsigned long long)decoded.value["seqNo"]
-                       .get<uint64_t>());
-            printf("  Services: %zu\n",
-                   decoded.value["services"].size());
-        }
+        fprintf(stderr, "Failed to create XPR: %s\n", xpr.error.c_str());
+        return 1;
     }
+    if (!xpr.value.is_string()) {
+        fprintf(stderr, "createXpr returned a non-string value\n");
+        return 1;
+    }
+    std::string xprStr = xpr.value.get<std::string>();
+    printf("Created signed XPR: %zu bytes\n", xprStr.size());
+
+    // Decode it to verify
+    auto decoded = advertiser.decodeXpr(xprStr);
+    if (!decoded.success) {
+        fprintf(stderr, "Failed to decode XPR: %s\n", decoded.error.c_str());
+        return 1;
+    }
+    if (!decoded.value.is_object()) {
+        fprintf(stderr, "decodeXpr returned a non-object value\n");
+        return 1;
+    }
+    printf("Decoded XPR:\n");
+    printf("  Peer ID: %s\n",
+           decoded.value["peerId"].get<std::string>().c_str());
+    printf("  Sequence: %llu\n",
+           (unsigned long long)decoded.value["seqNo"]
+               .get<uint64_t>());
+    printf("  Services: %zu\n",
+           decoded.value["services"].size());
 
 /// ## Step 9: Clean up — unregister, stop advertising, stop disco
     printf("\nCleaning up...\n");

@@ -39,7 +39,13 @@ int main()
         return 1;
     }
 
-    auto info = node.peerInfo().value;
+    auto infoRes = node.peerInfo();
+    if (!infoRes.success) {
+        fprintf(stderr, "Failed to get node info: %s\n",
+                infoRes.error.c_str());
+        return 1;
+    }
+    auto info = infoRes.value;
     std::string nodePeerId = info["peerId"].get<std::string>();
     printf("Node started, peer ID: %s\n", nodePeerId.c_str());
 
@@ -49,11 +55,18 @@ int main()
 /// `peerstoreGetPeers()` returns a JSON array of peer IDs.
     printf("\nListing known peers...\n");
     auto peersRes = node.peerstoreGetPeers();
-    if (peersRes.success && peersRes.value.is_array()) {
-        printf("Found %zu known peer(s):\n", peersRes.value.size());
-        for (const auto& p : peersRes.value) {
-            printf("  %s\n", p.get<std::string>().c_str());
-        }
+    if (!peersRes.success) {
+        fprintf(stderr, "Failed to list peers: %s\n",
+                peersRes.error.c_str());
+        return 1;
+    }
+    if (!peersRes.value.is_array()) {
+        fprintf(stderr, "peerstoreGetPeers returned a non-array value\n");
+        return 1;
+    }
+    printf("Found %zu known peer(s):\n", peersRes.value.size());
+    for (const auto& p : peersRes.value) {
+        printf("  %s\n", p.get<std::string>().c_str());
     }
 
 /// ## Step 3: Get detailed peer info
@@ -62,28 +75,35 @@ int main()
 /// protocols, and the public key.
     printf("\nGetting our own peer info from the store:\n");
     auto ownInfo = node.peerstoreGetPeerInfo(nodePeerId);
-    if (ownInfo.success) {
-        auto& j = ownInfo.value;
-        printf("  Peer ID: %s\n",
-               j["peerId"].get<std::string>().c_str());
-
-        printf("  Addresses:\n");
-        if (j.contains("addrs") && j["addrs"].is_array()) {
-            for (const auto& a : j["addrs"]) {
-                printf("    %s\n", a.get<std::string>().c_str());
-            }
-        }
-
-        printf("  Protocols:\n");
-        if (j.contains("protocols") && j["protocols"].is_array()) {
-            for (const auto& p : j["protocols"]) {
-                printf("    %s\n", p.get<std::string>().c_str());
-            }
-        }
-
-        printf("  Public key: %s\n",
-               j["publicKey"].get<std::string>().c_str());
+    if (!ownInfo.success) {
+        fprintf(stderr, "Failed to get own peer info: %s\n",
+                ownInfo.error.c_str());
+        return 1;
     }
+    if (!ownInfo.value.is_object()) {
+        fprintf(stderr, "peerstoreGetPeerInfo returned a non-object value\n");
+        return 1;
+    }
+    auto& j = ownInfo.value;
+    printf("  Peer ID: %s\n",
+           j["peerId"].get<std::string>().c_str());
+
+    printf("  Addresses:\n");
+    if (j.contains("addrs") && j["addrs"].is_array()) {
+        for (const auto& a : j["addrs"]) {
+            printf("    %s\n", a.get<std::string>().c_str());
+        }
+    }
+
+    printf("  Protocols:\n");
+    if (j.contains("protocols") && j["protocols"].is_array()) {
+        for (const auto& p : j["protocols"]) {
+            printf("    %s\n", p.get<std::string>().c_str());
+        }
+    }
+
+    printf("  Public key: %s\n",
+           j["publicKey"].get<std::string>().c_str());
 
 /// ## Step 4: Manually add a peer to the store
 ///
@@ -113,9 +133,16 @@ int main()
 /// Verify it was added:
     printf("\nVerifying: listing peers again...\n");
     auto peersAfter = node.peerstoreGetPeers();
-    if (peersAfter.success && peersAfter.value.is_array()) {
-        printf("Now have %zu known peer(s)\n", peersAfter.value.size());
+    if (!peersAfter.success) {
+        fprintf(stderr, "Failed to list peers after add: %s\n",
+                peersAfter.error.c_str());
+        return 1;
     }
+    if (!peersAfter.value.is_array()) {
+        fprintf(stderr, "peerstoreGetPeers returned a non-array value\n");
+        return 1;
+    }
+    printf("Now have %zu known peer(s)\n", peersAfter.value.size());
 
 /// ## Step 5: Update peer info
 ///
@@ -135,11 +162,23 @@ int main()
 
     // Check the updated info:
     auto updatedInfo = node.peerstoreGetPeerInfo(manualPeerId);
-    if (updatedInfo.success) {
-        printf("Updated addresses:\n");
-        for (const auto& a : updatedInfo.value["addrs"]) {
-            printf("  %s\n", a.get<std::string>().c_str());
-        }
+    if (!updatedInfo.success) {
+        fprintf(stderr, "Failed to get updated peer info: %s\n",
+                updatedInfo.error.c_str());
+        return 1;
+    }
+    if (!updatedInfo.value.is_object()) {
+        fprintf(stderr, "peerstoreGetPeerInfo returned a non-object value\n");
+        return 1;
+    }
+    if (!updatedInfo.value.contains("addrs")
+        || !updatedInfo.value["addrs"].is_array()) {
+        fprintf(stderr, "Updated peer info did not include address array\n");
+        return 1;
+    }
+    printf("Updated addresses:\n");
+    for (const auto& a : updatedInfo.value["addrs"]) {
+        printf("  %s\n", a.get<std::string>().c_str());
     }
 
 /// ## Step 6: Delete a peer from the store
@@ -154,12 +193,19 @@ int main()
 
 /// Verify deletion:
     auto peersFinal = node.peerstoreGetPeers();
-    if (peersFinal.success && peersFinal.value.is_array()) {
-        printf("Now have %zu known peer(s)\n",
-               peersFinal.value.size());
-        for (const auto& p : peersFinal.value) {
-            printf("  %s\n", p.get<std::string>().c_str());
-        }
+    if (!peersFinal.success) {
+        fprintf(stderr, "Failed to list peers after delete: %s\n",
+                peersFinal.error.c_str());
+        return 1;
+    }
+    if (!peersFinal.value.is_array()) {
+        fprintf(stderr, "peerstoreGetPeers returned a non-array value\n");
+        return 1;
+    }
+    printf("Now have %zu known peer(s)\n",
+           peersFinal.value.size());
+    for (const auto& p : peersFinal.value) {
+        printf("  %s\n", p.get<std::string>().c_str());
     }
 
 /// ## Step 7: Clean up

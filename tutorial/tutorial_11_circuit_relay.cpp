@@ -91,13 +91,25 @@ int main()
     printf("All three nodes started\n");
 
 /// ## Step 2: Get node addresses
-    auto infoRelay = relay.peerInfo().value;
+    auto infoRelayRes = relay.peerInfo();
+    if (!infoRelayRes.success) {
+        fprintf(stderr, "Failed to get relay info: %s\n",
+                infoRelayRes.error.c_str());
+        return 1;
+    }
+    auto infoRelay = infoRelayRes.value;
     std::string relayPeerId = infoRelay["peerId"].get<std::string>();
     std::vector<std::string> relayAddrs;
     for (const auto& a : infoRelay["addrs"])
         relayAddrs.push_back(a.get<std::string>());
 
-    auto infoDest = dest.peerInfo().value;
+    auto infoDestRes = dest.peerInfo();
+    if (!infoDestRes.success) {
+        fprintf(stderr, "Failed to get destination info: %s\n",
+                infoDestRes.error.c_str());
+        return 1;
+    }
+    auto infoDest = infoDestRes.value;
     std::string destPeerId = infoDest["peerId"].get<std::string>();
 
     printf("Relay peer ID: %s\n", relayPeerId.c_str());
@@ -122,13 +134,19 @@ int main()
                 reserveRes.error.c_str());
         return 1;
     }
+    if (!reserveRes.value.is_array()) {
+        fprintf(stderr, "Relay reservation returned a non-array value\n");
+        return 1;
+    }
+    if (reserveRes.value.empty()) {
+        fprintf(stderr, "Reservation did not return relay addresses\n");
+        return 1;
+    }
 
     printf("Relay reservation successful!\n");
-    if (reserveRes.value.is_array()) {
-        printf("Relay addresses:\n");
-        for (const auto& addr : reserveRes.value) {
-            printf("  %s\n", addr.get<std::string>().c_str());
-        }
+    printf("Relay addresses:\n");
+    for (const auto& addr : reserveRes.value) {
+        printf("  %s\n", addr.get<std::string>().c_str());
     }
 
 /// ## Step 4: Client connects to the Relay, then dials Destination
@@ -148,12 +166,7 @@ int main()
     printf("Client dialing destination through relay...\n");
 
     std::string relayDialAddr;
-    if (reserveRes.value.is_array() && !reserveRes.value.empty()) {
-        relayDialAddr = reserveRes.value[0].get<std::string>() + "/p2p-circuit";
-    } else {
-        fprintf(stderr, "Reservation did not return relay addresses\n");
-        return 1;
-    }
+    relayDialAddr = reserveRes.value[0].get<std::string>() + "/p2p-circuit";
 
 /// For circuit relay, we use a well-known protocol to test connectivity.
 /// The ping protocol works well for this.
@@ -165,27 +178,32 @@ int main()
     if (!dialRes.success) {
         fprintf(stderr, "Circuit relay dial failed: %s\n",
                 dialRes.error.c_str());
-        printf("\nNote: Circuit relay may need configuration tuning.\n");
-        printf("Ensure the relay node has circuitRelay=true and the\n");
-        printf("destination has connected and reserved a slot.\n");
-    } else {
-        uint64_t streamId = dialRes.value.get<uint64_t>();
-        printf("Circuit relay stream opened! id: %llu\n",
-               (unsigned long long)streamId);
-
-        // Send a ping through the relay:
-        std::string payload(32, '\0');
-        for (int i = 0; i < 32; ++i) payload[i] = static_cast<char>(i);
-
-        if (!client.streamWrite(streamId, payload).success) {
-            fprintf(stderr, "Write failed\n");
-        } else {
-            printf("Sent %zu bytes through relay\n", payload.size());
-        }
-
-        client.streamClose(streamId);
-        client.streamRelease(streamId);
+        fprintf(stderr, "Circuit relay may need configuration tuning.\n");
+        fprintf(stderr, "Ensure the relay node has circuitRelay=true and the\n");
+        fprintf(stderr, "destination has connected and reserved a slot.\n");
+        return 1;
     }
+    if (!dialRes.value.is_number_unsigned()) {
+        fprintf(stderr, "dialCircuitRelay returned a non-stream ID value\n");
+        return 1;
+    }
+
+    uint64_t streamId = dialRes.value.get<uint64_t>();
+    printf("Circuit relay stream opened! id: %llu\n",
+           (unsigned long long)streamId);
+
+    // Send a ping through the relay:
+    std::string payload(32, '\0');
+    for (int i = 0; i < 32; ++i) payload[i] = static_cast<char>(i);
+
+    if (!client.streamWrite(streamId, payload).success) {
+        fprintf(stderr, "Write failed\n");
+        return 1;
+    }
+    printf("Sent %zu bytes through relay\n", payload.size());
+
+    client.streamClose(streamId);
+    client.streamRelease(streamId);
 
 /// ## Step 5: Clean up
     relay.stop();
