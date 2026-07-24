@@ -61,8 +61,10 @@ int main()
 
     Libp2pModuleImpl node(options);
 
-    if (!node.start().success) {
-        fprintf(stderr, "Failed to start node\n");
+    StdLogosResult startRes = node.start();
+    if (!startRes.success) {
+        fprintf(stderr, "Failed to start node: %s\n",
+                startRes.error.c_str());
         return 1;
     }
 
@@ -115,8 +117,10 @@ int main()
 
     Libp2pModuleImpl nodeFromJson(jsonOpts);
 
-    if (!nodeFromJson.start().success) {
-        fprintf(stderr, "Failed to start JSON-configured node\n");
+    StdLogosResult jsonStartRes = nodeFromJson.start();
+    if (!jsonStartRes.success) {
+        fprintf(stderr, "Failed to start JSON-configured node: %s\n",
+                jsonStartRes.error.c_str());
         return 1;
     }
 

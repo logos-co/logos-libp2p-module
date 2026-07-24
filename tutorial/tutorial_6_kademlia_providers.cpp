@@ -42,8 +42,9 @@ int main()
 
     Libp2pModuleImpl nodeA(optsA);
 
-    if (!nodeA.start().success) {
-        fprintf(stderr, "Node A failed\n");
+    StdLogosResult startARes = nodeA.start();
+    if (!startARes.success) {
+        fprintf(stderr, "Node A failed: %s\n", startARes.error.c_str());
         return 1;
     }
     
@@ -64,13 +65,16 @@ int main()
     optsB.mountKad = true;
     optsB.bootstrapNodes = {{peerIdA, addrsA}};
     Libp2pModuleImpl nodeB(optsB);
-    if (!nodeB.start().success) {
-        fprintf(stderr, "Node B failed\n");
+    StdLogosResult startBRes = nodeB.start();
+    if (!startBRes.success) {
+        fprintf(stderr, "Node B failed: %s\n", startBRes.error.c_str());
         return 1;
     }
 
-    if (!nodeB.connectPeer(peerIdA, addrsA, 5000).success) {
-        fprintf(stderr, "Failed to connect\n");
+    StdLogosResult connectRes = nodeB.connectPeer(peerIdA, addrsA, 5000);
+    if (!connectRes.success) {
+        fprintf(stderr, "Failed to connect: %s\n",
+                connectRes.error.c_str());
         return 1;
     }
     printf("Nodes connected\n");
@@ -94,8 +98,10 @@ int main()
 ///
 /// This advertises to the DHT that Node A has this content.
     printf("\nNode A starting to provide CID...\n");
-    if (!nodeA.kadStartProviding(cid).success) {
-        fprintf(stderr, "kadStartProviding failed\n");
+    StdLogosResult startProvidingRes = nodeA.kadStartProviding(cid);
+    if (!startProvidingRes.success) {
+        fprintf(stderr, "kadStartProviding failed: %s\n",
+                startProvidingRes.error.c_str());
         return 1;
     }
     printf("Node A is now a provider for: %s\n", cid.c_str());

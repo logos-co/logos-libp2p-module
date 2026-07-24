@@ -59,14 +59,18 @@ int main()
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
 
-    if (!nodeA.start().success) {
-        fprintf(stderr, "Node A failed to start\n");
+    StdLogosResult startARes = nodeA.start();
+    if (!startARes.success) {
+        fprintf(stderr, "Node A failed to start: %s\n",
+                startARes.error.c_str());
         return 1;
     }
     printf("Node A started\n");
 
-    if (!nodeB.start().success) {
-        fprintf(stderr, "Node B failed to start\n");
+    StdLogosResult startBRes = nodeB.start();
+    if (!startBRes.success) {
+        fprintf(stderr, "Node B failed to start: %s\n",
+                startBRes.error.c_str());
         return 1;
     }
     printf("Node B started\n");
@@ -99,8 +103,10 @@ int main()
 /// `connectPeer()` establishes the transport connection. The timeout
 /// parameter is in milliseconds.
     printf("\nConnecting Node B to Node A...\n");
-    if (!nodeB.connectPeer(peerIdA, addrsA, 5000).success) {
-        fprintf(stderr, "Failed to connect\n");
+    StdLogosResult connectRes = nodeB.connectPeer(peerIdA, addrsA, 5000);
+    if (!connectRes.success) {
+        fprintf(stderr, "Failed to connect: %s\n",
+                connectRes.error.c_str());
         return 1;
     }
     printf("Connected!\n");
@@ -158,8 +164,9 @@ int main()
     }
 
     printf("Sending %zu bytes...\n", payload.size());
-    if (!nodeB.streamWrite(streamId, payload).success) {
-        fprintf(stderr, "Write failed\n");
+    StdLogosResult writeRes = nodeB.streamWrite(streamId, payload);
+    if (!writeRes.success) {
+        fprintf(stderr, "Write failed: %s\n", writeRes.error.c_str());
         return 1;
     }
 

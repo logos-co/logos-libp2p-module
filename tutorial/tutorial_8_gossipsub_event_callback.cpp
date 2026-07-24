@@ -46,12 +46,14 @@ int main()
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
 
-    if (!nodeA.start().success) {
-        fprintf(stderr, "Node A failed\n");
+    StdLogosResult startARes = nodeA.start();
+    if (!startARes.success) {
+        fprintf(stderr, "Node A failed: %s\n", startARes.error.c_str());
         return 1;
     }
-    if (!nodeB.start().success) {
-        fprintf(stderr, "Node B failed\n");
+    StdLogosResult startBRes = nodeB.start();
+    if (!startBRes.success) {
+        fprintf(stderr, "Node B failed: %s\n", startBRes.error.c_str());
         return 1;
     }
     printf("Both nodes started\n");
@@ -70,8 +72,10 @@ int main()
         addrsA.push_back(a.get<std::string>());
 
     printf("Connecting Node B to Node A...\n");
-    if (!nodeB.connectPeer(peerIdA, addrsA, 5000).success) {
-        fprintf(stderr, "Failed to connect\n");
+    StdLogosResult connectRes = nodeB.connectPeer(peerIdA, addrsA, 5000);
+    if (!connectRes.success) {
+        fprintf(stderr, "Failed to connect: %s\n",
+                connectRes.error.c_str());
         return 1;
     }
     printf("Connected\n");
@@ -107,14 +111,18 @@ int main()
 /// ## Step 4: Both nodes subscribe to a topic
     std::string topic = "chat-room-1";
     printf("Node A subscribing to topic: \"%s\"\n", topic.c_str());
-    if (!nodeA.gossipsubSubscribe(topic).success) {
-        fprintf(stderr, "Node A subscribe failed\n");
+    StdLogosResult subscribeARes = nodeA.gossipsubSubscribe(topic);
+    if (!subscribeARes.success) {
+        fprintf(stderr, "Node A subscribe failed: %s\n",
+                subscribeARes.error.c_str());
         return 1;
     }
 
     printf("Node B subscribing to topic: \"%s\"\n", topic.c_str());
-    if (!nodeB.gossipsubSubscribe(topic).success) {
-        fprintf(stderr, "Node B subscribe failed\n");
+    StdLogosResult subscribeBRes = nodeB.gossipsubSubscribe(topic);
+    if (!subscribeBRes.success) {
+        fprintf(stderr, "Node B subscribe failed: %s\n",
+                subscribeBRes.error.c_str());
         return 1;
     }
 
@@ -130,8 +138,9 @@ int main()
     printf("\nNode B publishing: \"%s\"\n", payload.c_str());
     printf("  Topic: \"%s\"\n", topic.c_str());
 
-    if (!nodeB.gossipsubPublish(topic, payload).success) {
-        fprintf(stderr, "Publish failed\n");
+    StdLogosResult publishRes = nodeB.gossipsubPublish(topic, payload);
+    if (!publishRes.success) {
+        fprintf(stderr, "Publish failed: %s\n", publishRes.error.c_str());
         return 1;
     }
     printf("Message published!\n");
