@@ -38,6 +38,10 @@
 /// operation fails, they print a useful error message to `stderr` and return
 /// `1`. Successful tutorials print progress to `stdout` and return `0`.
 ///
+/// The `stdout` stream can be noisy because logs from the wrapped C binding
+/// (`nim-libp2p`) library are also included. This is tracked in
+/// [issue #79](https://github.com/logos-co/logos-libp2p-module/issues/79).
+///
 /// ## Convert JSON Values Explicitly
 ///
 /// The `value` field is JSON. Convert it to the C++ type you need at the
@@ -130,6 +134,16 @@ int main()
 
 /// ## Run tutorial
 ///
+/// Run this tutorial now to check that your environment is set up and the
+/// tutorial executable has already been built:
+///
 /// ```bash
 /// ./build/tutorial/tutorial_0_introduction
+/// ```
+///
+/// If that command fails because the tutorial has not been built yet, build the
+/// tutorials with this command and then run it again:
+///
+/// ```bash
+/// nix --extra-experimental-features 'nix-command flakes' develop --command ./tutorial/build_tutorials.sh
 /// ```
