@@ -26,5 +26,4 @@ logos_module(
         libp2p
 )
 
-add_subdirectory(examples)
 add_subdirectory(tutorial)

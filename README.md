@@ -9,8 +9,8 @@ It provides:
 - Gossipsub operations
 - Sync and async APIs compatible with Qt
 
-Check the examples/ directory for complete usage demonstrations.
-For guided walkthroughs, see the [tutorials](./tutorial/README.md).
+For guided walkthroughs and complete usage demonstrations, see the
+[tutorials](./tutorial/README.md).
 
 ---
 
@@ -40,7 +40,7 @@ export LIBP2P_MODULE_CONFIG=/etc/logos/libp2p.json
 
 See [`config.example.json`](./config.example.json) for a ready-to-edit sample and
 the `config` section of [`metadata.json`](./metadata.json) for the full schema.
-Code that constructs `Libp2pModuleImpl` directly (examples, tests) passes
+Code that constructs `Libp2pModuleImpl` directly (tutorials, tests) passes
 `Libp2pModuleOptions` to the constructor and bypasses this path.
 
 ---
@@ -123,9 +123,6 @@ Build only the generated headers
 ```bash
 nix build '.#include'
 ```
-
-See [examples](./examples) for how to build examples
-
 
 # Development Shell
 
