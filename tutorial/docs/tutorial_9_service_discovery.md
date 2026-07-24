@@ -48,12 +48,16 @@ It relays service advertisements and lookup queries.
     optsBootstrap.mountServiceDiscovery = true;
 
     Libp2pModuleImpl bootstrap(optsBootstrap);
-    if (!bootstrap.start().success) {
-        fprintf(stderr, "Bootstrap failed\n");
+    StdLogosResult bootstrapStartRes = bootstrap.start();
+    if (!bootstrapStartRes.success) {
+        fprintf(stderr, "Bootstrap failed: %s\n",
+                bootstrapStartRes.error.c_str());
         return 1;
     }
-    if (!bootstrap.discoStart().success) {
-        fprintf(stderr, "Bootstrap discoStart failed\n");
+    StdLogosResult bootstrapDiscoStartRes = bootstrap.discoStart();
+    if (!bootstrapDiscoStartRes.success) {
+        fprintf(stderr, "Bootstrap discoStart failed: %s\n",
+                bootstrapDiscoStartRes.error.c_str());
         return 1;
     }
 
@@ -83,18 +87,25 @@ This node will advertise a service that others can discover.
     optsAdvertiser.mountServiceDiscovery = true;
 
     Libp2pModuleImpl advertiser(optsAdvertiser);
-    if (!advertiser.start().success) {
-        fprintf(stderr, "Advertiser failed\n");
+    StdLogosResult advertiserStartRes = advertiser.start();
+    if (!advertiserStartRes.success) {
+        fprintf(stderr, "Advertiser failed: %s\n",
+                advertiserStartRes.error.c_str());
         return 1;
     }
-    if (!advertiser.discoStart().success) {
-        fprintf(stderr, "Advertiser discoStart failed\n");
+    StdLogosResult advertiserDiscoStartRes = advertiser.discoStart();
+    if (!advertiserDiscoStartRes.success) {
+        fprintf(stderr, "Advertiser discoStart failed: %s\n",
+                advertiserDiscoStartRes.error.c_str());
         return 1;
     }
 
     // Connect to bootstrap
-    if (!advertiser.connectPeer(bootstrapId, bootstrapAddrs, 5000).success) {
-        fprintf(stderr, "Advertiser failed to connect to bootstrap\n");
+    StdLogosResult advertiserConnectRes =
+        advertiser.connectPeer(bootstrapId, bootstrapAddrs, 5000);
+    if (!advertiserConnectRes.success) {
+        fprintf(stderr, "Advertiser failed to connect to bootstrap: %s\n",
+                advertiserConnectRes.error.c_str());
         return 1;
     }
     printf("Advertiser connected to bootstrap\n");
@@ -109,17 +120,24 @@ This node will advertise a service that others can discover.
     optsDiscoverer.mountServiceDiscovery = true;
 
     Libp2pModuleImpl discoverer(optsDiscoverer);
-    if (!discoverer.start().success) {
-        fprintf(stderr, "Discoverer failed\n");
+    StdLogosResult discovererStartRes = discoverer.start();
+    if (!discovererStartRes.success) {
+        fprintf(stderr, "Discoverer failed: %s\n",
+                discovererStartRes.error.c_str());
         return 1;
     }
-    if (!discoverer.discoStart().success) {
-        fprintf(stderr, "Discoverer discoStart failed\n");
+    StdLogosResult discovererDiscoStartRes = discoverer.discoStart();
+    if (!discovererDiscoStartRes.success) {
+        fprintf(stderr, "Discoverer discoStart failed: %s\n",
+                discovererDiscoStartRes.error.c_str());
         return 1;
     }
 
-    if (!discoverer.connectPeer(bootstrapId, bootstrapAddrs, 5000).success) {
-        fprintf(stderr, "Discoverer failed to connect to bootstrap\n");
+    StdLogosResult discovererConnectRes =
+        discoverer.connectPeer(bootstrapId, bootstrapAddrs, 5000);
+    if (!discovererConnectRes.success) {
+        fprintf(stderr, "Discoverer failed to connect to bootstrap: %s\n",
+                discovererConnectRes.error.c_str());
         return 1;
     }
     printf("Discoverer connected to bootstrap\n");
@@ -135,8 +153,11 @@ arbitrary data (also a string).
     std::string serviceData = "version=1.0;capacity=100";
 
     printf("\nAdvertiser advertising: \"%s\"\n", serviceId.c_str());
-    if (!advertiser.discoStartAdvertising(serviceId, serviceData).success) {
-        fprintf(stderr, "discoStartAdvertising failed\n");
+    StdLogosResult advertiseRes =
+        advertiser.discoStartAdvertising(serviceId, serviceData);
+    if (!advertiseRes.success) {
+        fprintf(stderr, "discoStartAdvertising failed: %s\n",
+                advertiseRes.error.c_str());
         return 1;
     }
     printf("Advertising started\n");
@@ -149,8 +170,11 @@ Registering interest tells the service discovery system that
 this peer wants to know about providers of this service.
 ```cpp
     printf("Discoverer registering interest in \"%s\"\n", serviceId.c_str());
-    if (!discoverer.discoRegisterInterest(serviceId).success) {
-        fprintf(stderr, "discoRegisterInterest failed\n");
+    StdLogosResult registerInterestRes =
+        discoverer.discoRegisterInterest(serviceId);
+    if (!registerInterestRes.success) {
+        fprintf(stderr, "discoRegisterInterest failed: %s\n",
+                registerInterestRes.error.c_str());
         return 1;
     }
 

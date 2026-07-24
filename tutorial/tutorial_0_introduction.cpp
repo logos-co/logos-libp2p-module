@@ -41,8 +41,7 @@
 /// `1`. Successful tutorials print progress to `stdout` and return `0`.
 ///
 /// The `stdout` stream can be noisy because logs from the wrapped C binding
-/// (`nim-libp2p`) library are also included. This is tracked in
-/// [issue #79](https://github.com/logos-co/logos-libp2p-module/issues/79).
+/// are also included. This is tracked in [issue #79](https://github.com/logos-co/logos-libp2p-module/issues/79).
 ///
 /// ## Convert JSON Values Explicitly
 ///
@@ -107,8 +106,7 @@ int main()
 
 /// ## Step 3: Stop cleanly
 ///
-/// For production code it should always be better to attempt to gracefully
-/// close all resources first.
+/// Production code should always attempt to close resources gracefully first.
 ///
 /// The tutorials do not always process every cleanup outcome, such as failures
 /// while stopping a node or closing streams, in order to keep the example code

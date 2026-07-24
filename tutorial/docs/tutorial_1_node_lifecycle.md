@@ -49,8 +49,10 @@ Calling `start()` creates the libp2p context, binds the configured
 address, and begins accepting connections.
 
 ```cpp
-    if (!node.start().success) {
-        fprintf(stderr, "Failed to start node\n");
+    StdLogosResult startRes = node.start();
+    if (!startRes.success) {
+        fprintf(stderr, "Failed to start node: %s\n",
+                startRes.error.c_str());
         return 1;
     }
 

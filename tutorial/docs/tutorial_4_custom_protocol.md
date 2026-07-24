@@ -69,8 +69,16 @@ int main()
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
 
-    if (!nodeA.start().success) { fprintf(stderr, "Node A failed\n"); return 1; }
-    if (!nodeB.start().success) { fprintf(stderr, "Node B failed\n"); return 1; }
+    StdLogosResult startARes = nodeA.start();
+    if (!startARes.success) {
+        fprintf(stderr, "Node A failed: %s\n", startARes.error.c_str());
+        return 1;
+    }
+    StdLogosResult startBRes = nodeB.start();
+    if (!startBRes.success) {
+        fprintf(stderr, "Node B failed: %s\n", startBRes.error.c_str());
+        return 1;
+    }
     printf("Both nodes started\n");
 
 ```
@@ -112,8 +120,10 @@ background thread to handle concurrent streams.
 Register the echo protocol on Node A:
 ```cpp
     printf("Mounting protocol '%s' on Node A...\n", kEchoProtocol.c_str());
-    if (!nodeA.mountProtocol(kEchoProtocol).success) {
-        fprintf(stderr, "Failed to mount protocol\n");
+    StdLogosResult mountRes = nodeA.mountProtocol(kEchoProtocol);
+    if (!mountRes.success) {
+        fprintf(stderr, "Failed to mount protocol: %s\n",
+                mountRes.error.c_str());
         return 1;
     }
 
@@ -134,8 +144,10 @@ Register the echo protocol on Node A:
         addrsA.push_back(a.get<std::string>());
 
     printf("Connecting Node B to Node A...\n");
-    if (!nodeB.connectPeer(peerIdA, addrsA, 5000).success) {
-        fprintf(stderr, "Failed to connect\n");
+    StdLogosResult connectRes = nodeB.connectPeer(peerIdA, addrsA, 5000);
+    if (!connectRes.success) {
+        fprintf(stderr, "Failed to connect: %s\n",
+                connectRes.error.c_str());
         return 1;
     }
     printf("Connected\n");
@@ -180,8 +192,9 @@ fires, and Node A receives a new stream.
 ```cpp
     std::string message = "Hello from Node B!";
     printf("Node B sending: \"%s\"\n", message.c_str());
-    if (!nodeB.streamWriteLp(clientStreamId, message).success) {
-        fprintf(stderr, "Write failed\n");
+    StdLogosResult writeRes = nodeB.streamWriteLp(clientStreamId, message);
+    if (!writeRes.success) {
+        fprintf(stderr, "Write failed: %s\n", writeRes.error.c_str());
         return 1;
     }
 
@@ -202,8 +215,10 @@ fires, and Node A receives a new stream.
 
 Echo it back:
 ```cpp
-    if (!nodeA.streamWriteLp(serverStreamId, received).success) {
-        fprintf(stderr, "Node A echo write failed\n");
+    StdLogosResult echoWriteRes = nodeA.streamWriteLp(serverStreamId, received);
+    if (!echoWriteRes.success) {
+        fprintf(stderr, "Node A echo write failed: %s\n",
+                echoWriteRes.error.c_str());
         return 1;
     }
 

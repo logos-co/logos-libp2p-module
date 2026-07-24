@@ -44,12 +44,16 @@ contains real peer data after a connection is established.
     Libp2pModuleImpl node(opts);
     Libp2pModuleImpl remote(remoteOpts);
 
-    if (!node.start().success) {
-        fprintf(stderr, "Node failed to start\n");
+    StdLogosResult startRes = node.start();
+    if (!startRes.success) {
+        fprintf(stderr, "Node failed to start: %s\n",
+                startRes.error.c_str());
         return 1;
     }
-    if (!remote.start().success) {
-        fprintf(stderr, "Remote node failed to start\n");
+    StdLogosResult remoteStartRes = remote.start();
+    if (!remoteStartRes.success) {
+        fprintf(stderr, "Remote node failed to start: %s\n",
+                remoteStartRes.error.c_str());
         return 1;
     }
 
@@ -105,8 +109,10 @@ been discovered or added yet.
 protocols, and the public key.
 ```cpp
     printf("\nConnecting to remote peer...\n");
-    if (!node.connectPeer(remotePeerId, remoteAddrs, 5000).success) {
-        fprintf(stderr, "Failed to connect to remote peer\n");
+    StdLogosResult connectRes = node.connectPeer(remotePeerId, remoteAddrs, 5000);
+    if (!connectRes.success) {
+        fprintf(stderr, "Failed to connect to remote peer: %s\n",
+                connectRes.error.c_str());
         return 1;
     }
     printf("Connected to remote peer\n");
@@ -155,9 +161,11 @@ QR code, or DNS).
         "/examples/echo/1.0.0",
     };
 
-    if (!node.peerstoreAddPeer(manualPeerId, manualAddrs, manualProtos)
-             .success) {
-        fprintf(stderr, "Failed to add peer\n");
+    StdLogosResult addPeerRes =
+        node.peerstoreAddPeer(manualPeerId, manualAddrs, manualProtos);
+    if (!addPeerRes.success) {
+        fprintf(stderr, "Failed to add peer: %s\n",
+                addPeerRes.error.c_str());
         return 1;
     }
     printf("Peer added: %s\n", manualPeerId.c_str());
@@ -190,9 +198,11 @@ Verify it was added:
         "/ip4/192.168.1.100/tcp/9002",
         "/dns4/peer.example.com/tcp/9000",
     };
-    if (!node.peerstoreSetPeerAddresses(manualPeerId, updatedAddrs)
-             .success) {
-        fprintf(stderr, "Failed to update addresses\n");
+    StdLogosResult updateAddrsRes =
+        node.peerstoreSetPeerAddresses(manualPeerId, updatedAddrs);
+    if (!updateAddrsRes.success) {
+        fprintf(stderr, "Failed to update addresses: %s\n",
+                updateAddrsRes.error.c_str());
         return 1;
     }
     printf("Addresses updated\n");
@@ -216,8 +226,10 @@ Verify it was added:
 `peerstoreDeletePeer()` removes a peer and all its metadata.
 ```cpp
     printf("\nDeleting peer from store...\n");
-    if (!node.peerstoreDeletePeer(manualPeerId).success) {
-        fprintf(stderr, "Failed to delete peer\n");
+    StdLogosResult deletePeerRes = node.peerstoreDeletePeer(manualPeerId);
+    if (!deletePeerRes.success) {
+        fprintf(stderr, "Failed to delete peer: %s\n",
+                deletePeerRes.error.c_str());
         return 1;
     }
     printf("Peer deleted\n");
