@@ -112,13 +112,13 @@ int main()
 /// The direction parameter:
 ///   - `0` means "outgoing connections" (this node connected to other peers).
 ///   - `1` means "incoming connections" (other peers connected to this node).
-    auto peersA = nodeA.connectedPeers(0);
+    auto peersA = nodeA.connectedPeers(1);
     if (!peersA.success) {
         fprintf(stderr, "Failed to list Node A peers: %s\n",
                 peersA.error.c_str());
         return 1;
     }
-    printf("\nNode A's connected peers:\n");
+    printf("\nNode A's incoming connected peers:\n");
     for (const auto& p : peersA.value) {
         printf("  %s\n", p.get<std::string>().c_str());
     }
@@ -129,7 +129,7 @@ int main()
                 peersB.error.c_str());
         return 1;
     }
-    printf("Node B's connected peers:\n");
+    printf("Node B's outgoing connected peers:\n");
     for (const auto& p : peersB.value) {
         printf("  %s\n", p.get<std::string>().c_str());
     }
