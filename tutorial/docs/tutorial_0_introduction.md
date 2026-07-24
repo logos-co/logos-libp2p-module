@@ -1,5 +1,7 @@
 # Tutorial 0: Introduction and Common Patterns
 
+Welcome to the first `logos-libp2p-module` tutorial!
+
 Before creating nodes or connecting peers, it helps to understand the
 conventions used by every tutorial in this series.
 

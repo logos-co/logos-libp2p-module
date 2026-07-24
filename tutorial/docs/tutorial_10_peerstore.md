@@ -133,25 +133,6 @@ protocols, and the public key.
     for (const auto& p : remoteStoreInfo.value["protocols"]) {
         printf("    %s\n", p.get<std::string>().c_str());
     }
-    if (!ownInfo.value.is_object()) {
-        fprintf(stderr, "peerstoreGetPeerInfo returned a non-object value\n");
-        return 1;
-    }
-
-    printf("  Peer ID: %s\n",
-           remoteStoreInfo.value["peerId"].get<std::string>().c_str());
-    printf("  Public key: %s\n",
-           remoteStoreInfo.value["publicKey"].get<std::string>().c_str());
-
-    printf("  Addresses:\n");
-    for (const auto& a : remoteStoreInfo.value["addrs"]) {
-        printf("    %s\n", a.get<std::string>().c_str());
-    }
-
-    printf("  Protocols:\n");
-    for (const auto& p : remoteStoreInfo.value["protocols"]) {
-        printf("    %s\n", p.get<std::string>().c_str());
-    }
 
 ```
 
@@ -195,10 +176,6 @@ Verify it was added:
     printf("Now have %zu known peer(s)\n", peersAfter.value.size());
     if (peersAfter.value.size() != 2) {
         fprintf(stderr, "Expected to have 2 peers in the peer store after manually adding one");
-        return 1;
-    }
-    if (!peersAfter.value.is_array()) {
-        fprintf(stderr, "peerstoreGetPeers returned a non-array value\n");
         return 1;
     }
 
