@@ -113,6 +113,9 @@ Some calls return a single string, number, or boolean in `value`.
 For production code it should always be better to attempt to gracefully
 close all resources first.
 
+The tutorials do not always process every cleanup outcome, such as failures
+while stopping a node or closing streams, in order to keep the example code
+focused and easy to follow.
 ```cpp
     StdLogosResult stopRes = node.stop();
     if (!stopRes.success) {
@@ -127,10 +130,6 @@ close all resources first.
 }
 
 ```
-
-The tutorials do not always process every cleanup outcome, such as failures
-while stopping a node or closing streams, in order to keep the example code
-focused and easy to follow.
 
 ## Summary
 

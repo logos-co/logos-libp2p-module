@@ -136,10 +136,6 @@ controls the consistency level:
         return 1;
     }
 
-    if (!getRes.value.is_string()) {
-        fprintf(stderr, "GetValue returned a non-string value\n");
-        return 1;
-    }
     std::string received = base64Decode(getRes.value.get<std::string>());
 
     if (received.empty()) {

@@ -125,10 +125,6 @@ Node B queries the DHT to find who provides this CID.
     }
 
     auto providers = provRes.value;
-    if (!providers.is_array()) {
-        fprintf(stderr, "kadGetProviders returned a non-array value\n");
-        return 1;
-    }
 
     printf("Node B found %zu provider(s):\n", providers.size());
     bool foundNodeA = false;
@@ -163,11 +159,6 @@ DHT routing table.
                 findRes.error.c_str());
         return 1;
     }
-    if (!findRes.value.is_array()) {
-        fprintf(stderr, "kadFindNode returned a non-array value\n");
-        return 1;
-    }
-
     printf("Closest peers to Node A:\n");
     for (const auto& p : findRes.value) {
         printf("  %s\n", p.get<std::string>().c_str());
