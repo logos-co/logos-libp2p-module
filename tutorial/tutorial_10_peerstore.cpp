@@ -26,16 +26,26 @@ int main()
 {
     printf("=== Tutorial 10: Peer Store Management ===\n\n");
 
-/// ## Step 1: Create a node
+/// ## Step 1: Create two nodes
 ///
 /// The peer store is automatically available on any started node.
+/// We use one main node and one remote peer so the main node's peerstore
+/// contains real peer data after a connection is established.
     Libp2pModuleOptions opts;
     opts.addrs = {"/ip4/127.0.0.1/tcp/9790"};
 
+    Libp2pModuleOptions remoteOpts;
+    remoteOpts.addrs = {"/ip4/127.0.0.1/tcp/9791"};
+
     Libp2pModuleImpl node(opts);
+    Libp2pModuleImpl remote(remoteOpts);
 
     if (!node.start().success) {
         fprintf(stderr, "Node failed to start\n");
+        return 1;
+    }
+    if (!remote.start().success) {
+        fprintf(stderr, "Remote node failed to start\n");
         return 1;
     }
 
@@ -49,9 +59,24 @@ int main()
     std::string nodePeerId = info["peerId"].get<std::string>();
     printf("Node started, peer ID: %s\n", nodePeerId.c_str());
 
+    auto remoteInfoRes = remote.peerInfo();
+    if (!remoteInfoRes.success) {
+        fprintf(stderr, "Failed to get remote node info: %s\n",
+                remoteInfoRes.error.c_str());
+        return 1;
+    }
+    auto remoteInfo = remoteInfoRes.value;
+    std::string remotePeerId = remoteInfo["peerId"].get<std::string>();
+    std::vector<std::string> remoteAddrs;
+    for (const auto& a : remoteInfo["addrs"]) {
+        remoteAddrs.push_back(a.get<std::string>());
+    }
+    printf("Remote node started, peer ID: %s\n", remotePeerId.c_str());
+
 /// ## Step 2: List known peers
 ///
-/// Initially, the peer store only contains our own node.
+/// Initially, the peer store may be empty because no remote peers have
+/// been discovered or added yet.
 /// `peerstoreGetPeers()` returns a JSON array of peer IDs.
     printf("\nListing known peers...\n");
     auto peersRes = node.peerstoreGetPeers();
@@ -60,50 +85,44 @@ int main()
                 peersRes.error.c_str());
         return 1;
     }
-    if (!peersRes.value.is_array()) {
-        fprintf(stderr, "peerstoreGetPeers returned a non-array value\n");
-        return 1;
-    }
     printf("Found %zu known peer(s):\n", peersRes.value.size());
     for (const auto& p : peersRes.value) {
         printf("  %s\n", p.get<std::string>().c_str());
     }
 
-/// ## Step 3: Get detailed peer info
+/// ## Step 3: Connect a remote peer and get detailed peer info
 ///
 /// `peerstoreGetPeerInfo()` returns a rich JSON object with addresses,
 /// protocols, and the public key.
-    printf("\nGetting our own peer info from the store:\n");
-    auto ownInfo = node.peerstoreGetPeerInfo(nodePeerId);
-    if (!ownInfo.success) {
-        fprintf(stderr, "Failed to get own peer info: %s\n",
-                ownInfo.error.c_str());
+    printf("\nConnecting to remote peer...\n");
+    if (!node.connectPeer(remotePeerId, remoteAddrs, 5000).success) {
+        fprintf(stderr, "Failed to connect to remote peer\n");
         return 1;
     }
-    if (!ownInfo.value.is_object()) {
-        fprintf(stderr, "peerstoreGetPeerInfo returned a non-object value\n");
+    printf("Connected to remote peer\n");
+
+    printf("\nGetting remote peer info from the store:\n");
+    auto remoteStoreInfo = node.peerstoreGetPeerInfo(remotePeerId);
+    if (!remoteStoreInfo.success) {
+        fprintf(stderr, "Failed to get remote peer info: %s\n",
+                remoteStoreInfo.error.c_str());
         return 1;
     }
-    auto& j = ownInfo.value;
+
     printf("  Peer ID: %s\n",
-           j["peerId"].get<std::string>().c_str());
+           remoteStoreInfo.value["peerId"].get<std::string>().c_str());
+    printf("  Public key: %s\n",
+           remoteStoreInfo.value["publicKey"].get<std::string>().c_str());
 
     printf("  Addresses:\n");
-    if (j.contains("addrs") && j["addrs"].is_array()) {
-        for (const auto& a : j["addrs"]) {
-            printf("    %s\n", a.get<std::string>().c_str());
-        }
+    for (const auto& a : remoteStoreInfo.value["addrs"]) {
+        printf("    %s\n", a.get<std::string>().c_str());
     }
 
     printf("  Protocols:\n");
-    if (j.contains("protocols") && j["protocols"].is_array()) {
-        for (const auto& p : j["protocols"]) {
-            printf("    %s\n", p.get<std::string>().c_str());
-        }
+    for (const auto& p : remoteStoreInfo.value["protocols"]) {
+        printf("    %s\n", p.get<std::string>().c_str());
     }
-
-    printf("  Public key: %s\n",
-           j["publicKey"].get<std::string>().c_str());
 
 /// ## Step 4: Manually add a peer to the store
 ///
@@ -138,11 +157,11 @@ int main()
                 peersAfter.error.c_str());
         return 1;
     }
-    if (!peersAfter.value.is_array()) {
-        fprintf(stderr, "peerstoreGetPeers returned a non-array value\n");
+    printf("Now have %zu known peer(s)\n", peersAfter.value.size());
+    if (peersAfter.value.size() != 2) {
+        fprintf(stderr, "Expecting to have 2 peers in Peer Store after manually adding one");
         return 1;
     }
-    printf("Now have %zu known peer(s)\n", peersAfter.value.size());
 
 /// ## Step 5: Update peer info
 ///
@@ -167,15 +186,6 @@ int main()
                 updatedInfo.error.c_str());
         return 1;
     }
-    if (!updatedInfo.value.is_object()) {
-        fprintf(stderr, "peerstoreGetPeerInfo returned a non-object value\n");
-        return 1;
-    }
-    if (!updatedInfo.value.contains("addrs")
-        || !updatedInfo.value["addrs"].is_array()) {
-        fprintf(stderr, "Updated peer info did not include address array\n");
-        return 1;
-    }
     printf("Updated addresses:\n");
     for (const auto& a : updatedInfo.value["addrs"]) {
         printf("  %s\n", a.get<std::string>().c_str());
@@ -198,10 +208,6 @@ int main()
                 peersFinal.error.c_str());
         return 1;
     }
-    if (!peersFinal.value.is_array()) {
-        fprintf(stderr, "peerstoreGetPeers returned a non-array value\n");
-        return 1;
-    }
     printf("Now have %zu known peer(s)\n",
            peersFinal.value.size());
     for (const auto& p : peersFinal.value) {
@@ -209,7 +215,8 @@ int main()
     }
 
 /// ## Step 7: Clean up
-    node.stop();
+   node.stop();
+   remote.stop();
 
     printf("\n=== Tutorial 10 Complete ===\n");
 

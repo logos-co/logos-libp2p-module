@@ -134,10 +134,6 @@ int main()
                 reserveRes.error.c_str());
         return 1;
     }
-    if (!reserveRes.value.is_array()) {
-        fprintf(stderr, "Relay reservation returned a non-array value\n");
-        return 1;
-    }
     if (reserveRes.value.empty()) {
         fprintf(stderr, "Reservation did not return relay addresses\n");
         return 1;
@@ -183,11 +179,6 @@ int main()
         fprintf(stderr, "destination has connected and reserved a slot.\n");
         return 1;
     }
-    if (!dialRes.value.is_number_unsigned()) {
-        fprintf(stderr, "dialCircuitRelay returned a non-stream ID value\n");
-        return 1;
-    }
-
     uint64_t streamId = dialRes.value.get<uint64_t>();
     printf("Circuit relay stream opened! id: %llu\n",
            (unsigned long long)streamId);
