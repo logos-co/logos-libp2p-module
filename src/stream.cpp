@@ -19,12 +19,28 @@ Libp2pModuleImpl::getStream(uint64_t id) const {
 
 std::shared_ptr<Libp2pModuleImpl::StreamEntry>
 Libp2pModuleImpl::removeStream(uint64_t id) {
-    std::unique_lock<std::shared_mutex> lock(m_streamsLock);
-    auto it = m_streams.find(id);
-    if (it == m_streams.end()) return nullptr;
-    auto entry = std::move(it->second);
-    m_streams.erase(it);
+    std::shared_ptr<StreamEntry> entry;
+    {
+        std::unique_lock<std::shared_mutex> lock(m_streamsLock);
+        auto it = m_streams.find(id);
+        if (it == m_streams.end()) return nullptr;
+        entry = std::move(it->second);
+        m_streams.erase(it);
+    }
+    removeInboundStream(id);
     return entry;
+}
+
+void Libp2pModuleImpl::removeInboundStream(uint64_t id) {
+    std::lock_guard<std::mutex> lock(m_inboundStreamMutex);
+    for (auto& [proto, q] : m_inboundStreamQueues) {
+        for (auto it = q.begin(); it != q.end(); ++it) {
+            if (*it == id) {
+                q.erase(it);
+                return;
+            }
+        }
+    }
 }
 
 StdLogosResult Libp2pModuleImpl::streamClose(uint64_t streamId) {

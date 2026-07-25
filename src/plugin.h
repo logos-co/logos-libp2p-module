@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <deque>
 #include <functional>
 #include <future>
 #include <memory>
@@ -149,6 +150,13 @@ public:
     StdLogosResult streamCloseWithEOF(uint64_t streamId);
     StdLogosResult streamRelease(uint64_t streamId);
 
+    StdLogosResult protocolRequest(const std::string& argsJson);
+    StdLogosResult streamReadLpJson(const std::string& argsJson);
+    StdLogosResult streamWriteLpJson(const std::string& argsJson);
+    StdLogosResult streamCloseJson(const std::string& argsJson);
+    StdLogosResult streamReleaseJson(const std::string& argsJson);
+    StdLogosResult protocolAcceptStream(const std::string& argsJson);
+
     StdLogosResult gossipsubPublish(const std::string& topic, const std::string& data);
     StdLogosResult gossipsubSubscribe(const std::string& topic);
     StdLogosResult gossipsubUnsubscribe(const std::string& topic);
@@ -228,10 +236,17 @@ private:
     uint64_t addStream(libp2p_stream_t* stream);
     std::shared_ptr<StreamEntry> getStream(uint64_t id) const;
     std::shared_ptr<StreamEntry> removeStream(uint64_t id);
+    void removeInboundStream(uint64_t id);
+    bool enqueueInboundStream(const std::string& proto, libp2p_stream_t* stream,
+                              uint64_t streamId);
 
     std::mutex m_queueMutex;
     std::condition_variable m_queueCond;
     std::unordered_map<std::string, std::queue<std::string>> m_topicQueues;
+
+    std::mutex m_inboundStreamMutex;
+    std::condition_variable m_inboundStreamCond;
+    std::unordered_map<std::string, std::deque<uint64_t>> m_inboundStreamQueues;
 
     void applyOptions(const Libp2pModuleOptions& options);
     StdLogosResult createContext();
@@ -315,14 +330,16 @@ private:
     // whole sync-over-async call so a concurrent streamRelease can't free
     // entry->ptr mid-flight. `invoke(libp2p_stream_t*, SyncPromise*)`.
     template <class Invoke>
-    StdLogosResult callSyncStream(uint64_t streamId, const char* errPrefix, Invoke&& invoke) {
+    StdLogosResult callSyncStream(uint64_t streamId, const char* errPrefix, Invoke&& invoke,
+                                  int awaitMs = kDefaultOpTimeoutMs) {
         return callSyncStreamWith(streamId, errPrefix, std::forward<Invoke>(invoke),
-            [](const SyncResult&) -> StdLogosResult { return {true, {}, ""}; });
+            [](const SyncResult&) -> StdLogosResult { return {true, {}, ""}; }, awaitMs);
     }
 
     template <class Invoke, class Transform>
     StdLogosResult callSyncStreamWith(uint64_t streamId, const char* errPrefix,
-                                       Invoke&& invoke, Transform&& transform) {
+                                       Invoke&& invoke, Transform&& transform,
+                                       int awaitMs = kDefaultOpTimeoutMs) {
         if (!ctx || streamId == 0) return {false, {}, "Invalid stream"};
         auto entry = getStream(streamId);
         if (!entry) return {false, {}, "Stream not found"};
@@ -330,7 +347,7 @@ private:
         if (entry->released) return {false, {}, "Stream released"};
         return callSyncWith(errPrefix,
             [&](SyncPromise* p) { return invoke(entry->ptr, p); },
-            std::forward<Transform>(transform));
+            std::forward<Transform>(transform), awaitMs);
     }
 
     // Subscribe contexts live for the subscription's lifetime; the lock guards
