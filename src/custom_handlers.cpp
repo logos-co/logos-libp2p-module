@@ -2,6 +2,29 @@
 
 using json = nlohmann::json;
 
+static constexpr size_t kMaxInboundStreamsPerProto = 1024;
+
+bool Libp2pModuleImpl::enqueueInboundStream(const std::string& proto,
+                                            libp2p_stream_t* stream, uint64_t streamId) {
+    bool queued = false;
+    {
+        std::lock_guard<std::mutex> lock(m_inboundStreamMutex);
+        auto& q = m_inboundStreamQueues[proto];
+        if (q.size() < kMaxInboundStreamsPerProto) {
+            q.push_back(streamId);
+            queued = true;
+        }
+    }
+    if (!queued) {
+        removeStream(streamId);
+        libp2p_stream_release(ctx, stream,
+                              +[](int, const char*, size_t, void*) {}, nullptr);
+        return false;
+    }
+    m_inboundStreamCond.notify_all();
+    return true;
+}
+
 void Libp2pModuleImpl::protocolHandler(
     libp2p_ctx_t* /*ctx*/, libp2p_stream_t* stream,
     const char* proto, size_t protoLen, void* userData)
@@ -15,6 +38,7 @@ void Libp2pModuleImpl::protocolHandler(
         : handlerCtx->proto;
 
     uint64_t streamId = self->addStream(stream);
+    if (!self->enqueueInboundStream(protoStr, stream, streamId)) return;
 
     json j;
     j["streamId"] = streamId;
@@ -34,9 +58,6 @@ void Libp2pModuleImpl::mountCompleteCallback(int ret, const char* msg, size_t le
 StdLogosResult Libp2pModuleImpl::mountProtocol(const std::string& proto) {
     if (!ctx) return {false, {}, "No libp2p context"};
     if (proto.empty()) return {false, {}, "Protocol string is empty"};
-    // Without emitEvent, protocolHandler would register a stream that no caller
-    // could ever read, close, or release — leaking the stream.
-    if (!emitEvent) return {false, {}, "emitEvent must be set before mounting a protocol"};
     publishEmitEvent();
 
     auto handlerCtx = std::make_unique<ProtocolHandlerCtx>();
