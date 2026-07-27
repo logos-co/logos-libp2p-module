@@ -157,8 +157,12 @@ controls the consistency level:
         return 1;
     }
     printf("Value matches!\n");
-
 ```
+
+> **Note**: This example uses only two local nodes to keep the tutorial
+> easy to follow. In a real Kademlia network, the same value could be
+> retrieved from a network of thousands of peers, including peers many
+> hops away from the node that originally stored it.
 
 ## Step 4: Clean up
 ```cpp
