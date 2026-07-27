@@ -32,8 +32,6 @@ struct Libp2pModuleOptions {
 
     // Raw private key bytes for a stable peer identity; empty generates a fresh key.
     std::vector<uint8_t> privKey = {};
-    // Scheme for the generated key; ignored when privKey is supplied.
-    int64_t keyType = KEY_SCHEME_SECP256K1;
 
     /// Builds options from the LIBP2P_MODULE_CONFIG deployment config (codegen
     /// default-constructs a loaded module). See readme; absent/invalid → defaults.
@@ -80,19 +78,6 @@ inline TransportType parseTransport(const nlohmann::json& j, TransportType fallb
     return fallback;
 }
 
-inline int64_t parseKeyType(const nlohmann::json& j, int64_t fallback) {
-    auto it = j.find("keyType");
-    if (it == j.end() || !it->is_string()) {
-        return fallback;
-    }
-    std::string t = it->get<std::string>();
-    if (t == "rsa") return KEY_SCHEME_RSA;
-    if (t == "ed25519") return KEY_SCHEME_ED25519;
-    if (t == "secp256k1") return KEY_SCHEME_SECP256K1;
-    if (t == "ecdsa") return KEY_SCHEME_ECDSA;
-    return fallback;
-}
-
 /// Overlays present keys onto `o`. Throws nlohmann type_error on a wrong-typed
 /// field; load() catches it and falls back to defaults.
 inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
@@ -108,7 +93,6 @@ inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
         }
     }
     o.transport = parseTransport(j, o.transport);
-    o.keyType = parseKeyType(j, o.keyType);
     if (auto it = j.find("privKey"); it != j.end()) {
         if (!it->is_string()) {
             throw std::invalid_argument("privKey must be a string");

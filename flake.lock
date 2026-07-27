@@ -148,16 +148,16 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1784914103,
-        "narHash": "sha256-A05+fqGy9rVycZsN/imDObNSxDjhqoBOwM1tWyCghfs=",
+        "lastModified": 1785247914,
+        "narHash": "sha256-W15T9ugMOkwjlySOpDxqK8UzCz4eCFMCcVRLGfbsQT0=",
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "7a720e8098a0a3ff2cb71da6f21df49ebd585a3d",
+        "rev": "4116b2ff373232c95eb173834f7a8a881bb4828a",
         "type": "github"
       },
       "original": {
         "owner": "vacp2p",
-        "ref": "chore/bump-ffi-version",
+        "ref": "fix/cbind/nim-ffi-bump",
         "repo": "nim-libp2p",
         "type": "github"
       }

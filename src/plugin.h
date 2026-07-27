@@ -29,7 +29,7 @@
 // `static inline` wrappers plus C++-linkage callback typedefs. It must NOT be
 // wrapped in an extra `extern "C"` here, or the reply-callback typedefs would
 // take C linkage and no longer match the C++ static callbacks we pass in.
-#include "lib/libp2p.h"
+#include <libp2p.h>
 
 #include "config.h"
 #include "metric.h"
@@ -89,11 +89,6 @@ inline StdLogosResult bufferToResult(const SyncResult& r) {
     return {true, base64Encode(r.buffer), ""};
 }
 
-// Hex-encodes the buffer so private keys match the hex `privKey` config format.
-inline StdLogosResult bufferToHexResult(const SyncResult& r) {
-    return {true, hexEncode(r.buffer.data(), r.buffer.size()), ""};
-}
-
 // Non-throwing JSON parse — malformed cbinding output yields a failed result
 // instead of propagating an exception.
 inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPrefix) {
@@ -135,7 +130,6 @@ public:
     StdLogosResult start();
     StdLogosResult stop();
     StdLogosResult publicKey();
-    StdLogosResult newPrivateKey();
 
     StdLogosResult connectPeer(const std::string& peerId, const std::vector<std::string>& multiaddrs, int64_t timeoutMs);
     StdLogosResult disconnectPeer(const std::string& peerId);
@@ -220,10 +214,7 @@ private:
     std::vector<BootstrapNode> m_bootstrapNodes;
 
     SecureBytes m_privKey;
-    int64_t m_keyType = KEY_SCHEME_SECP256K1;
 
-    SyncResult generatePrivateKey(int64_t scheme);
-    SyncResult requestPrivateKey(LibP2PCtx* c, int64_t scheme);
     // Creates a context from `cfg` without adopting it as the member `ctx`.
     SyncResult spawnContext(Libp2pConfig& cfg);
 

@@ -47,25 +47,22 @@ LOGOS_TEST(config_from_json_overlay) {
     LOGOS_ASSERT_EQ(opts.maxInConnections, 25);
 }
 
-LOGOS_TEST(config_from_json_key_type_and_priv_key) {
+LOGOS_TEST(config_from_json_priv_key) {
     auto j = nlohmann::json::parse(R"({
-        "keyType": "ed25519",
         "privKey": "0a0bFF"
     })");
 
     Libp2pModuleOptions opts;
     libp2p_module_config::apply(j, opts);
 
-    LOGOS_ASSERT_EQ(opts.keyType, KEY_SCHEME_ED25519);
     LOGOS_ASSERT_EQ(opts.privKey.size(), 3u);
     LOGOS_ASSERT_EQ(opts.privKey[0], 0x0au);
     LOGOS_ASSERT_EQ(opts.privKey[1], 0x0bu);
     LOGOS_ASSERT_EQ(opts.privKey[2], 0xffu);
 }
 
-LOGOS_TEST(config_key_type_defaults_to_secp256k1) {
+LOGOS_TEST(config_priv_key_defaults_to_empty) {
     Libp2pModuleOptions opts;
-    LOGOS_ASSERT_EQ(opts.keyType, KEY_SCHEME_SECP256K1);
     LOGOS_ASSERT_TRUE(opts.privKey.empty());
 }
 
@@ -85,11 +82,12 @@ LOGOS_TEST(config_load_odd_priv_key_hex_returns_defaults) {
 }
 
 LOGOS_TEST(config_priv_key_stable_peer_identity) {
-    Libp2pModuleImpl keyGen;
-    auto keyRes = keyGen.newPrivateKey();
-    LOGOS_ASSERT_TRUE(keyRes.success);
-    std::string hexKey = keyRes.value.get<std::string>();
-    auto priv = decodeHex(hexKey);
+    // A fixed, valid secp256k1 key in libp2p's protobuf form (field 1 = scheme
+    // 2, field 2 = 32 raw key bytes). A supplied key must yield the same peer id
+    // across restarts.
+    auto priv = decodeHex(
+        "08021220"
+        "0101010101010101010101010101010101010101010101010101010101010101");
 
     std::string firstPeerId;
     {

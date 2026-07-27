@@ -92,10 +92,12 @@ StdLogosResult Libp2pModuleImpl::protocolRequest(const std::string& argsJson) {
         return {true, json::object(), ""};
     }
 
-    auto r = callSyncStreamWith(streamId, "Failed to read LP from stream",
-        [&](libp2p_stream_t* s, SyncPromise* p) {
-            return libp2p_stream_readLp(ctx, s, maxSize,
-                                        &Libp2pModuleImpl::promiseBufferCallback, p);
+    StreamReadLpRequest readReq{};
+    readReq.streamId = streamId;
+    readReq.maxSize = static_cast<int64_t>(maxSize);
+    auto r = callSyncWith("Failed to read LP from stream",
+        [&](SyncPromise* p) {
+            return libp2p_ctx_stream_read_lp(ctx, &readReq, &Libp2pModuleImpl::cbRead, p);
         },
         bufferToResult, awaitTimeoutFor(timeoutMs));
     streamRelease(streamId);
@@ -122,10 +124,12 @@ StdLogosResult Libp2pModuleImpl::streamReadLpJson(const std::string& argsJson) {
         return {false, {}, "streamReadLpJson: bad args (need {streamId, maxSize?, timeoutMs?})"};
     }
 
-    auto r = callSyncStreamWith(streamId, "Failed to read LP from stream",
-        [&](libp2p_stream_t* s, SyncPromise* p) {
-            return libp2p_stream_readLp(ctx, s, maxSize,
-                                        &Libp2pModuleImpl::promiseBufferCallback, p);
+    StreamReadLpRequest readReq{};
+    readReq.streamId = streamId;
+    readReq.maxSize = static_cast<int64_t>(maxSize);
+    auto r = callSyncWith("Failed to read LP from stream",
+        [&](SyncPromise* p) {
+            return libp2p_ctx_stream_read_lp(ctx, &readReq, &Libp2pModuleImpl::cbRead, p);
         },
         bufferToResult, awaitTimeoutFor(timeoutMs));
     if (!r.success) return r;
