@@ -17,7 +17,7 @@ called `Libp2pModuleImpl` that you can embed directly into your application.
 
 ## Step 1: Include the module header and instantiate a node
 
-Every program starts by including the module's single public header:
+Every program starts by including the module's single public header - `"plugin.h"`:
 ```cpp
 #include <cstdio>
 #include <string>
