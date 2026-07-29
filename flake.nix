@@ -17,9 +17,28 @@
 
   outputs = inputs@{ logos-module-builder, ... }:
     let
+      nixpkgs = logos-module-builder.inputs.nixpkgs;
+      systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
+
+      forEachSystem = f: builtins.listToAttrs (map (system: {
+        name = system;
+        value = f system;
+      }) systems);
+
+      libp2pRuntimeFiltering = {
+        packages = forEachSystem (system: {
+          cbind = inputs.libp2p.packages.${system}.cbind.overrideAttrs (old: {
+            buildPhase = builtins.replaceStrings
+              [ "--threads:on --opt:size --noMain --mm:refc --d:metrics" ]
+              [ "--threads:on --opt:size --noMain --mm:refc --d:metrics -d:chronicles_runtime_filtering=on" ]
+              old.buildPhase;
+          });
+        });
+      };
+
       externalLibInputs = {
         libp2p = {
-          input = inputs.libp2p;
+          input = libp2pRuntimeFiltering;
           packages.default = "cbind";
         };
       };
@@ -33,14 +52,6 @@
           dir = ./tests;
         };
       };
-
-      nixpkgs = logos-module-builder.inputs.nixpkgs;
-      systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
-
-      forEachSystem = f: builtins.listToAttrs (map (system: {
-        name = system;
-        value = f system;
-      }) systems);
 
       # Pre-resolved store paths for the two .lgx bundles the e2e installs.
       e2eEnv = system: {
