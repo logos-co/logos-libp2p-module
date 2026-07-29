@@ -12,6 +12,10 @@ It provides:
 For guided walkthroughs and complete usage demonstrations, see the
 [tutorials](./tutorial/README.md).
 
+Some projects that use `logos-libp2p-module`:
+- [Demo Chat](https://github.com/logos-co/libp2p-module-demo-chat) - is standalone project that demonstrates usage of `logos-libp2p-module` implementing chat via GossipSub,
+- open PR to include your project
+
 ---
 
 # Configuration
