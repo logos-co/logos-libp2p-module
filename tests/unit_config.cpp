@@ -23,27 +23,27 @@ namespace cfg = libp2p_module_config;
 
 LOGOS_TEST(parse_transport_tcp) {
     auto j = json::parse(R"({"transport": "tcp"})");
-    LOGOS_ASSERT_EQ(cfg::parseTransport(j, LIBP2P_TRANSPORT_QUIC), LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(cfg::parseTransport(j, TRANSPORT_TYPE_QUIC), TRANSPORT_TYPE_TCP);
 }
 
 LOGOS_TEST(parse_transport_quic_and_alias) {
     auto quic = json::parse(R"({"transport": "quic"})");
     auto alias = json::parse(R"({"transport": "quic-v1"})");
-    LOGOS_ASSERT_EQ(cfg::parseTransport(quic, LIBP2P_TRANSPORT_TCP), LIBP2P_TRANSPORT_QUIC);
-    LOGOS_ASSERT_EQ(cfg::parseTransport(alias, LIBP2P_TRANSPORT_TCP), LIBP2P_TRANSPORT_QUIC);
+    LOGOS_ASSERT_EQ(cfg::parseTransport(quic, TRANSPORT_TYPE_TCP), TRANSPORT_TYPE_QUIC);
+    LOGOS_ASSERT_EQ(cfg::parseTransport(alias, TRANSPORT_TYPE_TCP), TRANSPORT_TYPE_QUIC);
 }
 
 LOGOS_TEST(parse_transport_unknown_keeps_fallback) {
     auto j = json::parse(R"({"transport": "carrier-pigeon"})");
-    LOGOS_ASSERT_EQ(cfg::parseTransport(j, LIBP2P_TRANSPORT_TCP), LIBP2P_TRANSPORT_TCP);
-    LOGOS_ASSERT_EQ(cfg::parseTransport(j, LIBP2P_TRANSPORT_QUIC), LIBP2P_TRANSPORT_QUIC);
+    LOGOS_ASSERT_EQ(cfg::parseTransport(j, TRANSPORT_TYPE_TCP), TRANSPORT_TYPE_TCP);
+    LOGOS_ASSERT_EQ(cfg::parseTransport(j, TRANSPORT_TYPE_QUIC), TRANSPORT_TYPE_QUIC);
 }
 
 LOGOS_TEST(parse_transport_missing_or_wrong_type_keeps_fallback) {
     auto missing = json::parse(R"({})");
     auto wrong = json::parse(R"({"transport": 7})");
-    LOGOS_ASSERT_EQ(cfg::parseTransport(missing, LIBP2P_TRANSPORT_QUIC), LIBP2P_TRANSPORT_QUIC);
-    LOGOS_ASSERT_EQ(cfg::parseTransport(wrong, LIBP2P_TRANSPORT_QUIC), LIBP2P_TRANSPORT_QUIC);
+    LOGOS_ASSERT_EQ(cfg::parseTransport(missing, TRANSPORT_TYPE_QUIC), TRANSPORT_TYPE_QUIC);
+    LOGOS_ASSERT_EQ(cfg::parseTransport(wrong, TRANSPORT_TYPE_QUIC), TRANSPORT_TYPE_QUIC);
 }
 
 LOGOS_TEST(apply_overlays_present_keys) {
@@ -65,7 +65,7 @@ LOGOS_TEST(apply_overlays_present_keys) {
     LOGOS_ASSERT_EQ(opts.bootstrapNodes.size(), 1u);
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes[0].first == "16Uiu2bootstrap");
     LOGOS_ASSERT_EQ(opts.bootstrapNodes[0].second.size(), 2u);
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_QUIC);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_QUIC);
     LOGOS_ASSERT_EQ(opts.maxConnections, 200);
     LOGOS_ASSERT_FALSE(opts.mountServiceDiscovery);
     // Untouched keys keep their defaults.
@@ -82,7 +82,7 @@ LOGOS_TEST(apply_partial_keeps_defaults) {
     LOGOS_ASSERT_EQ(opts.maxConnsPerPeer, 4);
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
 }
 
 LOGOS_TEST(apply_non_object_is_noop) {
@@ -90,7 +90,7 @@ LOGOS_TEST(apply_non_object_is_noop) {
     cfg::apply(json::parse(R"([1, 2, 3])"), opts);
     cfg::apply(json("just a string"), opts);
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
     LOGOS_ASSERT_EQ(opts.maxConnections, 50);
 }
 
@@ -137,7 +137,7 @@ LOGOS_TEST(load_unset_returns_defaults) {
     Libp2pModuleOptions opts = Libp2pModuleOptions::load();
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
 }
 
 LOGOS_TEST(load_inline_json) {
@@ -145,13 +145,13 @@ LOGOS_TEST(load_inline_json) {
     Libp2pModuleOptions opts = Libp2pModuleOptions::load();
     LOGOS_ASSERT_EQ(opts.addrs.size(), 1u);
     LOGOS_ASSERT_TRUE(opts.addrs[0] == "/ip4/0.0.0.0/tcp/7000");
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_QUIC);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_QUIC);
 }
 
 LOGOS_TEST(load_inline_json_leading_whitespace) {
     ScopedModuleConfig c("  \n\t{\"transport\": \"quic\"}");
     Libp2pModuleOptions opts = Libp2pModuleOptions::load();
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_QUIC);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_QUIC);
 }
 
 LOGOS_TEST(load_from_file) {
@@ -178,7 +178,7 @@ LOGOS_TEST(load_invalid_json_returns_defaults) {
     Libp2pModuleOptions opts = Libp2pModuleOptions::load();
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
 }
 
 // Valid JSON but a wrong-typed field must not throw out of load().
@@ -193,7 +193,7 @@ LOGOS_TEST(options_defaults) {
     Libp2pModuleOptions opts;
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
     LOGOS_ASSERT_FALSE(opts.autonat);
     LOGOS_ASSERT_FALSE(opts.autonatV2);
     LOGOS_ASSERT_FALSE(opts.autonatV2Server);
@@ -209,7 +209,7 @@ LOGOS_TEST(options_designated_init) {
     Libp2pModuleOptions opts{ .circuitRelay = true };
     LOGOS_ASSERT_TRUE(opts.circuitRelay);
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
     LOGOS_ASSERT_FALSE(opts.autonat);
 }
 
@@ -220,7 +220,7 @@ LOGOS_TEST(from_json_valid_overlays_and_sets_ok) {
     LOGOS_ASSERT_TRUE(ok);
     LOGOS_ASSERT_EQ(opts.addrs.size(), 1u);
     LOGOS_ASSERT_TRUE(opts.addrs[0] == "/ip4/0.0.0.0/tcp/9000");
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_QUIC);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_QUIC);
 }
 
 LOGOS_TEST(from_json_invalid_json_clears_ok) {

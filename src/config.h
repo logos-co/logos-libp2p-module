@@ -10,16 +10,12 @@
 
 #include <nlohmann/json.hpp>
 
-extern "C" {
-#include <libp2p.h>
-}
-
 #include "utils.h"
 
 struct Libp2pModuleOptions {
     std::vector<std::string> addrs = {};
     std::vector<std::pair<std::string, std::vector<std::string>>> bootstrapNodes = {};
-    int transport = LIBP2P_TRANSPORT_TCP;
+    TransportType transport = TRANSPORT_TYPE_TCP;
     bool autonat = false;
     bool autonatV2 = false;
     bool autonatV2Server = false;
@@ -36,8 +32,6 @@ struct Libp2pModuleOptions {
 
     // Raw private key bytes for a stable peer identity; empty generates a fresh key.
     std::vector<uint8_t> privKey = {};
-    // Scheme for the generated key; ignored when privKey is supplied.
-    int keyType = LIBP2P_PK_SECP256K1;
 
     /// Builds options from the LIBP2P_MODULE_CONFIG deployment config (codegen
     /// default-constructs a loaded module). See readme; absent/invalid → defaults.
@@ -73,27 +67,14 @@ inline std::string readSource() {
     return ss.str();
 }
 
-inline int parseTransport(const nlohmann::json& j, int fallback) {
+inline TransportType parseTransport(const nlohmann::json& j, TransportType fallback) {
     auto it = j.find("transport");
     if (it == j.end() || !it->is_string()) {
         return fallback;
     }
     std::string t = it->get<std::string>();
-    if (t == "tcp") return LIBP2P_TRANSPORT_TCP;
-    if (t == "quic" || t == "quic-v1") return LIBP2P_TRANSPORT_QUIC;
-    return fallback;
-}
-
-inline int parseKeyType(const nlohmann::json& j, int fallback) {
-    auto it = j.find("keyType");
-    if (it == j.end() || !it->is_string()) {
-        return fallback;
-    }
-    std::string t = it->get<std::string>();
-    if (t == "rsa") return LIBP2P_PK_RSA;
-    if (t == "ed25519") return LIBP2P_PK_ED25519;
-    if (t == "secp256k1") return LIBP2P_PK_SECP256K1;
-    if (t == "ecdsa") return LIBP2P_PK_ECDSA;
+    if (t == "tcp") return TRANSPORT_TYPE_TCP;
+    if (t == "quic" || t == "quic-v1") return TRANSPORT_TYPE_QUIC;
     return fallback;
 }
 
@@ -112,7 +93,6 @@ inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
         }
     }
     o.transport = parseTransport(j, o.transport);
-    o.keyType = parseKeyType(j, o.keyType);
     if (auto it = j.find("privKey"); it != j.end()) {
         if (!it->is_string()) {
             throw std::invalid_argument("privKey must be a string");

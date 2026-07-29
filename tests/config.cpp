@@ -39,7 +39,7 @@ LOGOS_TEST(config_from_json_overlay) {
     LOGOS_ASSERT_EQ(opts.bootstrapNodes.size(), 1u);
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes[0].first == "16Uiu2bootstrap");
     LOGOS_ASSERT_EQ(opts.bootstrapNodes[0].second.size(), 2u);
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_QUIC);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_QUIC);
     LOGOS_ASSERT_EQ(opts.maxConnections, 200);
     LOGOS_ASSERT_FALSE(opts.mountServiceDiscovery);
     // Untouched keys keep their defaults.
@@ -47,25 +47,22 @@ LOGOS_TEST(config_from_json_overlay) {
     LOGOS_ASSERT_EQ(opts.maxInConnections, 25);
 }
 
-LOGOS_TEST(config_from_json_key_type_and_priv_key) {
+LOGOS_TEST(config_from_json_priv_key) {
     auto j = nlohmann::json::parse(R"({
-        "keyType": "ed25519",
         "privKey": "0a0bFF"
     })");
 
     Libp2pModuleOptions opts;
     libp2p_module_config::apply(j, opts);
 
-    LOGOS_ASSERT_EQ(opts.keyType, LIBP2P_PK_ED25519);
     LOGOS_ASSERT_EQ(opts.privKey.size(), 3u);
     LOGOS_ASSERT_EQ(opts.privKey[0], 0x0au);
     LOGOS_ASSERT_EQ(opts.privKey[1], 0x0bu);
     LOGOS_ASSERT_EQ(opts.privKey[2], 0xffu);
 }
 
-LOGOS_TEST(config_key_type_defaults_to_secp256k1) {
+LOGOS_TEST(config_priv_key_defaults_to_empty) {
     Libp2pModuleOptions opts;
-    LOGOS_ASSERT_EQ(opts.keyType, LIBP2P_PK_SECP256K1);
     LOGOS_ASSERT_TRUE(opts.privKey.empty());
 }
 
@@ -85,11 +82,12 @@ LOGOS_TEST(config_load_odd_priv_key_hex_returns_defaults) {
 }
 
 LOGOS_TEST(config_priv_key_stable_peer_identity) {
-    Libp2pModuleImpl keyGen;
-    auto keyRes = keyGen.newPrivateKey();
-    LOGOS_ASSERT_TRUE(keyRes.success);
-    std::string hexKey = keyRes.value.get<std::string>();
-    auto priv = decodeHex(hexKey);
+    // A fixed, valid secp256k1 key in libp2p's protobuf form (field 1 = scheme
+    // 2, field 2 = 32 raw key bytes). A supplied key must yield the same peer id
+    // across restarts.
+    auto priv = decodeHex(
+        "08021220"
+        "0101010101010101010101010101010101010101010101010101010101010101");
 
     std::string firstPeerId;
     {
@@ -118,7 +116,7 @@ LOGOS_TEST(config_from_json_partial_keeps_defaults) {
     LOGOS_ASSERT_EQ(opts.maxConnsPerPeer, 4);
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
 }
 
 LOGOS_TEST(config_load_unset_returns_defaults) {
@@ -126,7 +124,7 @@ LOGOS_TEST(config_load_unset_returns_defaults) {
     Libp2pModuleOptions opts = Libp2pModuleOptions::load();
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
 }
 
 LOGOS_TEST(config_load_inline_json) {
@@ -135,14 +133,14 @@ LOGOS_TEST(config_load_inline_json) {
     Libp2pModuleOptions opts = Libp2pModuleOptions::load();
     LOGOS_ASSERT_EQ(opts.addrs.size(), 1u);
     LOGOS_ASSERT_TRUE(opts.addrs[0] == "/ip4/0.0.0.0/tcp/7000");
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_QUIC);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_QUIC);
 }
 
 LOGOS_TEST(config_load_inline_json_leading_whitespace) {
     ScopedModuleConfig cfg("  \n\t{\"transport\": \"quic\"}");
 
     Libp2pModuleOptions opts = Libp2pModuleOptions::load();
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_QUIC);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_QUIC);
 }
 
 LOGOS_TEST(config_load_from_file) {
@@ -170,7 +168,7 @@ LOGOS_TEST(config_load_invalid_json_returns_defaults) {
     Libp2pModuleOptions opts = Libp2pModuleOptions::load();
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
 }
 
 // Valid JSON but a wrong-typed field must not throw out of construction.
@@ -186,7 +184,7 @@ LOGOS_TEST(config_options_defaults) {
     Libp2pModuleOptions opts;
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
     LOGOS_ASSERT_FALSE(opts.autonat);
     LOGOS_ASSERT_FALSE(opts.autonatV2);
     LOGOS_ASSERT_FALSE(opts.autonatV2Server);
@@ -203,7 +201,7 @@ LOGOS_TEST(config_options_designated_init) {
     LOGOS_ASSERT_TRUE(opts.circuitRelay);
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
-    LOGOS_ASSERT_EQ(opts.transport, LIBP2P_TRANSPORT_TCP);
+    LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
     LOGOS_ASSERT_FALSE(opts.autonat);
     LOGOS_ASSERT_FALSE(opts.autonatV2);
     LOGOS_ASSERT_FALSE(opts.autonatV2Server);
@@ -284,7 +282,7 @@ LOGOS_TEST(config_tcp_transport) {
 }
 
 LOGOS_TEST(config_quic_transport) {
-    Libp2pModuleImpl plugin(Libp2pModuleOptions{ .transport = LIBP2P_TRANSPORT_QUIC });
+    Libp2pModuleImpl plugin(Libp2pModuleOptions{ .transport = TRANSPORT_TYPE_QUIC });
     LOGOS_ASSERT_TRUE(plugin.start().success);
 
     auto res = plugin.peerInfo();

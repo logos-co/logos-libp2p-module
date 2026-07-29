@@ -1,124 +1,77 @@
 #include "plugin.h"
 
-#include <cstring>
-
-uint64_t Libp2pModuleImpl::addStream(libp2p_stream_t* stream) {
-    auto id = m_nextStreamId.fetch_add(1);
-    auto entry = std::make_shared<StreamEntry>(stream);
-    std::unique_lock<std::shared_mutex> lock(m_streamsLock);
-    m_streams[id] = std::move(entry);
-    return id;
+namespace {
+// The Nim side caps a single read at MAX_READ_BYTES and carries the size as an
+// int64, so screening here both honours the cap and keeps a huge uint64 from
+// arriving as a negative length.
+bool withinReadCap(uint64_t v) {
+    return v <= static_cast<uint64_t>(MAX_READ_BYTES);
 }
 
-std::shared_ptr<Libp2pModuleImpl::StreamEntry>
-Libp2pModuleImpl::getStream(uint64_t id) const {
-    std::shared_lock<std::shared_mutex> lock(m_streamsLock);
-    auto it = m_streams.find(id);
-    return (it != m_streams.end()) ? it->second : nullptr;
+std::string tooLarge(const char* what) {
+    return std::string(what) + " exceeds the " + std::to_string(MAX_READ_BYTES) +
+           " byte read cap";
 }
-
-std::shared_ptr<Libp2pModuleImpl::StreamEntry>
-Libp2pModuleImpl::removeStream(uint64_t id) {
-    std::shared_ptr<StreamEntry> entry;
-    {
-        std::unique_lock<std::shared_mutex> lock(m_streamsLock);
-        auto it = m_streams.find(id);
-        if (it == m_streams.end()) return nullptr;
-        entry = std::move(it->second);
-        m_streams.erase(it);
-    }
-    removeInboundStream(id);
-    return entry;
-}
-
-void Libp2pModuleImpl::removeInboundStream(uint64_t id) {
-    std::lock_guard<std::mutex> lock(m_inboundStreamMutex);
-    for (auto& [proto, q] : m_inboundStreamQueues) {
-        for (auto it = q.begin(); it != q.end(); ++it) {
-            if (*it == id) {
-                q.erase(it);
-                return;
-            }
-        }
-    }
-}
-
-StdLogosResult Libp2pModuleImpl::streamClose(uint64_t streamId) {
-    return callSyncStream(streamId, "Failed to close stream",
-        [&](libp2p_stream_t* s, SyncPromise* p) {
-            return libp2p_stream_close(ctx, s, &Libp2pModuleImpl::promiseCallback, p);
-        });
-}
-
-StdLogosResult Libp2pModuleImpl::streamCloseWithEOF(uint64_t streamId) {
-    return callSyncStream(streamId, "Failed to close stream with EOF",
-        [&](libp2p_stream_t* s, SyncPromise* p) {
-            return libp2p_stream_closeWithEOF(ctx, s, &Libp2pModuleImpl::promiseCallback, p);
-        });
-}
-
-StdLogosResult Libp2pModuleImpl::streamRelease(uint64_t streamId) {
-    if (!ctx || streamId == 0) return {false, {}, "Invalid stream"};
-
-    auto entry = getStream(streamId);
-    if (!entry) return {false, {}, "Stream not found"};
-
-    std::unique_lock<std::shared_mutex> opLock(entry->mtx);
-    if (entry->released) return {false, {}, "Stream already released"};
-
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_stream_release(ctx, entry->ptr,
-                                    &Libp2pModuleImpl::promiseCallback, p);
-    if (ret != RET_OK) {
-        delete p;
-        return {false, {}, "Failed to release stream (ret=" + std::to_string(ret) + ")"};
-    }
-    entry->released = true;
-
-    auto r = awaitResult(f);
-
-    opLock.unlock();
-    removeStream(streamId);
-
-    if (!r.ok) return {false, {}, r.message};
-    return {true, {}, ""};
-}
+}  // namespace
 
 StdLogosResult Libp2pModuleImpl::streamReadExactly(uint64_t streamId, uint64_t len) {
-    return callSyncStreamWith(streamId, "Failed to read from stream",
-        [&](libp2p_stream_t* s, SyncPromise* p) {
-            return libp2p_stream_readExactly(ctx, s, len,
-                                             &Libp2pModuleImpl::promiseBufferCallback, p);
+    if (!withinReadCap(len)) return {false, {}, tooLarge("Failed to read from stream: length")};
+    StreamReadExactlyRequest req{};
+    req.streamId = streamId;
+    req.numBytes = static_cast<int64_t>(len);
+    return callSyncWith("Failed to read from stream",
+        [&](SyncPromise* p) {
+            return libp2p_ctx_stream_read_exactly(ctx, &req, &Libp2pModuleImpl::cbRead, p);
         },
         bufferToResult);
 }
 
 StdLogosResult Libp2pModuleImpl::streamReadLp(uint64_t streamId, uint64_t maxSize) {
-    return callSyncStreamWith(streamId, "Failed to read LP from stream",
-        [&](libp2p_stream_t* s, SyncPromise* p) {
-            return libp2p_stream_readLp(ctx, s, maxSize,
-                                        &Libp2pModuleImpl::promiseBufferCallback, p);
+    if (!withinReadCap(maxSize)) {
+        return {false, {}, tooLarge("Failed to read LP from stream: maxSize")};
+    }
+    StreamReadLpRequest req{};
+    req.streamId = streamId;
+    req.maxSize = static_cast<int64_t>(maxSize);
+    return callSyncWith("Failed to read LP from stream",
+        [&](SyncPromise* p) {
+            return libp2p_ctx_stream_read_lp(ctx, &req, &Libp2pModuleImpl::cbRead, p);
         },
         bufferToResult);
 }
 
 StdLogosResult Libp2pModuleImpl::streamWrite(uint64_t streamId, const std::string& data) {
-    return callSyncStream(streamId, "Failed to write to stream",
-        [&](libp2p_stream_t* s, SyncPromise* p) {
-            return libp2p_stream_write(ctx, s,
-                                       reinterpret_cast<const uint8_t*>(data.data()),
-                                       data.size(),
-                                       &Libp2pModuleImpl::promiseCallback, p);
-        });
+    StreamWriteRequest req{};
+    req.streamId = streamId;
+    req.data = nimffiBytes(data);
+    return callSync("Failed to write to stream", [&](SyncPromise* p) {
+        return libp2p_ctx_stream_write(ctx, &req, &Libp2pModuleImpl::cbBool, p);
+    });
 }
 
 StdLogosResult Libp2pModuleImpl::streamWriteLp(uint64_t streamId, const std::string& data) {
-    return callSyncStream(streamId, "Failed to write LP to stream",
-        [&](libp2p_stream_t* s, SyncPromise* p) {
-            return libp2p_stream_writeLp(ctx, s,
-                                         reinterpret_cast<const uint8_t*>(data.data()),
-                                         data.size(),
-                                         &Libp2pModuleImpl::promiseCallback, p);
-        });
+    StreamWriteRequest req{};
+    req.streamId = streamId;
+    req.data = nimffiBytes(data);
+    return callSync("Failed to write LP to stream", [&](SyncPromise* p) {
+        return libp2p_ctx_stream_write_lp(ctx, &req, &Libp2pModuleImpl::cbBool, p);
+    });
+}
+
+StdLogosResult Libp2pModuleImpl::streamClose(uint64_t streamId) {
+    return callSync("Failed to close stream", [&](SyncPromise* p) {
+        return libp2p_ctx_stream_close(ctx, streamId, &Libp2pModuleImpl::cbBool, p);
+    });
+}
+
+StdLogosResult Libp2pModuleImpl::streamCloseWithEOF(uint64_t streamId) {
+    return callSync("Failed to close stream with EOF", [&](SyncPromise* p) {
+        return libp2p_ctx_stream_close_with_eof(ctx, streamId, &Libp2pModuleImpl::cbBool, p);
+    });
+}
+
+StdLogosResult Libp2pModuleImpl::streamRelease(uint64_t streamId) {
+    return callSync("Failed to release stream", [&](SyncPromise* p) {
+        return libp2p_ctx_stream_release(ctx, streamId, &Libp2pModuleImpl::cbBool, p);
+    });
 }
