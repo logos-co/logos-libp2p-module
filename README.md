@@ -12,6 +12,12 @@ It provides:
 For guided walkthroughs and complete usage demonstrations, see the
 [tutorials](./tutorial/README.md).
 
+
+See how other projects are using `logos-libp2p-module`:
+  - [Demo Chat](https://github.com/logos-co/libp2p-module-demo-chat) is a standalone terminal application that demonstrates how to build a chat
+  experience with GossipSub.
+  - To add another project to this list, open a pull request with a link and a short description.
+
 ---
 
 # Configuration
