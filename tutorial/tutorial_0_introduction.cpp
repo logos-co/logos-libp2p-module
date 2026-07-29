@@ -40,8 +40,22 @@
 /// operation fails, they print a useful error message to `stderr` and return
 /// `1`. Successful tutorials print progress to `stdout` and return `0`.
 ///
-/// The `stdout` stream can be noisy because logs from the wrapped C binding
-/// are also included. This is tracked in [issue #79](https://github.com/logos-co/logos-libp2p-module/issues/79).
+/// ## Controlling libp2p Logs
+///
+/// The wrapped libp2p binding can emit runtime logs. Tutorials disable those
+/// logs by default so `stdout` only shows the tutorial's own progress messages.
+/// Use `setLogLevel()` with `LogLevel::None` to disable logs, or choose another
+/// level such as `LogLevel::Info`, `LogLevel::Debug`, or `LogLevel::Trace` when
+/// you need more detail while debugging:
+///
+/// ```cpp
+/// StdLogosResult logRes = node.setLogLevel(LogLevel::None);
+/// if (!logRes.success) {
+///     fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+///             logRes.error.c_str());
+///     return 1;
+/// }
+/// ```
 ///
 /// ## Convert JSON Values Explicitly
 ///
@@ -83,6 +97,13 @@ int main()
 ///
 /// Even the first real operation returns a result. Check it before moving on.
     Libp2pModuleImpl node;
+
+    StdLogosResult logRes = node.setLogLevel(LogLevel::None);
+    if (!logRes.success) {
+        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+                logRes.error.c_str());
+        return 1;
+    }
 
     StdLogosResult startRes = node.start();
     if (!startRes.success) {

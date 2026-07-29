@@ -34,6 +34,13 @@ int main()
     // By default it listens on 127.0.0.1 with a random port (tcp/0).
     Libp2pModuleImpl node;
 
+    StdLogosResult logRes = node.setLogLevel(LogLevel::None);
+    if (!logRes.success) {
+        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+                logRes.error.c_str());
+        return 1;
+    }
+
     printf("Node object created (not yet started)\n");
 
 ```

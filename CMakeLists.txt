@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(Libp2pModulePlugin LANGUAGES CXX)
 
+include(CheckCXXSourceCompiles)
+
 if(DEFINED ENV{LOGOS_MODULE_BUILDER_ROOT})
     include($ENV{LOGOS_MODULE_BUILDER_ROOT}/cmake/LogosModule.cmake)
 else()
@@ -30,5 +32,20 @@ logos_module(
     LINK_LIBRARIES
         tinycbor
 )
+
+set(CMAKE_REQUIRED_INCLUDES ${LIBP2P_INCLUDE_DIR})
+check_cxx_source_compiles("
+    #include <libp2p.h>
+    int main() {
+        auto fn = &libp2p_ctx_set_log_level;
+        (void)fn;
+        return 0;
+    }
+" HAVE_LIBP2P_CTX_SET_LOG_LEVEL)
+
+if(HAVE_LIBP2P_CTX_SET_LOG_LEVEL)
+    target_compile_definitions(libp2p_module_module_plugin
+        PRIVATE HAVE_LIBP2P_CTX_SET_LOG_LEVEL)
+endif()
 
 add_subdirectory(tutorial)

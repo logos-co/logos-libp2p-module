@@ -76,6 +76,13 @@ The Client connects to the Relay before dialing the Destination.
     Libp2pModuleImpl dest(optsDest);
     Libp2pModuleImpl client(optsClient);
 
+    StdLogosResult logRes = relay.setLogLevel(LogLevel::None);
+    if (!logRes.success) {
+        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+                logRes.error.c_str());
+        return 1;
+    }
+
     printf("Starting nodes...\n");
 
     StdLogosResult relayStartRes = relay.start();

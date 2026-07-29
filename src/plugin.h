@@ -53,6 +53,17 @@ struct SyncResult {
     LibP2PCtx* newCtx = nullptr;
 };
 
+enum class LogLevel : int64_t {
+    None = 0,
+    Trace = 1,
+    Debug = 2,
+    Info = 3,
+    Notice = 4,
+    Warn = 5,
+    Error = 6,
+    Fatal = 7,
+};
+
 using SyncPromise = std::promise<SyncResult>;
 
 // Resolves and reclaims a heap SyncPromise. Every libp2p callback owns its
@@ -126,6 +137,7 @@ public:
 
     StdLogosResult createNode(const std::string& config);
     StdLogosResult getNodeInfo(const std::string& field);
+    StdLogosResult setLogLevel(LogLevel level);
 
     StdLogosResult start();
     StdLogosResult stop();

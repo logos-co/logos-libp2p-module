@@ -63,6 +63,13 @@ For simplicity, both mount the built-in `/ipfs/ping/1.0.0` protocol
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
 
+    StdLogosResult logRes = nodeA.setLogLevel(LogLevel::None);
+    if (!logRes.success) {
+        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+                logRes.error.c_str());
+        return 1;
+    }
+
     StdLogosResult startARes = nodeA.start();
     if (!startARes.success) {
         fprintf(stderr, "Node A failed to start: %s\n",

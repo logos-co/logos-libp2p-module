@@ -56,6 +56,13 @@ real network, one node would be a well-known bootstrap peer.
     // Node A is the bootstrap — no special config needed, just its address.
 
     Libp2pModuleImpl nodeA(optsA);
+    StdLogosResult logRes = nodeA.setLogLevel(LogLevel::None);
+    if (!logRes.success) {
+        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+                logRes.error.c_str());
+        return 1;
+    }
+
     printf("Starting Node A (bootstrap)...\n");
     StdLogosResult startARes = nodeA.start();
     if (!startARes.success) {

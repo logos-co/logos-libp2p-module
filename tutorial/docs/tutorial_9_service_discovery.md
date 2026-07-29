@@ -48,6 +48,13 @@ It relays service advertisements and lookup queries.
     optsBootstrap.mountServiceDiscovery = true;
 
     Libp2pModuleImpl bootstrap(optsBootstrap);
+    StdLogosResult logRes = bootstrap.setLogLevel(LogLevel::None);
+    if (!logRes.success) {
+        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+                logRes.error.c_str());
+        return 1;
+    }
+
     StdLogosResult bootstrapStartRes = bootstrap.start();
     if (!bootstrapStartRes.success) {
         fprintf(stderr, "Bootstrap failed: %s\n",

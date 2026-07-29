@@ -65,6 +65,13 @@ The most explicit way to configure a node is by constructing
 
     Libp2pModuleImpl node(options);
 
+    StdLogosResult logRes = node.setLogLevel(LogLevel::None);
+    if (!logRes.success) {
+        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+                logRes.error.c_str());
+        return 1;
+    }
+
     StdLogosResult startRes = node.start();
     if (!startRes.success) {
         fprintf(stderr, "Failed to start node: %s\n",

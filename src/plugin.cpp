@@ -213,6 +213,24 @@ StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
     return createContext();
 }
 
+StdLogosResult Libp2pModuleImpl::setLogLevel(LogLevel level) {
+#ifdef HAVE_LIBP2P_CTX_SET_LOG_LEVEL
+    if (!ctx) {
+        auto created = createContext();
+        if (!created.success) return created;
+    }
+    return callSync("Failed to set log level", [&](SyncPromise* p) {
+        return libp2p_ctx_set_log_level(ctx, static_cast<int64_t>(level),
+                                        &Libp2pModuleImpl::cbBool, p);
+    });
+#else
+    // Older generated cbind headers do not expose runtime log filtering.
+    // Keep this a no-op so callers can use one source path across cbind revs.
+    (void)level;
+    return {true, {}, ""};
+#endif
+}
+
 void Libp2pModuleImpl::destroyContext() {
     if (!ctx) {
         return;
