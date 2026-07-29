@@ -54,14 +54,14 @@ struct SyncResult {
 };
 
 enum class LogLevel : int64_t {
-    None = 0,
-    Trace = 1,
-    Debug = 2,
-    Info = 3,
-    Notice = 4,
-    Warn = 5,
-    Error = 6,
-    Fatal = 7,
+    None = LOG_LEVEL_NONE,
+    Trace = LOG_LEVEL_TRACE,
+    Debug = LOG_LEVEL_DEBUG,
+    Info = LOG_LEVEL_INFO,
+    Notice = LOG_LEVEL_NOTICE,
+    Warn = LOG_LEVEL_WARN,
+    Error = LOG_LEVEL_ERROR,
+    Fatal = LOG_LEVEL_FATAL,
 };
 
 using SyncPromise = std::promise<SyncResult>;
