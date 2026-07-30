@@ -55,7 +55,7 @@
 /// recoverable internal state, so they may not require any action from your side.
 ///
 /// ```cpp
-/// StdLogosResult logRes = node.setLogLevel(LogLevel::None);
+/// StdLogosResult logRes = setLogLevel(LogLevel::None);
 /// if (!logRes.success) {
 ///     fprintf(stderr, "Failed to set libp2p log level: %s\n",
 ///             logRes.error.c_str());
