@@ -132,12 +132,13 @@ public:
 
     std::function<void(const std::string& eventName, const std::string& data)> emitEvent;
 
+    static StdLogosResult setLogLevel(LogLevel level);
+
     bool ok();
     StdLogosResult status();
 
     StdLogosResult createNode(const std::string& config);
     StdLogosResult getNodeInfo(const std::string& field);
-    StdLogosResult setLogLevel(LogLevel level);
 
     StdLogosResult start();
     StdLogosResult stop();
@@ -298,8 +299,8 @@ private:
     // Same dance without the context check, for the `{.ffiStatic.}` bindings:
     // they take no ctx and run on the library's own static context.
     template <class Invoke, class Transform>
-    StdLogosResult callStaticWith(const char* errPrefix, Invoke&& invoke, Transform&& transform,
-                                  int awaitMs = kDefaultOpTimeoutMs) {
+    static StdLogosResult callStaticWith(const char* errPrefix, Invoke&& invoke, Transform&& transform,
+                                         int awaitMs = kDefaultOpTimeoutMs) {
         auto* p = new SyncPromise();
         auto f = p->get_future();
         int ret = invoke(p);
@@ -319,3 +320,7 @@ private:
         return transform(r);
     }
 };
+
+inline StdLogosResult setLogLevel(LogLevel level) {
+    return Libp2pModuleImpl::setLogLevel(level);
+}

@@ -214,10 +214,10 @@ StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
 }
 
 StdLogosResult Libp2pModuleImpl::setLogLevel(LogLevel level) {
-    return callSync("Failed to set log level", [&](SyncPromise* p) {
+    return callStaticWith("Failed to set log level", [&](SyncPromise* p) {
         return libp2p_static_set_log_level(static_cast<int64_t>(level),
                                            &Libp2pModuleImpl::cbBool, p);
-    });
+    }, [](const SyncResult&) -> StdLogosResult { return {true, {}, ""}; });
 }
 
 void Libp2pModuleImpl::destroyContext() {
