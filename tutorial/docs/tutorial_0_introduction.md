@@ -48,20 +48,20 @@ own progress messages during normal runs. Choose another level such as
 `LogLevel::Info`, `LogLevel::Debug`, or `LogLevel::Trace` when you need more
 detail while debugging:
 
-In your own application, `LogLevel::Error` or `LogLevel::Fatal` is often a
-useful default. It keeps normal output quiet while still surfacing conditions
-that may indicate libp2p is misbehaving or that your integration code needs an
-adjustment. Some error logs describe remote-peer behavior, retries, or
-recoverable internal state, so they may not require any action from your side.
-
 ```cpp
-StdLogosResult logRes = setLogLevel(LogLevel::None);
+StdLogosResult logRes = setLogLevel(LogLevel::Info);
 if (!logRes.success) {
     fprintf(stderr, "Failed to set libp2p log level: %s\n",
             logRes.error.c_str());
     return 1;
 }
 ```
+
+In your own application, `LogLevel::Error` or `LogLevel::Fatal` is often a
+useful default. It keeps normal output quiet while still surfacing conditions
+that may indicate libp2p is misbehaving or that your integration code needs an
+adjustment. Some error logs describe remote-peer behavior, retries, or
+recoverable internal state, so they may not require any action from your side.
 
 ## Convert JSON Values Explicitly
 
