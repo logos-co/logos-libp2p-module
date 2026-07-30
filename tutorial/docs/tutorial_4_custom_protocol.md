@@ -58,7 +58,7 @@ int main()
 {
     printf("=== Tutorial 4: Custom Protocol Handlers ===\n\n");
 
-    setLogLevel(LogLevel::None);
+    setLogLevel(LogLevel::Fatal);
 
 ```
 

@@ -27,7 +27,7 @@ int main()
 {
     printf("=== Tutorial 10: Peer Store Management ===\n\n");
 
-    setLogLevel(LogLevel::None);
+    setLogLevel(LogLevel::Fatal);
 
 ```
 

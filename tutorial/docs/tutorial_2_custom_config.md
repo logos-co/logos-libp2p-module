@@ -37,7 +37,7 @@ int main()
 {
     printf("=== Tutorial 2: Custom Node Configuration ===\n\n");
 
-    setLogLevel(LogLevel::None);
+    setLogLevel(LogLevel::Fatal);
 
 ```
 

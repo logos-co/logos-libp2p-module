@@ -53,15 +53,19 @@ struct SyncResult {
     LibP2PCtx* newCtx = nullptr;
 };
 
+// libp2p logs treat levels as inclusive minimum thresholds:
+// `Trace` emits trace and above, `Debug` emits debug and above, etc.
+// `None` is the lowest threshold, so it emits all logs; use `Fatal` for the
+// quietest built-in threshold.
 enum class LogLevel : int64_t {
-    None = LOG_LEVEL_NONE,
-    Trace = LOG_LEVEL_TRACE,
-    Debug = LOG_LEVEL_DEBUG,
-    Info = LOG_LEVEL_INFO,
-    Notice = LOG_LEVEL_NOTICE,
-    Warn = LOG_LEVEL_WARN,
-    Error = LOG_LEVEL_ERROR,
-    Fatal = LOG_LEVEL_FATAL,
+    None = LOG_LEVEL_NONE,     // All logs.
+    Trace = LOG_LEVEL_TRACE,   // Trace and above.
+    Debug = LOG_LEVEL_DEBUG,   // Debug and above.
+    Info = LOG_LEVEL_INFO,     // Info and above.
+    Notice = LOG_LEVEL_NOTICE, // Notice and above.
+    Warn = LOG_LEVEL_WARN,     // Warn and above.
+    Error = LOG_LEVEL_ERROR,   // Error and above.
+    Fatal = LOG_LEVEL_FATAL,   // Fatal only.
 };
 
 using SyncPromise = std::promise<SyncResult>;

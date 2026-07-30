@@ -36,7 +36,7 @@ int main()
 {
     printf("=== Tutorial 9: Service Discovery ===\n\n");
 
-    setLogLevel(LogLevel::None);
+    setLogLevel(LogLevel::Fatal);
 
 ```
 
