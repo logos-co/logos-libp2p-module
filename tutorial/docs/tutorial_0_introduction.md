@@ -42,16 +42,22 @@ operation fails, they print a useful error message to `stderr` and return
 
 ## Controlling libp2p Logs
 
-The wrapped libp2p binding can emit runtime logs. Tutorials disable those
-logs by default so `stdout` only shows the tutorial's own progress messages.
-Use `setLogLevel()` with `LogLevel::None` to disable logs, or choose another
-level such as `LogLevel::Info`, `LogLevel::Debug`, or `LogLevel::Trace` when
-you need more detail while debugging:
+The wrapped libp2p binding can emit runtime logs. Tutorials set the log
+level to `LogLevel::None` by default so `stdout` only shows the tutorial's
+own progress messages during normal runs. Choose another level such as
+`LogLevel::Info`, `LogLevel::Debug`, or `LogLevel::Trace` when you need more
+detail while debugging:
+
+In your own application, `LogLevel::Error` or `LogLevel::Fatal` is often a
+useful default. It keeps normal output quiet while still surfacing conditions
+that may indicate libp2p is misbehaving or that your integration code needs an
+adjustment. Some error logs describe remote-peer behavior, retries, or
+recoverable internal state, so they may not require any action from your side.
 
 ```cpp
 StdLogosResult logRes = node.setLogLevel(LogLevel::None);
 if (!logRes.success) {
-    fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+    fprintf(stderr, "Failed to set libp2p log level: %s\n",
             logRes.error.c_str());
     return 1;
 }
@@ -94,6 +100,15 @@ int main()
 {
     printf("=== Tutorial 0: Introduction and Common Patterns ===\n\n");
 
+    // Silence logs from wrapped library. It is always advised to check result,
+    // but in future tutorials will avoid it in order to simplify code.
+    StdLogosResult logRes = setLogLevel(LogLevel::None);
+    if (!logRes.success) {
+        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+                logRes.error.c_str());
+        return 1;
+    }
+
 ```
 
 ## Step 1: Create and start a node
@@ -101,13 +116,6 @@ int main()
 Even the first real operation returns a result. Check it before moving on.
 ```cpp
     Libp2pModuleImpl node;
-
-    StdLogosResult logRes = node.setLogLevel(LogLevel::None);
-    if (!logRes.success) {
-        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
-                logRes.error.c_str());
-        return 1;
-    }
 
     StdLogosResult startRes = node.start();
     if (!startRes.success) {
@@ -202,6 +210,20 @@ tutorials with this command and then run it again:
 ```bash
 nix --extra-experimental-features 'nix-command flakes' develop --command ./tutorial/build_tutorials.sh
 ```
+
+## Exercise: Enable libp2p debug logs
+
+Change this tutorial's log level from `LogLevel::None` to
+`LogLevel::Debug`:
+
+```cpp
+StdLogosResult logRes = setLogLevel(LogLevel::Debug);
+```
+
+Compile the tutorial binaries again, using the same command from above.
+
+Run tutorial 0 again. You should now see libp2p debug logs in `stdout`
+alongside the tutorial's own progress messages.
 ---
 
 <p align="center"><a href="tutorial_1_node_lifecycle.md">Creating and Starting a libp2p Node &rarr;</a></p>

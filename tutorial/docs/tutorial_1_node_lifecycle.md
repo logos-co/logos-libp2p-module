@@ -23,23 +23,21 @@ Every program starts by including the module's single public header - `"plugin.h
 #include <string>
 #include "plugin.h"
 
+int main()
+{
+    printf("=== Tutorial 1: Creating and Starting a libp2p Node ===\n\n");
+
+    setLogLevel(LogLevel::None);
+
 ```
 
 The main class we work with is `Libp2pModuleImpl`. Let's create one with
 default options:
+
 ```cpp
-int main()
-{
     // Create a libp2p node with default configuration.
     // By default it listens on 127.0.0.1 with a random port (tcp/0).
     Libp2pModuleImpl node;
-
-    StdLogosResult logRes = node.setLogLevel(LogLevel::None);
-    if (!logRes.success) {
-        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
-                logRes.error.c_str());
-        return 1;
-    }
 
     printf("Node object created (not yet started)\n");
 
@@ -117,6 +115,8 @@ Always clean up by stopping the node when you're done.
 ```cpp
     node.stop();
     printf("Node stopped\n");
+
+    printf("\n=== Tutorial 1 Complete ===\n");
 
     return 0;
 }
