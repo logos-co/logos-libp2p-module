@@ -178,6 +178,7 @@ StdLogosResult Libp2pModuleImpl::createContext() {
     // identity; a supplied key gives a stable peer id across restarts.
     m_libp2pConfig.privKey =
         NimFfiBytes{m_privKey.empty() ? nullptr : m_privKey.data(), m_privKey.size()};
+    m_libp2pConfig.logLevel = g_requestedLogLevel.load();
 
     auto r = spawnContext(m_libp2pConfig);
     if (!r.ok) {
