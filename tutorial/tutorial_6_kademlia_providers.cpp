@@ -35,7 +35,7 @@ int main()
 {
     printf("=== Tutorial 6: Kademlia Provider Records ===\n\n");
     
-    setLogLevel(LogLevel::None);
+    setLogLevel(LogLevel::Fatal);
 
 /// ## Step 1: Create two peers
     Libp2pModuleOptions optsA, optsB;

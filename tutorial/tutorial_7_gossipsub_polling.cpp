@@ -36,7 +36,7 @@ int main()
 {
     printf("=== Tutorial 7: GossipSub - Polling for Messages ===\n\n");
 
-    setLogLevel(LogLevel::None);
+    setLogLevel(LogLevel::Fatal);
 
 /// ## Step 1: Create two nodes with GossipSub enabled
 ///

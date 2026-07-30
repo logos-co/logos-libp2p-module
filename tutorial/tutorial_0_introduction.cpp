@@ -101,7 +101,7 @@ int main()
 
     // Silence logs from wrapped library. It is always advised to check result,
     // but in future tutorials will avoid it in order to simplify code.
-    StdLogosResult logRes = setLogLevel(LogLevel::None);
+    StdLogosResult logRes = setLogLevel(LogLevel::Fatal);
     if (!logRes.success) {
         fprintf(stderr, "Failed to disable libp2p logs: %s\n",
                 logRes.error.c_str());
