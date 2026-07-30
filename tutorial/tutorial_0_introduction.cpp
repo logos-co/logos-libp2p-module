@@ -43,13 +43,13 @@
 /// ## Controlling libp2p Logs
 ///
 /// The wrapped libp2p binding can emit runtime logs. Tutorials set the log
-/// level to `LogLevel::Fatal` by default so `stdout` only shows the tutorial's
+/// level to `LogLevel::None` by default so `stdout` only shows the tutorial's
 /// own progress messages during normal runs. Choose another level such as
 /// `LogLevel::Info`, `LogLevel::Debug`, or `LogLevel::Trace` when you need more
 /// detail while debugging:
 ///
 /// ```cpp
-/// StdLogosResult logRes = node.setLogLevel(LogLevel::Debug);
+/// StdLogosResult logRes = node.setLogLevel(LogLevel::None);
 /// if (!logRes.success) {
 ///     fprintf(stderr, "Failed to set libp2p log level: %s\n",
 ///             logRes.error.c_str());
@@ -189,3 +189,17 @@ int main()
 /// ```bash
 /// nix --extra-experimental-features 'nix-command flakes' develop --command ./tutorial/build_tutorials.sh
 /// ```
+
+/// ## Exercise: Enable libp2p debug logs
+///
+/// Change this tutorial's log level from `LogLevel::None` to
+/// `LogLevel::Debug`:
+///
+/// ```cpp
+/// StdLogosResult logRes = setLogLevel(LogLevel::Debug);
+/// ```
+///
+/// Compile the tutorial binaries again, using the same command from above.
+///
+/// Run tutorial 0 again. You should now see libp2p debug logs in `stdout`
+/// alongside the tutorial's own progress messages.
