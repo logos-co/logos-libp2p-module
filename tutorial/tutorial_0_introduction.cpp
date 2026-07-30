@@ -49,7 +49,7 @@
 /// detail while debugging:
 ///
 /// ```cpp
-/// StdLogosResult logRes = setLogLevel(LogLevel::Info);
+/// StdLogosResult logRes = setLogLevel(LogLevel::Debug);
 /// if (!logRes.success) {
 ///     fprintf(stderr, "Failed to set libp2p log level: %s\n",
 ///             logRes.error.c_str());
