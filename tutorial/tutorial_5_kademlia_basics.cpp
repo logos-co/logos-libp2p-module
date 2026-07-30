@@ -39,7 +39,7 @@ int main()
 {
     printf("=== Tutorial 5: Kademlia DHT Basics ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel(LogLevel::None);
 
 /// ## Step 1: Create two nodes
 ///
@@ -54,7 +54,6 @@ int main()
     // Node A is the bootstrap — no special config needed, just its address.
 
     Libp2pModuleImpl nodeA(optsA);
-
     printf("Starting Node A (bootstrap)...\n");
     StdLogosResult startARes = nodeA.start();
     if (!startARes.success) {
@@ -83,7 +82,7 @@ int main()
     optsB.mountKad = true;
     optsB.bootstrapNodes = {{peerIdA, addrsA}};
 
-    Libp2pModuleImpl nodeB(optsB);    
+    Libp2pModuleImpl nodeB(optsB);
     printf("Starting Node B (with Node A as bootstrap)...\n");
     StdLogosResult startBRes = nodeB.start();
     if (!startBRes.success) {

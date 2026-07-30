@@ -54,7 +54,7 @@ int main()
 {
     printf("=== Tutorial 4: Custom Protocol Handlers ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel(LogLevel::None);
 
 /// ## Step 1: Create and start two nodes
     Libp2pModuleOptions optsA, optsB;
@@ -63,7 +63,7 @@ int main()
 
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
-    
+
     StdLogosResult startARes = nodeA.start();
     if (!startARes.success) {
         fprintf(stderr, "Node A failed: %s\n", startARes.error.c_str());

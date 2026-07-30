@@ -25,7 +25,7 @@
         value = f system;
       }) systems);
 
-      libp2pRuntimeFiltering = {
+      libp2pInputs = {
         packages = forEachSystem (system: {
           cbind = inputs.libp2p.packages.${system}.cbind.overrideAttrs (old: {
             buildPhase = builtins.replaceStrings
@@ -38,7 +38,7 @@
 
       externalLibInputs = {
         libp2p = {
-          input = libp2pRuntimeFiltering;
+          input = libp2pInputs;
           packages.default = "cbind";
         };
       };

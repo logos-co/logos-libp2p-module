@@ -44,7 +44,7 @@ int main()
 {
     printf("=== Tutorial 11: Circuit Relay ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel(LogLevel::None);
 
 /// ## Step 1: Create three nodes
 ///
@@ -73,7 +73,6 @@ int main()
     Libp2pModuleImpl relay(optsRelay);
     Libp2pModuleImpl dest(optsDest);
     Libp2pModuleImpl client(optsClient);
-
 
     printf("Starting nodes...\n");
 

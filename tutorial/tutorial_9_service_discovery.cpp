@@ -35,7 +35,7 @@ int main()
 {
     printf("=== Tutorial 9: Service Discovery ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel(LogLevel::None);
 
 /// ## Step 1: Create a bootstrap node
 ///
@@ -46,7 +46,6 @@ int main()
     optsBootstrap.mountServiceDiscovery = true;
 
     Libp2pModuleImpl bootstrap(optsBootstrap);
-
     StdLogosResult bootstrapStartRes = bootstrap.start();
     if (!bootstrapStartRes.success) {
         fprintf(stderr, "Bootstrap failed: %s\n",

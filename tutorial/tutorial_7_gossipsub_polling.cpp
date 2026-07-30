@@ -36,7 +36,7 @@ int main()
 {
     printf("=== Tutorial 7: GossipSub - Polling for Messages ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel(LogLevel::None);
 
 /// ## Step 1: Create two nodes with GossipSub enabled
 ///
@@ -51,7 +51,6 @@ int main()
 
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
-    
 
     StdLogosResult startARes = nodeA.start();
     if (!startARes.success) {

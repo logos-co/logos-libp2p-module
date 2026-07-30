@@ -36,7 +36,7 @@ int main()
 {
     printf("=== Tutorial 2: Custom Node Configuration ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel(LogLevel::None);
 
 /// ## Method 1: Configure via C++ struct
 ///

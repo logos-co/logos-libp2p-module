@@ -43,7 +43,7 @@ int main()
 {
     printf("=== Tutorial 3: Connecting Peers ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel(LogLevel::None);
 
 /// ## Step 1: Create and start two nodes
 ///
@@ -60,7 +60,6 @@ int main()
 
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
-
 
     StdLogosResult startARes = nodeA.start();
     if (!startARes.success) {

@@ -49,7 +49,7 @@
 /// detail while debugging:
 ///
 /// ```cpp
-/// StdLogosResult logRes = node.setLogLevel(LogLevel::Fatal);
+/// StdLogosResult logRes = node.setLogLevel(LogLevel::Debug);
 /// if (!logRes.success) {
 ///     fprintf(stderr, "Failed to set libp2p log level: %s\n",
 ///             logRes.error.c_str());
@@ -95,7 +95,7 @@ int main()
 
     // Silence logs from wrapped library. It is always advised to check result,
     // but in future tutorials will avoid it in order to simplify code.
-    StdLogosResult logRes = setLogLevel(LogLevel::Fatal);
+    StdLogosResult logRes = setLogLevel(LogLevel::None);
     if (!logRes.success) {
         fprintf(stderr, "Failed to disable libp2p logs: %s\n",
                 logRes.error.c_str());
@@ -106,7 +106,6 @@ int main()
 ///
 /// Even the first real operation returns a result. Check it before moving on.
     Libp2pModuleImpl node;
-
 
     StdLogosResult startRes = node.start();
     if (!startRes.success) {

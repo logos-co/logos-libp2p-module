@@ -26,7 +26,7 @@ int main()
 {
     printf("=== Tutorial 1: Creating and Starting a libp2p Node ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel(LogLevel::None);
 
 /// The main class we work with is `Libp2pModuleImpl`. Let's create one with
 /// default options:

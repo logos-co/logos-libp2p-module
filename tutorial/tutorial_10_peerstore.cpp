@@ -26,7 +26,7 @@ int main()
 {
     printf("=== Tutorial 10: Peer Store Management ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel(LogLevel::None);
 
 /// ## Step 1: Create two nodes
 ///
@@ -41,7 +41,6 @@ int main()
 
     Libp2pModuleImpl node(opts);
     Libp2pModuleImpl remote(remoteOpts);
-    
 
     StdLogosResult startRes = node.start();
     if (!startRes.success) {
