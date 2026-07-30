@@ -43,6 +43,8 @@ int main()
 {
     printf("=== Tutorial 3: Connecting Peers ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Step 1: Create and start two nodes
 ///
 /// We create two nodes. Node A listens on port 9190, Node B on port 9191.
@@ -59,12 +61,6 @@ int main()
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
 
-    StdLogosResult logRes = nodeA.setLogLevel(LogLevel::None);
-    if (!logRes.success) {
-        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
-                logRes.error.c_str());
-        return 1;
-    }
 
     StdLogosResult startARes = nodeA.start();
     if (!startARes.success) {

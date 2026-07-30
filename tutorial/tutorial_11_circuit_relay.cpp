@@ -44,6 +44,8 @@ int main()
 {
     printf("=== Tutorial 11: Circuit Relay ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Step 1: Create three nodes
 ///
 /// - **Relay** (port 9890): publicly reachable, `circuitRelay: true`
@@ -72,12 +74,6 @@ int main()
     Libp2pModuleImpl dest(optsDest);
     Libp2pModuleImpl client(optsClient);
 
-    StdLogosResult logRes = relay.setLogLevel(LogLevel::None);
-    if (!logRes.success) {
-        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
-                logRes.error.c_str());
-        return 1;
-    }
 
     printf("Starting nodes...\n");
 

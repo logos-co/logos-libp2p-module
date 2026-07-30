@@ -34,6 +34,8 @@
 int main()
 {
     printf("=== Tutorial 6: Kademlia Provider Records ===\n\n");
+    
+    setLogLevel(LogLevel::Fatal);
 
 /// ## Step 1: Create two peers
     Libp2pModuleOptions optsA, optsB;
@@ -41,12 +43,6 @@ int main()
     optsA.mountKad = true;
 
     Libp2pModuleImpl nodeA(optsA);
-    StdLogosResult logRes = nodeA.setLogLevel(LogLevel::None);
-    if (!logRes.success) {
-        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
-                logRes.error.c_str());
-        return 1;
-    }
 
     StdLogosResult startARes = nodeA.start();
     if (!startARes.success) {

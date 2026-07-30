@@ -54,6 +54,8 @@ int main()
 {
     printf("=== Tutorial 4: Custom Protocol Handlers ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Step 1: Create and start two nodes
     Libp2pModuleOptions optsA, optsB;
     optsA.addrs = {"/ip4/127.0.0.1/tcp/9290"};
@@ -61,14 +63,7 @@ int main()
 
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
-
-    StdLogosResult logRes = nodeA.setLogLevel(LogLevel::None);
-    if (!logRes.success) {
-        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
-                logRes.error.c_str());
-        return 1;
-    }
-
+    
     StdLogosResult startARes = nodeA.start();
     if (!startARes.success) {
         fprintf(stderr, "Node A failed: %s\n", startARes.error.c_str());

@@ -42,16 +42,16 @@
 ///
 /// ## Controlling libp2p Logs
 ///
-/// The wrapped libp2p binding can emit runtime logs. Tutorials disable those
-/// logs by default so `stdout` only shows the tutorial's own progress messages.
-/// Use `setLogLevel()` with `LogLevel::None` to disable logs, or choose another
-/// level such as `LogLevel::Info`, `LogLevel::Debug`, or `LogLevel::Trace` when
-/// you need more detail while debugging:
+/// The wrapped libp2p binding can emit runtime logs. Tutorials set the log
+/// level to `LogLevel::Fatal` by default so `stdout` only shows the tutorial's
+/// own progress messages during normal runs. Choose another level such as
+/// `LogLevel::Info`, `LogLevel::Debug`, or `LogLevel::Trace` when you need more
+/// detail while debugging:
 ///
 /// ```cpp
-/// StdLogosResult logRes = node.setLogLevel(LogLevel::None);
+/// StdLogosResult logRes = node.setLogLevel(LogLevel::Fatal);
 /// if (!logRes.success) {
-///     fprintf(stderr, "Failed to disable libp2p logs: %s\n",
+///     fprintf(stderr, "Failed to set libp2p log level: %s\n",
 ///             logRes.error.c_str());
 ///     return 1;
 /// }
@@ -93,17 +93,20 @@ int main()
 {
     printf("=== Tutorial 0: Introduction and Common Patterns ===\n\n");
 
-/// ## Step 1: Create and start a node
-///
-/// Even the first real operation returns a result. Check it before moving on.
-    Libp2pModuleImpl node;
-
-    StdLogosResult logRes = node.setLogLevel(LogLevel::None);
+    // Silence logs from wrapped library. It is always advised to check result,
+    // but in future tutorials will avoid it in order to simplify code.
+    StdLogosResult logRes = setLogLevel(LogLevel::Fatal);
     if (!logRes.success) {
         fprintf(stderr, "Failed to disable libp2p logs: %s\n",
                 logRes.error.c_str());
         return 1;
     }
+
+/// ## Step 1: Create and start a node
+///
+/// Even the first real operation returns a result. Check it before moving on.
+    Libp2pModuleImpl node;
+
 
     StdLogosResult startRes = node.start();
     if (!startRes.success) {

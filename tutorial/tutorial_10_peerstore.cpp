@@ -26,6 +26,8 @@ int main()
 {
     printf("=== Tutorial 10: Peer Store Management ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Step 1: Create two nodes
 ///
 /// The peer store is automatically available on any started node.
@@ -39,13 +41,7 @@ int main()
 
     Libp2pModuleImpl node(opts);
     Libp2pModuleImpl remote(remoteOpts);
-
-    StdLogosResult logRes = node.setLogLevel(LogLevel::None);
-    if (!logRes.success) {
-        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
-                logRes.error.c_str());
-        return 1;
-    }
+    
 
     StdLogosResult startRes = node.start();
     if (!startRes.success) {

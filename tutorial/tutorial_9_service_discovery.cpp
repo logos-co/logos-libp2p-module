@@ -35,6 +35,8 @@ int main()
 {
     printf("=== Tutorial 9: Service Discovery ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Step 1: Create a bootstrap node
 ///
 /// The bootstrap is a well-known node that all peers connect to.
@@ -44,12 +46,6 @@ int main()
     optsBootstrap.mountServiceDiscovery = true;
 
     Libp2pModuleImpl bootstrap(optsBootstrap);
-    StdLogosResult logRes = bootstrap.setLogLevel(LogLevel::None);
-    if (!logRes.success) {
-        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
-                logRes.error.c_str());
-        return 1;
-    }
 
     StdLogosResult bootstrapStartRes = bootstrap.start();
     if (!bootstrapStartRes.success) {

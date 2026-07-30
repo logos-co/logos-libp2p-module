@@ -35,6 +35,8 @@ int main()
 {
     printf("=== Tutorial 8: GossipSub - Event Callback Messages ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Step 1: Create two nodes with GossipSub enabled
     Libp2pModuleOptions optsA, optsB;
     optsA.addrs = {"/ip4/127.0.0.1/tcp/9600"};
@@ -45,13 +47,7 @@ int main()
 
     Libp2pModuleImpl nodeA(optsA);
     Libp2pModuleImpl nodeB(optsB);
-
-    StdLogosResult logRes = nodeA.setLogLevel(LogLevel::None);
-    if (!logRes.success) {
-        fprintf(stderr, "Failed to disable libp2p logs: %s\n",
-                logRes.error.c_str());
-        return 1;
-    }
+    
 
     StdLogosResult startARes = nodeA.start();
     if (!startARes.success) {
