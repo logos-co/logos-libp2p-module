@@ -198,7 +198,7 @@ int main()
 /// `LogLevel::Debug`:
 ///
 /// ```cpp
-/// StdLogosResult logRes = setLogLevel(LogLevel::Debug);
+/// setLogLevel(LogLevel::Debug);
 /// ```
 ///
 /// Compile the tutorial binaries again, using the same command from above.
