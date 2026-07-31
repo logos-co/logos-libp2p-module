@@ -9,6 +9,7 @@
 #include <deque>
 #include <functional>
 #include <future>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -59,6 +60,18 @@ enum class KeyScheme : int64_t {
     Secp256k1 = KEY_SCHEME_SECP256K1,
     Ecdsa = KEY_SCHEME_ECDSA,
 };
+
+// Maps a scheme name onto KeyScheme, matching the vocabulary metadata.json
+// documents for the `keyType` config key. The name is what crosses the module
+// boundary — LIDL has no enum, and the numeric KEY_SCHEME_* values belong to
+// the Nim binding, so they are no contract for a caller in another language.
+inline bool parseKeyScheme(const std::string& name, KeyScheme& out) {
+    if (name == "rsa") { out = KeyScheme::Rsa; return true; }
+    if (name == "ed25519") { out = KeyScheme::Ed25519; return true; }
+    if (name == "secp256k1") { out = KeyScheme::Secp256k1; return true; }
+    if (name == "ecdsa") { out = KeyScheme::Ecdsa; return true; }
+    return false;
+}
 
 using SyncPromise = std::promise<SyncResult>;
 
@@ -136,7 +149,7 @@ public:
 
     StdLogosResult start();
     StdLogosResult stop();
-    StdLogosResult newPrivateKey(KeyScheme scheme);
+    StdLogosResult newPrivateKey(const std::string& scheme);
     StdLogosResult publicKey();
 
     StdLogosResult connectPeer(const std::string& peerId, const std::vector<std::string>& multiaddrs, int64_t timeoutMs);
@@ -189,7 +202,7 @@ public:
     StdLogosResult discoLookup(const std::string& serviceId, const std::string& serviceData);
     StdLogosResult discoRandomLookup();
     StdLogosResult createXpr(const std::vector<std::string>& addrs,
-                             const std::vector<std::pair<std::string, std::string>>& services,
+                             const std::map<std::string, std::vector<uint8_t>>& services,
                              uint64_t seqNo);
     StdLogosResult decodeXpr(const std::string& xpr);
 

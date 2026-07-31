@@ -72,9 +72,12 @@ StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
 
 /// Builds and signs the node's own Extended Peer Record, returning the signed
 /// protobuf bytes. Empty `addrs` uses the listen addresses; `seqNo` 0 uses now.
+/// `services` maps a service id to its advertised payload, which is arbitrary
+/// bytes: it is carried as `bstr` and reaches the record byte for byte, with no
+/// UTF-8 round-trip in between.
 StdLogosResult Libp2pModuleImpl::createXpr(
     const std::vector<std::string>& addrs,
-    const std::vector<std::pair<std::string, std::string>>& services,
+    const std::map<std::string, std::vector<uint8_t>>& services,
     uint64_t seqNo)
 {
     auto addrsFfi = toNimFfiStrs(addrs);
@@ -104,8 +107,9 @@ StdLogosResult Libp2pModuleImpl::createXpr(
 /// seqNo, addrs, services). `xpr` is the base64 string produced by createXpr and
 /// is decoded back to the signed protobuf bytes here, so createXpr's output can
 /// be passed straight in. A bad signature or malformed payload yields a failed
-/// result. Each service's `data` is base64-encoded, since it is arbitrary bytes
-/// that may not be valid UTF-8.
+/// result. `services` is an object keyed by service id, mirroring the map
+/// createXpr takes; each `data` is base64-encoded, since it is arbitrary bytes
+/// that may not be valid UTF-8 and this result is untyped JSON.
 StdLogosResult Libp2pModuleImpl::decodeXpr(const std::string& xpr) {
     if (xpr.empty()) return {false, {}, "decodeXpr: empty XPR"};
 

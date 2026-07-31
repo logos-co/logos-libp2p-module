@@ -255,13 +255,18 @@ StdLogosResult Libp2pModuleImpl::status() {
     return {false, {}, m_initError.empty() ? "libp2p not initialized" : m_initError};
 }
 
-StdLogosResult Libp2pModuleImpl::newPrivateKey(KeyScheme scheme) {
+StdLogosResult Libp2pModuleImpl::newPrivateKey(const std::string& scheme) {
+    KeyScheme parsed{};
+    if (!parseKeyScheme(scheme, parsed)) {
+        return {false, {}, "Unknown key scheme '" + scheme +
+                           "'; expected rsa, ed25519, secp256k1 or ecdsa"};
+    }
     if (!ctx) {
         auto created = createContext();
         if (!created.success) return created;
     }
     NewPrivateKeyRequest req{};
-    req.scheme = static_cast<int64_t>(scheme);
+    req.scheme = static_cast<int64_t>(parsed);
     return callSyncWith("Failed to generate private key",
         [&](SyncPromise* p) {
             return libp2p_ctx_new_private_key(ctx, &req, &Libp2pModuleImpl::cbBytes, p);

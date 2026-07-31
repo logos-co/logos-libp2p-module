@@ -26,6 +26,7 @@
 
 #include <cstdio>
 #include <chrono>
+#include <map>
 #include <thread>
 #include <string>
 #include <vector>
@@ -223,11 +224,16 @@ int main()
 /// Extended Peer Records are signed records that bundle a peer's
 /// addresses and services. They can be shared offline or via
 /// side channels.
+///
+/// Services are a map of service id to its advertised payload. The
+/// payload is raw bytes, not text, so it is a `std::vector<uint8_t>`
+/// and reaches the record byte for byte — advertise a compressed blob
+/// or a protobuf and nothing is mangled on the way in.
     printf("\n--- Extended Peer Records ---\n");
 
-    std::vector<std::pair<std::string, std::string>> xprServices = {
-        {serviceId, serviceData},
-        {"file-sharing", "v2"},
+    std::map<std::string, std::vector<uint8_t>> xprServices = {
+        {serviceId, {serviceData.begin(), serviceData.end()}},
+        {"file-sharing", {'v', '2'}},
     };
 
     StdLogosResult xpr = advertiser.createXpr({}, xprServices, 0);
@@ -252,6 +258,12 @@ int main()
                .get<uint64_t>());
     printf("  Services: %zu\n",
            decoded.value["services"].size());
+    // `services` comes back keyed by id, mirroring the map passed in. Each
+    // value is the payload base64-encoded, since this result is untyped JSON.
+    for (auto it = decoded.value["services"].begin();
+         it != decoded.value["services"].end(); ++it) {
+        printf("    %s\n", it.key().c_str());
+    }
 
 /// ## Step 9: Clean up — unregister, stop advertising, stop disco
     printf("\nCleaning up...\n");
