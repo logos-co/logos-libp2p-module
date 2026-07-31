@@ -3,26 +3,29 @@
 using json = nlohmann::json;
 
 namespace {
-// {peerId, seqNo, addrs, services:{id: data}}. Keyed by service id, mirroring
-// the `{tstr: bstr}` map createXpr takes, so a decoded record feeds back in
-// without reshaping. A record repeating an id keeps the last entry; the record
-// this module signs cannot produce one, since its input is already a map.
+// {peerId, seqNo, addrs, services:[{id, data}]}. Service `data` is arbitrary
+// bytes, so it is base64-encoded to keep the JSON valid UTF-8.
 //
-// `data` stays base64 here and is NOT the bstr createXpr accepts: this value
-// rides in an untyped `result`, not a typed slot, so it has to survive as valid
-// UTF-8 JSON. Base64 is byte-exact, but a caller round-tripping decodeXpr into
-// createXpr must decode it first.
+// This is deliberately NOT keyed by id to mirror the `{tstr: bstr}` map
+// createXpr takes: the same shape is returned by discoLookup and
+// discoRandomLookup, whose records come from remote peers and may legitimately
+// repeat a service id — an object would drop all but the last. A caller
+// round-tripping a decoded record back into createXpr rebuilds the map itself,
+// base64-decoding each `data` as it goes.
 json recordEntryToJson(const ExtendedPeerRecordEntry& rec) {
     json out;
     out["peerId"] = nfStr(rec.peerId);
     out["seqNo"] = rec.seqNo;
     out["addrs"] = seqStrToJson(rec.addrs);
 
-    json services = json::object();
+    json services = json::array();
     if (rec.services.data) {
         for (size_t i = 0; i < rec.services.len; ++i) {
             const auto& s = rec.services.data[i];
-            services[nfStr(s.id)] = base64Encode(nfBytes(s.data));
+            json svc;
+            svc["id"] = nfStr(s.id);
+            svc["data"] = base64Encode(nfBytes(s.data));
+            services.push_back(svc);
         }
     }
     out["services"] = services;

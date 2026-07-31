@@ -218,15 +218,14 @@ LOGOS_TEST(decode_xpr) {
     LOGOS_ASSERT_EQ(decoded.value["peerId"].get<std::string>(), peerId);
     LOGOS_ASSERT_EQ(decoded.value["seqNo"].get<uint64_t>(), 42u);
     LOGOS_ASSERT_EQ(decoded.value["services"].size(), services.size());
-    // Keyed by service id, so a dropped or renamed key fails here rather than
-    // shifting an index and silently comparing the wrong service.
-    LOGOS_ASSERT_TRUE(decoded.value["services"].contains("chat"));
-    LOGOS_ASSERT_TRUE(decoded.value["services"].contains("file-share"));
+    // std::map orders its keys, so "chat" precedes "file-share" on the wire.
+    LOGOS_ASSERT_EQ(decoded.value["services"][0]["id"].get<std::string>(), "chat");
     // Every advertised byte survives — this is what `bstr` buys over the old
     // std::string parameter, which mangled anything that was not valid UTF-8.
-    LOGOS_ASSERT_EQ(base64Decode(decoded.value["services"]["chat"].get<std::string>()),
+    LOGOS_ASSERT_EQ(base64Decode(decoded.value["services"][0]["data"].get<std::string>()),
                     binDataStr);
-    LOGOS_ASSERT_TRUE(decoded.value["services"]["file-share"].get<std::string>().empty());
+    LOGOS_ASSERT_EQ(decoded.value["services"][1]["id"].get<std::string>(), "file-share");
+    LOGOS_ASSERT_TRUE(decoded.value["services"][1]["data"].get<std::string>().empty());
 
     // A flipped byte must fail signature verification, not silently decode.
     std::string rawBytes = base64Decode(signedXpr);

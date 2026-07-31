@@ -258,12 +258,6 @@ int main()
                .get<uint64_t>());
     printf("  Services: %zu\n",
            decoded.value["services"].size());
-    // `services` comes back keyed by id, mirroring the map passed in. Each
-    // value is the payload base64-encoded, since this result is untyped JSON.
-    for (auto it = decoded.value["services"].begin();
-         it != decoded.value["services"].end(); ++it) {
-        printf("    %s\n", it.key().c_str());
-    }
 
 /// ## Step 9: Clean up — unregister, stop advertising, stop disco
     printf("\nCleaning up...\n");

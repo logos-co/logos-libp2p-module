@@ -107,9 +107,10 @@ StdLogosResult Libp2pModuleImpl::createXpr(
 /// seqNo, addrs, services). `xpr` is the base64 string produced by createXpr and
 /// is decoded back to the signed protobuf bytes here, so createXpr's output can
 /// be passed straight in. A bad signature or malformed payload yields a failed
-/// result. `services` is an object keyed by service id, mirroring the map
-/// createXpr takes; each `data` is base64-encoded, since it is arbitrary bytes
-/// that may not be valid UTF-8 and this result is untyped JSON.
+/// result. `services` comes back as `[{id, data}]` — the shape discoLookup and
+/// discoRandomLookup also use — with each `data` base64-encoded, since it is
+/// arbitrary bytes that may not be valid UTF-8 and this result is untyped JSON.
+/// Feeding it back into createXpr means rebuilding the map and base64-decoding.
 StdLogosResult Libp2pModuleImpl::decodeXpr(const std::string& xpr) {
     if (xpr.empty()) return {false, {}, "decodeXpr: empty XPR"};
 
