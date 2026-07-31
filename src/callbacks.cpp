@@ -5,6 +5,13 @@ using json = nlohmann::json;
 namespace {
 // {peerId, seqNo, addrs, services:[{id, data}]}. Service `data` is arbitrary
 // bytes, so it is base64-encoded to keep the JSON valid UTF-8.
+//
+// This is deliberately NOT keyed by id to mirror the `{tstr: bstr}` map
+// createXpr takes: the same shape is returned by discoLookup and
+// discoRandomLookup, whose records come from remote peers and may legitimately
+// repeat a service id — an object would drop all but the last. A caller
+// round-tripping a decoded record back into createXpr rebuilds the map itself,
+// base64-decoding each `data` as it goes.
 json recordEntryToJson(const ExtendedPeerRecordEntry& rec) {
     json out;
     out["peerId"] = nfStr(rec.peerId);

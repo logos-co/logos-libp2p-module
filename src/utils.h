@@ -29,6 +29,11 @@ inline NimFfiBytes nimffiBytes(const std::string& data) {
         reinterpret_cast<uint8_t*>(const_cast<char*>(data.data())), data.size()};
 }
 
+// Same, for data that is already bytes and so needs no reinterpretation.
+inline NimFfiBytes nimffiBytes(const std::vector<uint8_t>& data) {
+    return NimFfiBytes{const_cast<uint8_t*>(data.data()), data.size()};
+}
+
 // Non-owning NimFfiStr views over each string in `in`, which must outlive them.
 inline std::vector<NimFfiStr> toNimFfiStrs(const std::vector<std::string>& in) {
     std::vector<NimFfiStr> out;
