@@ -1,5 +1,6 @@
 #include <logos_test.h>
 #include <plugin.h>
+#include <map>
 #include <thread>
 #include <chrono>
 #include "test_helpers.h"
@@ -170,9 +171,9 @@ LOGOS_TEST(create_xpr) {
 
     auto [peerId, addrs] = getPeerInfoPair(node);
 
-    std::vector<std::pair<std::string, std::string>> services = {
-        {"chat", std::string{0x01, 0x02, 0x03}},
-        {"file-share", ""},
+    std::map<std::string, std::vector<uint8_t>> services = {
+        {"chat", {0x01, 0x02, 0x03}},
+        {"file-share", {}},
     };
 
     auto res = node.createXpr(addrs, services, 42);
@@ -198,11 +199,13 @@ LOGOS_TEST(decode_xpr) {
 
     auto [peerId, addrs] = getPeerInfoPair(node);
 
-    // 0xff is non-UTF-8: exercises the binary-safe base64 encoding of `data`.
-    std::string binData{0x01, 0x02, 0x03, static_cast<char>(0xff)};
-    std::vector<std::pair<std::string, std::string>> services = {
+    // None of 0x80/0xfe/0xff is valid UTF-8 and 0x00 terminates a C string:
+    // together they catch a lossy UTF-8 round-trip and a truncating one alike.
+    const std::vector<uint8_t> binData{0x01, 0x00, 0x02, 0x80, 0xfe, 0xff, 0x03};
+    const std::string binDataStr(binData.begin(), binData.end());
+    std::map<std::string, std::vector<uint8_t>> services = {
         {"chat", binData},
-        {"file-share", ""},
+        {"file-share", {}},
     };
 
     auto created = node.createXpr(addrs, services, 42);
@@ -215,9 +218,14 @@ LOGOS_TEST(decode_xpr) {
     LOGOS_ASSERT_EQ(decoded.value["peerId"].get<std::string>(), peerId);
     LOGOS_ASSERT_EQ(decoded.value["seqNo"].get<uint64_t>(), 42u);
     LOGOS_ASSERT_EQ(decoded.value["services"].size(), services.size());
+    // std::map orders its keys, so "chat" precedes "file-share" on the wire.
     LOGOS_ASSERT_EQ(decoded.value["services"][0]["id"].get<std::string>(), "chat");
+    // Every advertised byte survives — this is what `bstr` buys over the old
+    // std::string parameter, which mangled anything that was not valid UTF-8.
     LOGOS_ASSERT_EQ(base64Decode(decoded.value["services"][0]["data"].get<std::string>()),
-                    binData);
+                    binDataStr);
+    LOGOS_ASSERT_EQ(decoded.value["services"][1]["id"].get<std::string>(), "file-share");
+    LOGOS_ASSERT_TRUE(decoded.value["services"][1]["data"].get<std::string>().empty());
 
     // A flipped byte must fail signature verification, not silently decode.
     std::string rawBytes = base64Decode(signedXpr);

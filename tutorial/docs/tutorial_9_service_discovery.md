@@ -27,6 +27,7 @@ Looking up a service queries the bootstrap, which returns matching peers.
 ```cpp
 #include <cstdio>
 #include <chrono>
+#include <map>
 #include <thread>
 #include <string>
 #include <vector>
@@ -247,12 +248,17 @@ which is useful for network exploration.
 Extended Peer Records are signed records that bundle a peer's
 addresses and services. They can be shared offline or via
 side channels.
+
+Services are a map of service id to its advertised payload. The
+payload is raw bytes, not text, so it is a `std::vector<uint8_t>`
+and reaches the record byte for byte — advertise a compressed blob
+or a protobuf and nothing is mangled on the way in.
 ```cpp
     printf("\n--- Extended Peer Records ---\n");
 
-    std::vector<std::pair<std::string, std::string>> xprServices = {
-        {serviceId, serviceData},
-        {"file-sharing", "v2"},
+    std::map<std::string, std::vector<uint8_t>> xprServices = {
+        {serviceId, {serviceData.begin(), serviceData.end()}},
+        {"file-sharing", {'v', '2'}},
     };
 
     StdLogosResult xpr = advertiser.createXpr({}, xprServices, 0);
