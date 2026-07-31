@@ -62,7 +62,7 @@ LOGOS_TEST(sync_public_key) {
 
 LOGOS_TEST(sync_new_private_key) {
     Libp2pModuleImpl plugin;
-    auto res = plugin.newPrivateKey();
+    auto res = plugin.newPrivateKey(KeyScheme::Ed25519);
     LOGOS_ASSERT_TRUE(res.success);
     LOGOS_ASSERT_TRUE(res.value.is_string());
     LOGOS_ASSERT_FALSE(res.value.get<std::string>().empty());

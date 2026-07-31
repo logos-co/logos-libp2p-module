@@ -255,13 +255,13 @@ StdLogosResult Libp2pModuleImpl::status() {
     return {false, {}, m_initError.empty() ? "libp2p not initialized" : m_initError};
 }
 
-StdLogosResult Libp2pModuleImpl::newPrivateKey() {
+StdLogosResult Libp2pModuleImpl::newPrivateKey(KeyScheme scheme) {
     if (!ctx) {
         auto created = createContext();
         if (!created.success) return created;
     }
     NewPrivateKeyRequest req{};
-    req.scheme = KEY_SCHEME_ED25519;
+    req.scheme = static_cast<int64_t>(scheme);
     return callSyncWith("Failed to generate private key",
         [&](SyncPromise* p) {
             return libp2p_ctx_new_private_key(ctx, &req, &Libp2pModuleImpl::cbBytes, p);

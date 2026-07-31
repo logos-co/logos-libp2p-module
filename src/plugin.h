@@ -53,6 +53,13 @@ struct SyncResult {
     LibP2PCtx* newCtx = nullptr;
 };
 
+enum class KeyScheme : int64_t {
+    Rsa = KEY_SCHEME_RSA,
+    Ed25519 = KEY_SCHEME_ED25519,
+    Secp256k1 = KEY_SCHEME_SECP256K1,
+    Ecdsa = KEY_SCHEME_ECDSA,
+};
+
 using SyncPromise = std::promise<SyncResult>;
 
 // Resolves and reclaims a heap SyncPromise. Every libp2p callback owns its
@@ -129,7 +136,7 @@ public:
 
     StdLogosResult start();
     StdLogosResult stop();
-    StdLogosResult newPrivateKey();
+    StdLogosResult newPrivateKey(KeyScheme scheme);
     StdLogosResult publicKey();
 
     StdLogosResult connectPeer(const std::string& peerId, const std::vector<std::string>& multiaddrs, int64_t timeoutMs);
