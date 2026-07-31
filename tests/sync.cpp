@@ -60,6 +60,14 @@ LOGOS_TEST(sync_public_key) {
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
 
+LOGOS_TEST(sync_new_private_key) {
+    Libp2pModuleImpl plugin;
+    auto res = plugin.newPrivateKey();
+    LOGOS_ASSERT_TRUE(res.success);
+    LOGOS_ASSERT_TRUE(res.value.is_string());
+    LOGOS_ASSERT_FALSE(res.value.get<std::string>().empty());
+}
+
 LOGOS_TEST(sync_stream_close) {
     Libp2pModuleImpl plugin;
     LOGOS_ASSERT_TRUE(plugin.start().success);

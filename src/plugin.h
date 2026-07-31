@@ -129,6 +129,7 @@ public:
 
     StdLogosResult start();
     StdLogosResult stop();
+    StdLogosResult newPrivateKey();
     StdLogosResult publicKey();
 
     StdLogosResult connectPeer(const std::string& peerId, const std::vector<std::string>& multiaddrs, int64_t timeoutMs);
