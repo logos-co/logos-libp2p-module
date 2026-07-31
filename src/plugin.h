@@ -136,7 +136,7 @@ public:
 
     std::function<void(const std::string& eventName, const std::string& data)> emitEvent;
 
-    static StdLogosResult setLogLevel(LogLevel level);
+    static void setLogLevel(LogLevel level);
 
     bool ok();
     StdLogosResult status();
@@ -325,6 +325,6 @@ private:
     }
 };
 
-inline StdLogosResult setLogLevel(LogLevel level) {
+inline void setLogLevel(LogLevel level) {
     return Libp2pModuleImpl::setLogLevel(level);
 }

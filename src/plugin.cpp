@@ -195,9 +195,6 @@ StdLogosResult Libp2pModuleImpl::createContext() {
     libp2p_ctx_add_on_incoming_stream_listener(ctx, &Libp2pModuleImpl::onIncomingStream, this);
     libp2p_ctx_add_on_pubsub_message_listener(ctx, &Libp2pModuleImpl::onPubsubMessage, this);
 
-    auto logRes = setLogLevel(static_cast<LogLevel>(g_requestedLogLevel.load()));
-    if (!logRes.success) return logRes;
-
     return {true, {}, ""};
 }
 
@@ -219,15 +216,8 @@ StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
     return createContext();
 }
 
-StdLogosResult Libp2pModuleImpl::setLogLevel(LogLevel level) {
-    auto res = callStaticWith("Failed to set log level", [&](SyncPromise* p) {
-        return libp2p_static_set_log_level(static_cast<int64_t>(level),
-                                           &Libp2pModuleImpl::cbBool, p);
-    }, [](const SyncResult&) -> StdLogosResult { return {true, {}, ""}; });
-    if (res.success) {
-        g_requestedLogLevel.store(static_cast<int64_t>(level));
-    }
-    return res;
+void Libp2pModuleImpl::setLogLevel(LogLevel level) {
+    g_requestedLogLevel.store(static_cast<int64_t>(level));
 }
 
 void Libp2pModuleImpl::destroyContext() {
