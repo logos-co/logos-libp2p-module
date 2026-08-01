@@ -35,6 +35,8 @@ with the provider API.
 int main()
 {
     printf("=== Tutorial 6: Kademlia Provider Records ===\n\n");
+    
+    setLogLevel(LogLevel::Fatal);
 
 ```
 

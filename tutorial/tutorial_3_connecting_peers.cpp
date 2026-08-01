@@ -43,6 +43,8 @@ int main()
 {
     printf("=== Tutorial 3: Connecting Peers ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Step 1: Create and start two nodes
 ///
 /// We create two nodes. Node A listens on port 9190, Node B on port 9191.

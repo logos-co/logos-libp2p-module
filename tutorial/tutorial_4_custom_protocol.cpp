@@ -54,6 +54,8 @@ int main()
 {
     printf("=== Tutorial 4: Custom Protocol Handlers ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Step 1: Create and start two nodes
     Libp2pModuleOptions optsA, optsB;
     optsA.addrs = {"/ip4/127.0.0.1/tcp/9290"};

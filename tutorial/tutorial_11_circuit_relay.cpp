@@ -44,6 +44,8 @@ int main()
 {
     printf("=== Tutorial 11: Circuit Relay ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Step 1: Create three nodes
 ///
 /// - **Relay** (port 9890): publicly reachable, `circuitRelay: true`

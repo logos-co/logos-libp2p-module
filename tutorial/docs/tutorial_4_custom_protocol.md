@@ -58,6 +58,8 @@ int main()
 {
     printf("=== Tutorial 4: Custom Protocol Handlers ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 ```
 
 ## Step 1: Create and start two nodes

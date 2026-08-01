@@ -44,6 +44,8 @@ int main()
 {
     printf("=== Tutorial 3: Connecting Peers ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 ```
 
 ## Step 1: Create and start two nodes

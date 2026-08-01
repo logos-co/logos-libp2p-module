@@ -45,6 +45,8 @@ int main()
 {
     printf("=== Tutorial 11: Circuit Relay ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 ```
 
 ## Step 1: Create three nodes

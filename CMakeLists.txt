@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(Libp2pModulePlugin LANGUAGES CXX)
 
+find_package(nlohmann_json REQUIRED)
+
 if(DEFINED ENV{LOGOS_MODULE_BUILDER_ROOT})
     include($ENV{LOGOS_MODULE_BUILDER_ROOT}/cmake/LogosModule.cmake)
 else()
@@ -30,5 +32,7 @@ logos_module(
     LINK_LIBRARIES
         tinycbor
 )
+
+target_link_libraries(libp2p_module_module_plugin PUBLIC nlohmann_json::nlohmann_json)
 
 add_subdirectory(tutorial)

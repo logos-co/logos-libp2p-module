@@ -35,6 +35,10 @@ provide a custom address in the `addrs` field.
 
 int main()
 {
+    printf("=== Tutorial 2: Custom Node Configuration ===\n\n");
+
+    setLogLevel(LogLevel::Fatal);
+
 ```
 
 ## Method 1: Configure via C++ struct
@@ -156,6 +160,20 @@ supplied via `Libp2pModuleOptions::fromJson()`.
 
 ```
 
+## Summary
+
+In this tutorial you learned:
+  - How to configure a node with a fixed port
+  - How to control connection limits
+  - How to pass options via C++ struct or JSON
+  - How to verify the node's actual bound addresses
+
+## Run tutorial
+
+```bash
+./build/tutorial/tutorial_2_custom_config
+```
+
 ## Exercise: Try different configurations
 
 Experiment with these variations:
@@ -170,20 +188,6 @@ options.addrs = {
     "/ip4/0.0.0.0/tcp/9093",
     "/ip4/0.0.0.0/tcp/9094"
 };
-```
-
-## Summary
-
-In this tutorial you learned:
-  - How to configure a node with a fixed port
-  - How to control connection limits
-  - How to pass options via C++ struct or JSON
-  - How to verify the node's actual bound addresses
-
-## Run tutorial
-
-```bash
-./build/tutorial/tutorial_2_custom_config
 ```
 ---
 

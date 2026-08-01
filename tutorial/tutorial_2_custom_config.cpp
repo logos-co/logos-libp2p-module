@@ -34,6 +34,10 @@
 
 int main()
 {
+    printf("=== Tutorial 2: Custom Node Configuration ===\n\n");
+
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Method 1: Configure via C++ struct
 ///
 /// The most explicit way to configure a node is by constructing
@@ -144,6 +148,20 @@ int main()
     return 0;
 }
 
+/// ## Summary
+///
+/// In this tutorial you learned:
+///   - How to configure a node with a fixed port
+///   - How to control connection limits
+///   - How to pass options via C++ struct or JSON
+///   - How to verify the node's actual bound addresses
+
+/// ## Run tutorial
+///
+/// ```bash
+/// ./build/tutorial/tutorial_2_custom_config
+/// ```
+
 /// ## Exercise: Try different configurations
 ///
 /// Experiment with these variations:
@@ -158,18 +176,4 @@ int main()
 ///     "/ip4/0.0.0.0/tcp/9093",
 ///     "/ip4/0.0.0.0/tcp/9094"
 /// };
-/// ```
-
-/// ## Summary
-///
-/// In this tutorial you learned:
-///   - How to configure a node with a fixed port
-///   - How to control connection limits
-///   - How to pass options via C++ struct or JSON
-///   - How to verify the node's actual bound addresses
-
-/// ## Run tutorial
-///
-/// ```bash
-/// ./build/tutorial/tutorial_2_custom_config
 /// ```

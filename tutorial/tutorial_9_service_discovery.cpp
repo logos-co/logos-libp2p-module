@@ -36,6 +36,8 @@ int main()
 {
     printf("=== Tutorial 9: Service Discovery ===\n\n");
 
+    setLogLevel(LogLevel::Fatal);
+
 /// ## Step 1: Create a bootstrap node
 ///
 /// The bootstrap is a well-known node that all peers connect to.

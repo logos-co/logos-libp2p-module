@@ -40,8 +40,30 @@ These programs are examples, not long-running services. When a required
 operation fails, they print a useful error message to `stderr` and return
 `1`. Successful tutorials print progress to `stdout` and return `0`.
 
-The `stdout` stream can be noisy because logs from the wrapped C binding
-are also included. This is tracked in [issue #79](https://github.com/logos-co/logos-libp2p-module/issues/79).
+## Controlling libp2p Logs
+
+The wrapped libp2p binding can emit runtime logs. Tutorials set the log
+level to `LogLevel::Fatal` by default so `stdout` only shows the tutorial's
+own progress messages during normal runs. Choose another level such as
+`LogLevel::Info`, `LogLevel::Debug`, or `LogLevel::Trace` when you need more
+detail while debugging:
+
+```cpp
+setLogLevel(LogLevel::Debug);
+// ... or
+Libp2pModuleImpl::setLogLevel(LogLevel::Debug);
+```
+
+Log levels are inclusive minimum thresholds: `LogLevel::Trace` emits trace
+and above, `LogLevel::Debug` emits debug and above, and so on.
+`LogLevel::None` is the lowest threshold, so it emits all logs; it does not
+disable logging. Use `LogLevel::Fatal` for the quietest built-in threshold.
+
+In your own application, `LogLevel::Error` is often a useful default. 
+It keeps normal output quiet while still surfacing conditions
+that may indicate libp2p is misbehaving or that your integration code needs an
+adjustment. Some error logs describe remote-peer behavior, retries, or
+recoverable internal state, so they may not require any action from your side.
 
 ## Convert JSON Values Explicitly
 
@@ -79,6 +101,9 @@ printing human-readable payloads.
 int main()
 {
     printf("=== Tutorial 0: Introduction and Common Patterns ===\n\n");
+
+    // Silence logs from wrapped library.
+    setLogLevel(LogLevel::Fatal);
 
 ```
 
@@ -181,6 +206,20 @@ tutorials with this command and then run it again:
 ```bash
 nix --extra-experimental-features 'nix-command flakes' develop --command ./tutorial/build_tutorials.sh
 ```
+
+## Exercise: Enable libp2p debug logs
+
+Change this tutorial's log level from `LogLevel::None` to
+`LogLevel::Debug`:
+
+```cpp
+setLogLevel(LogLevel::Debug);
+```
+
+Compile the tutorial binaries again, using the same command from above.
+
+Run tutorial 0 again. You should now see libp2p debug logs in `stdout`
+alongside the tutorial's own progress messages.
 ---
 
 <p align="center"><a href="tutorial_1_node_lifecycle.md">Creating and Starting a libp2p Node &rarr;</a></p>

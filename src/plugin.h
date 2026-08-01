@@ -54,6 +54,21 @@ struct SyncResult {
     LibP2PCtx* newCtx = nullptr;
 };
 
+// libp2p logs treat levels as inclusive minimum thresholds:
+// `Trace` emits trace and above, `Debug` emits debug and above, etc.
+// `None` is the lowest threshold, so it emits all logs; use `Fatal` for the
+// quietest built-in threshold.
+enum class LogLevel : int64_t {
+    None = LOG_LEVEL_NONE,     // All logs.
+    Trace = LOG_LEVEL_TRACE,   // Trace and above.
+    Debug = LOG_LEVEL_DEBUG,   // Debug and above.
+    Info = LOG_LEVEL_INFO,     // Info and above.
+    Notice = LOG_LEVEL_NOTICE, // Notice and above.
+    Warn = LOG_LEVEL_WARN,     // Warn and above.
+    Error = LOG_LEVEL_ERROR,   // Error and above.
+    Fatal = LOG_LEVEL_FATAL,   // Fatal only.
+};
+
 enum class KeyScheme : int64_t {
     Rsa = KEY_SCHEME_RSA,
     Ed25519 = KEY_SCHEME_ED25519,
@@ -140,6 +155,8 @@ public:
     ~Libp2pModuleImpl();
 
     std::function<void(const std::string& eventName, const std::string& data)> emitEvent;
+
+    static void setLogLevel(LogLevel level);
 
     bool ok();
     StdLogosResult status();
@@ -307,8 +324,8 @@ private:
     // Same dance without the context check, for the `{.ffiStatic.}` bindings:
     // they take no ctx and run on the library's own static context.
     template <class Invoke, class Transform>
-    StdLogosResult callStaticWith(const char* errPrefix, Invoke&& invoke, Transform&& transform,
-                                  int awaitMs = kDefaultOpTimeoutMs) {
+    static StdLogosResult callStaticWith(const char* errPrefix, Invoke&& invoke, Transform&& transform,
+                                         int awaitMs = kDefaultOpTimeoutMs) {
         auto* p = new SyncPromise();
         auto f = p->get_future();
         int ret = invoke(p);
@@ -328,3 +345,7 @@ private:
         return transform(r);
     }
 };
+
+inline void setLogLevel(LogLevel level) {
+    return Libp2pModuleImpl::setLogLevel(level);
+}
