@@ -139,12 +139,19 @@ int main()
 ///
 /// Services are identified by a service ID (string) and can carry
 /// arbitrary data (also a string).
+///
+/// The third argument is the advertisement: an optional base64 signed
+/// XPR, as `createXpr()` returns. Leave it empty, as this tutorial
+/// does, and the node advertises its own record. Pass one and it is
+/// published verbatim, so a service on another switch is advertised
+/// with that switch's peer ID and addresses. The call fails if the XPR
+/// does not list the service ID.
     std::string serviceId = "demo-chat-service";
     std::string serviceData = "version=1.0;capacity=100";
 
     printf("\nAdvertiser advertising: \"%s\"\n", serviceId.c_str());
     StdLogosResult advertiseRes =
-        advertiser.discoStartAdvertising(serviceId, serviceData);
+        advertiser.discoStartAdvertising(serviceId, serviceData, "");
     if (!advertiseRes.success) {
         fprintf(stderr, "discoStartAdvertising failed: %s\n",
                 advertiseRes.error.c_str());

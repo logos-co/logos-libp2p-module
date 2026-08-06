@@ -276,7 +276,7 @@ StdLogosResult Libp2pModuleImpl::newPrivateKey(const std::string& scheme) {
     req.scheme = static_cast<int64_t>(parsed);
     return callSyncWith("Failed to generate private key",
         [&](SyncPromise* p) {
-            return libp2p_ctx_new_private_key(ctx, &req, &Libp2pModuleImpl::cbBytes, p);
+            return libp2p_static_new_private_key(&req, &Libp2pModuleImpl::cbBytes, p);
         },
         [](const SyncResult& r) -> StdLogosResult {
             return {true, hexEncode(r.buffer.data(), r.buffer.size()), ""};
