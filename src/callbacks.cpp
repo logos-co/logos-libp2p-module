@@ -168,14 +168,14 @@ void Libp2pModuleImpl::onPubsubMessage(const PubsubMessageEvent* evt, void* ud) 
         std::string topic = nfStr(evt->topic);
         auto bytes = nfBytes(evt->data);
         std::string payload(bytes.begin(), bytes.end());
-        {
-            std::lock_guard<std::mutex> lock(self->m_queueMutex);
-            self->m_topicQueues[topic].push(payload);
-            self->m_queueCond.notify_all();
-        }
+
+        // Serialized before the queue takes ownership of `payload`.
         json j;
         j["topic"] = topic;
         j["data"] = payload;
-        self->emitEventSafe("gossipsubMessage", j.dump());
+        std::string event = j.dump();
+
+        self->m_topicQueues.push(topic, std::move(payload));
+        self->emitEventSafe("gossipsubMessage", event);
     } catch (...) {}
 }

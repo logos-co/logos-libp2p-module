@@ -49,6 +49,44 @@ the `config` section of [`metadata.json`](./metadata.json) for the full schema.
 Code that constructs `Libp2pModuleImpl` directly (tutorials, tests) passes
 `Libp2pModuleOptions` to the constructor and bypasses this path.
 
+## GossipSub queue bounds
+
+Delivered messages wait in a per-topic queue until `gossipsubNextMessage` pops
+them. Both bounds apply together, because 1024 messages at the 1 MiB GossipSub
+message limit is still 1 GiB per topic.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `gossipsubQueueMaxMessages` | `1024` | Messages held per topic. `0` disables the queue. |
+| `gossipsubQueueMaxBytes` | `4194304` | Bytes held per topic. `0` disables the queue. |
+
+Past either bound the newest message is dropped and counted in
+`libp2p_module_gossipsub_queue_dropped_total`, reported per topic by
+`collectMetrics` alongside `libp2p_module_gossipsub_queue_depth`. An empty queue
+always accepts one message, so a byte bound below the message size cannot stall
+a topic. Set `gossipsubQueueMaxBytes` to `0` if your application reads only the
+`gossipsubMessage` event. `gossipsubMaxMessageSize` below raises the per-message
+ceiling, so raise it and the queue bounds together.
+
+## GossipSub ingress limits
+
+The queue bounds hold what a peer already delivered. These keys bound what a
+peer can deliver, and nim-libp2p applies them inside GossipSub.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `gossipsubMaxMessageSize` | `0` | Largest message accepted or sent, in bytes. `0` keeps the core 1 MiB limit; the ceiling is `MAX_GOSSIPSUB_MESSAGE_SIZE`. |
+| `gossipsubOverheadRateLimitBytes` | `0` | Per-peer budget of protocol-overhead bytes per interval. `0` disables the limit. |
+| `gossipsubOverheadRateLimitIntervalMs` | `0` | Refill interval of that budget, up to `MAX_OVERHEAD_RATE_LIMIT_INTERVAL_MS`. |
+| `gossipsubDisconnectPeerAboveRateLimit` | `false` | Disconnect a peer that spends its budget. |
+
+A rate limit needs both `gossipsubOverheadRateLimitBytes` and
+`gossipsubOverheadRateLimitIntervalMs`, and every key here needs
+`mountGossipsub`. A broken combination fails node creation with the reason, so a
+node never starts with a limit that does nothing. While
+`gossipsubDisconnectPeerAboveRateLimit` is `false`, an empty budget only
+increments `libp2p_gossipsub_peers_rate_limit_hits`; set the flag to enforce it.
+
 ---
 
 # Running a node via logoscore

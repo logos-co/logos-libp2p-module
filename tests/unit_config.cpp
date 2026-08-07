@@ -106,6 +106,48 @@ LOGOS_TEST(apply_wrong_field_type_throws) {
     LOGOS_ASSERT_TRUE(threw);
 }
 
+LOGOS_TEST(apply_reads_gossipsub_queue_bounds) {
+    Libp2pModuleOptions opts;
+    cfg::apply(json::parse(
+                   R"({"gossipsubQueueMaxMessages": 16, "gossipsubQueueMaxBytes": 0})"),
+               opts);
+    LOGOS_ASSERT_EQ(opts.gossipsubQueueMaxMessages, size_t(16));
+    LOGOS_ASSERT_EQ(opts.gossipsubQueueMaxBytes, size_t(0));
+}
+
+LOGOS_TEST(apply_reads_gossipsub_ingress_limits) {
+    Libp2pModuleOptions opts;
+    cfg::apply(json::parse(R"({"gossipsubMaxMessageSize": 2048,
+                               "gossipsubOverheadRateLimitBytes": 4096,
+                               "gossipsubOverheadRateLimitIntervalMs": 1000,
+                               "gossipsubDisconnectPeerAboveRateLimit": true})"),
+               opts);
+    LOGOS_ASSERT_EQ(opts.gossipsubMaxMessageSize, int64_t(2048));
+    LOGOS_ASSERT_EQ(opts.gossipsubOverheadRateLimitBytes, int64_t(4096));
+    LOGOS_ASSERT_EQ(opts.gossipsubOverheadRateLimitIntervalMs, int64_t(1000));
+    LOGOS_ASSERT_TRUE(opts.gossipsubDisconnectPeerAboveRateLimit);
+}
+
+// A negative queue bound read straight into size_t would become a huge positive
+// one, and nim-libp2p refuses a negative ingress limit.
+LOGOS_TEST(apply_rejects_out_of_range_gossipsub_bounds) {
+    for (const char* raw : {R"({"gossipsubQueueMaxBytes": -1})",
+                            R"({"gossipsubQueueMaxMessages": "many"})",
+                            R"({"gossipsubQueueMaxMessages": 1.5})",
+                            R"({"gossipsubMaxMessageSize": -1})",
+                            R"({"gossipsubOverheadRateLimitBytes": -1})",
+                            R"({"gossipsubOverheadRateLimitIntervalMs": -1})"}) {
+        Libp2pModuleOptions opts;
+        bool threw = false;
+        try {
+            cfg::apply(json::parse(raw), opts);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        LOGOS_ASSERT_TRUE(threw);
+    }
+}
+
 LOGOS_TEST(apply_bootstrap_node_missing_fields_defaults_empty) {
     auto j = json::parse(R"({"bootstrapNodes": [{}, {"peerId": "16Uiu2only"}]})");
     Libp2pModuleOptions opts;
@@ -203,6 +245,12 @@ LOGOS_TEST(options_defaults) {
     LOGOS_ASSERT_EQ(opts.maxOutConnections, 25);
     LOGOS_ASSERT_EQ(opts.maxConnsPerPeer, 1);
     LOGOS_ASSERT_TRUE(opts.gossipsubTriggerSelf);
+    LOGOS_ASSERT_EQ(opts.gossipsubQueueMaxMessages, size_t(1024));
+    LOGOS_ASSERT_EQ(opts.gossipsubQueueMaxBytes, size_t(4 * 1024 * 1024));
+    LOGOS_ASSERT_EQ(opts.gossipsubMaxMessageSize, int64_t(0));
+    LOGOS_ASSERT_EQ(opts.gossipsubOverheadRateLimitBytes, int64_t(0));
+    LOGOS_ASSERT_EQ(opts.gossipsubOverheadRateLimitIntervalMs, int64_t(0));
+    LOGOS_ASSERT_FALSE(opts.gossipsubDisconnectPeerAboveRateLimit);
 }
 
 LOGOS_TEST(options_designated_init) {

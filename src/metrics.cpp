@@ -28,6 +28,10 @@ LogosMap Libp2pModuleImpl::collectMetrics() {
         }
     }
 
+    // The backlog lives on the C++ side, so nim-libp2p's registry cannot see it.
+    auto queueSeries = m_topicQueues.metrics();
+    series.insert(series.end(), queueSeries.begin(), queueSeries.end());
+
     json payload;
     payload["metrics"] = series;
     return payload;

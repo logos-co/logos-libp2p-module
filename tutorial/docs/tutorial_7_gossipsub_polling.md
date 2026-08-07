@@ -23,6 +23,12 @@ In this tutorial we'll:
 > **Note**: The GossipSub mesh takes some time to form after both
 > peers have subscribed. A short delay of 1-2 seconds is usually enough.
 
+> **Note**: Messages wait in a per-topic queue bounded by
+> `gossipsubQueueMaxMessages` (1024) and `gossipsubQueueMaxBytes` (4 MiB).
+> Past either bound the newest message is dropped and counted in
+> `libp2p_module_gossipsub_queue_dropped_total`. Poll fast enough to keep
+> that counter flat.
+
 -----------
 
 ```cpp
@@ -204,6 +210,8 @@ timeout expires. The timeout is in milliseconds.
   - Both publisher and subscriber must subscribe to the topic
   - Allow 1-2 seconds for the mesh to form
   - Use `gossipsubNextMessage(topic, timeout)` for polling
+  - The per-topic queue is bounded; watch
+    `libp2p_module_gossipsub_queue_dropped_total`
   - Always unsubscribe and stop cleanly
 
 ## Run tutorial

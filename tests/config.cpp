@@ -260,6 +260,40 @@ LOGOS_TEST(config_gossipsub_trigger_self_disabled) {
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
 
+LOGOS_TEST(config_gossipsub_ingress_limits_accepted) {
+    Libp2pModuleImpl plugin(Libp2pModuleOptions{
+        .gossipsubMaxMessageSize = 1024 * 1024,
+        .gossipsubOverheadRateLimitBytes = 64 * 1024,
+        .gossipsubOverheadRateLimitIntervalMs = 1000 });
+    LOGOS_ASSERT_TRUE(plugin.start().success);
+
+    std::string topic = "limits-test";
+    LOGOS_ASSERT_TRUE(plugin.gossipsubSubscribe(topic).success);
+    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, "hello").success);
+
+    auto res = plugin.gossipsubNextMessage(topic, 1000);
+    LOGOS_ASSERT_TRUE(res.success);
+
+    LOGOS_ASSERT_TRUE(plugin.stop().success);
+}
+
+// nim-libp2p fails closed: a limit that nothing applies stops node creation.
+LOGOS_TEST(config_gossipsub_limit_without_mount_fails) {
+    Libp2pModuleImpl plugin(Libp2pModuleOptions{
+        .mountGossipsub = false, .gossipsubMaxMessageSize = 1024 * 1024 });
+    auto res = plugin.start();
+    LOGOS_ASSERT_FALSE(res.success);
+    LOGOS_ASSERT_FALSE(plugin.ok());
+}
+
+// A budget without its interval never refills, so the pair goes together.
+LOGOS_TEST(config_gossipsub_rate_limit_without_interval_fails) {
+    Libp2pModuleImpl plugin(
+        Libp2pModuleOptions{ .gossipsubOverheadRateLimitBytes = 64 * 1024 });
+    LOGOS_ASSERT_FALSE(plugin.start().success);
+    LOGOS_ASSERT_FALSE(plugin.ok());
+}
+
 LOGOS_TEST(config_tcp_transport) {
     Libp2pModuleImpl plugin;
     LOGOS_ASSERT_TRUE(plugin.start().success);
