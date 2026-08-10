@@ -36,7 +36,7 @@ int main()
 {
     printf("=== Tutorial 8: GossipSub - Event Callback Messages ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel("fatal");
 
 ```
 

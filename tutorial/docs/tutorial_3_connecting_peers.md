@@ -44,7 +44,7 @@ int main()
 {
     printf("=== Tutorial 3: Connecting Peers ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel("fatal");
 
 ```
 

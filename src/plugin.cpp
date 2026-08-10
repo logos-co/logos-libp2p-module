@@ -216,8 +216,14 @@ StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
     return createContext();
 }
 
-void Libp2pModuleImpl::setLogLevel(LogLevel level) {
-    g_requestedLogLevel.store(static_cast<int64_t>(level));
+StdLogosResult Libp2pModuleImpl::setLogLevel(const std::string& level) {
+    LogLevel parsed{};
+    if (!parseLogLevel(level, parsed)) {
+        return {false, {}, "Unknown log level '" + level +
+                           "'; expected none, trace, debug, info, notice, warn, error or fatal"};
+    }
+    g_requestedLogLevel.store(static_cast<int64_t>(parsed));
+    return {true, {}, ""};
 }
 
 void Libp2pModuleImpl::destroyContext() {

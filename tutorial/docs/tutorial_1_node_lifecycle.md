@@ -27,7 +27,7 @@ int main()
 {
     printf("=== Tutorial 1: Creating and Starting a libp2p Node ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel("fatal");
 
 ```
 

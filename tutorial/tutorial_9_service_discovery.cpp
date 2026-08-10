@@ -36,7 +36,7 @@ int main()
 {
     printf("=== Tutorial 9: Service Discovery ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel("fatal");
 
 /// ## Step 1: Create a bootstrap node
 ///
