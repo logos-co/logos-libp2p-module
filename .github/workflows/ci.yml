@@ -136,6 +136,20 @@ jobs:
         with:
           persist-credentials: false
 
+      # The VM gets 50% of the host RAM and 3 GB of swap by default. A parallel
+      # nix build fills that, and the VM then thrashes until the job timeout.
+      - name: Configure the WSL VM
+        shell: powershell
+        run: |
+          @"
+          [wsl2]
+          processors=4
+          memory=12GB
+          swap=8GB
+          swapFile=D:\\wsl-swap.vhdx
+          "@ | Set-Content -Path "$env:USERPROFILE\.wslconfig" -Encoding ascii
+          wsl --shutdown
+
       - name: Install Ubuntu (if missing)
         shell: powershell
         run: |
@@ -153,4 +167,7 @@ jobs:
           sudo apt-get install -y curl git;
           curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm;
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh;
-          nix flake check --system x86_64-linux --print-build-logs --show-trace"
+          nix flake check --system x86_64-linux --print-build-logs --show-trace
+          --max-jobs 2 --cores 2 --max-silent-time 900
+          --extra-substituters https://logos-co.cachix.org
+          --extra-trusted-public-keys logos-co.cachix.org-1:12K8609ho1pCt0erUQrOrs/KmOuhWq/EhVwhzQRb35E="
