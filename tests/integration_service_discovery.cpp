@@ -1,12 +1,25 @@
 #include <logos_test.h>
 #include <plugin.h>
 #include <map>
+#include <memory>
 #include <thread>
 #include <chrono>
 #include "test_helpers.h"
 
 static Libp2pModuleOptions discoOptions() {
     return Libp2pModuleOptions{ .mountServiceDiscovery = true };
+}
+
+static std::unique_ptr<Libp2pModuleImpl> startDiscoPeer(
+    const std::string& bootstrapId, const std::vector<std::string>& bootstrapAddrs)
+{
+    Libp2pModuleOptions opts = discoOptions();
+    opts.bootstrapNodes = { {bootstrapId, bootstrapAddrs} };
+    auto node = std::make_unique<Libp2pModuleImpl>(opts);
+    LOGOS_ASSERT_TRUE(node->start().success);
+    LOGOS_ASSERT_TRUE(node->discoStart().success);
+    LOGOS_ASSERT_TRUE(node->connectPeer(bootstrapId, bootstrapAddrs, 5000).success);
+    return node;
 }
 
 LOGOS_TEST(disco_start_stop) {
@@ -25,41 +38,30 @@ LOGOS_TEST(disco_advertise_and_lookup) {
     LOGOS_ASSERT_TRUE(nodeC.discoStart().success);
     auto [peerIdC, addrsC] = getPeerInfoPair(nodeC);
 
-    Libp2pModuleOptions optsA = discoOptions();
-    optsA.bootstrapNodes = { {peerIdC, addrsC} };
-    Libp2pModuleImpl nodeA(optsA);
-    LOGOS_ASSERT_TRUE(nodeA.start().success);
-    LOGOS_ASSERT_TRUE(nodeA.discoStart().success);
-    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdC, addrsC, 5000).success);
-
-    Libp2pModuleOptions optsB = discoOptions();
-    optsB.bootstrapNodes = { {peerIdC, addrsC} };
-    Libp2pModuleImpl nodeB(optsB);
-    LOGOS_ASSERT_TRUE(nodeB.start().success);
-    LOGOS_ASSERT_TRUE(nodeB.discoStart().success);
-    LOGOS_ASSERT_TRUE(nodeB.connectPeer(peerIdC, addrsC, 5000).success);
+    auto nodeA = startDiscoPeer(peerIdC, addrsC);
+    auto nodeB = startDiscoPeer(peerIdC, addrsC);
 
     std::string serviceId = "test-service";
-    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId, "").success);
-    LOGOS_ASSERT_TRUE(nodeB.discoRegisterInterest(serviceId).success);
+    LOGOS_ASSERT_TRUE(nodeA->discoStartAdvertising(serviceId, "", "").success);
+    LOGOS_ASSERT_TRUE(nodeB->discoRegisterInterest(serviceId).success);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    auto res = nodeB.discoLookup(serviceId, "");
+    auto res = nodeB->discoLookup(serviceId, "");
     LOGOS_ASSERT_TRUE(res.success);
 
     auto records = res.value;
     LOGOS_ASSERT_FALSE(records.empty());
 
-    auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
+    auto [peerIdA, addrsA] = getPeerInfoPair(*nodeA);
     LOGOS_ASSERT_TRUE(records[0]["peerId"].get<std::string>() == peerIdA);
 
-    LOGOS_ASSERT_TRUE(nodeA.discoStop().success);
-    LOGOS_ASSERT_TRUE(nodeB.discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeA->discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeB->discoStop().success);
     LOGOS_ASSERT_TRUE(nodeC.discoStop().success);
 
-    LOGOS_ASSERT_TRUE(nodeA.stop().success);
-    LOGOS_ASSERT_TRUE(nodeB.stop().success);
+    LOGOS_ASSERT_TRUE(nodeA->stop().success);
+    LOGOS_ASSERT_TRUE(nodeB->stop().success);
     LOGOS_ASSERT_TRUE(nodeC.stop().success);
 }
 
@@ -69,41 +71,108 @@ LOGOS_TEST(disco_advertise_with_data) {
     LOGOS_ASSERT_TRUE(nodeC.discoStart().success);
     auto [peerIdC, addrsC] = getPeerInfoPair(nodeC);
 
-    Libp2pModuleOptions optsA = discoOptions();
-    optsA.bootstrapNodes = { {peerIdC, addrsC} };
-    Libp2pModuleImpl nodeA(optsA);
-    LOGOS_ASSERT_TRUE(nodeA.start().success);
-    LOGOS_ASSERT_TRUE(nodeA.discoStart().success);
-    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdC, addrsC, 5000).success);
-
-    Libp2pModuleOptions optsB = discoOptions();
-    optsB.bootstrapNodes = { {peerIdC, addrsC} };
-    Libp2pModuleImpl nodeB(optsB);
-    LOGOS_ASSERT_TRUE(nodeB.start().success);
-    LOGOS_ASSERT_TRUE(nodeB.discoStart().success);
-    LOGOS_ASSERT_TRUE(nodeB.connectPeer(peerIdC, addrsC, 5000).success);
+    auto nodeA = startDiscoPeer(peerIdC, addrsC);
+    auto nodeB = startDiscoPeer(peerIdC, addrsC);
 
     std::string serviceId = "data-service";
     std::string serviceData = "version=2;proto=test";
 
-    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId, serviceData).success);
-    LOGOS_ASSERT_TRUE(nodeB.discoRegisterInterest(serviceId).success);
+    LOGOS_ASSERT_TRUE(nodeA->discoStartAdvertising(serviceId, serviceData, "").success);
+    LOGOS_ASSERT_TRUE(nodeB->discoRegisterInterest(serviceId).success);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    auto res = nodeB.discoLookup(serviceId, serviceData);
+    auto res = nodeB->discoLookup(serviceId, serviceData);
     LOGOS_ASSERT_TRUE(res.success);
 
     auto records = res.value;
     LOGOS_ASSERT_FALSE(records.empty());
 
-    LOGOS_ASSERT_TRUE(nodeA.discoStop().success);
-    LOGOS_ASSERT_TRUE(nodeB.discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeA->discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeB->discoStop().success);
     LOGOS_ASSERT_TRUE(nodeC.discoStop().success);
 
-    LOGOS_ASSERT_TRUE(nodeA.stop().success);
-    LOGOS_ASSERT_TRUE(nodeB.stop().success);
+    LOGOS_ASSERT_TRUE(nodeA->stop().success);
+    LOGOS_ASSERT_TRUE(nodeB->stop().success);
     LOGOS_ASSERT_TRUE(nodeC.stop().success);
+}
+
+LOGOS_TEST(disco_advertise_foreign_xpr) {
+    Libp2pModuleImpl nodeC(discoOptions());
+    LOGOS_ASSERT_TRUE(nodeC.start().success);
+    LOGOS_ASSERT_TRUE(nodeC.discoStart().success);
+    auto [peerIdC, addrsC] = getPeerInfoPair(nodeC);
+
+    auto nodeA = startDiscoPeer(peerIdC, addrsC);
+    auto nodeB = startDiscoPeer(peerIdC, addrsC);
+
+    // The consuming module's own switch: it mounts no service discovery, so only
+    // the record it hands over can carry it into the DHT.
+    Libp2pModuleImpl nodeS(Libp2pModuleOptions{ .mountServiceDiscovery = false });
+    LOGOS_ASSERT_TRUE(nodeS.start().success);
+    auto [peerIdS, addrsS] = getPeerInfoPair(nodeS);
+
+    std::string serviceId = "foreign-service";
+    std::string serviceData = "version=3";
+    std::map<std::string, std::vector<uint8_t>> services = {
+        {serviceId, std::vector<uint8_t>(serviceData.begin(), serviceData.end())},
+    };
+
+    auto xpr = nodeS.createXpr(addrsS, services, 0);
+    LOGOS_ASSERT_TRUE(xpr.success);
+    std::string advertisement = xpr.value.get<std::string>();
+
+    LOGOS_ASSERT_TRUE(
+        nodeA->discoStartAdvertising(serviceId, serviceData, advertisement).success);
+    LOGOS_ASSERT_TRUE(nodeB->discoRegisterInterest(serviceId).success);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    auto res = nodeB->discoLookup(serviceId, serviceData);
+    LOGOS_ASSERT_TRUE(res.success);
+
+    auto records = res.value;
+    LOGOS_ASSERT_FALSE(records.empty());
+
+    // The advertiser published someone else's record, so the discoverer reaches
+    // the service switch and not the advertiser.
+    LOGOS_ASSERT_EQ(records[0]["peerId"].get<std::string>(), peerIdS);
+    LOGOS_ASSERT_FALSE(records[0]["addrs"].empty());
+    LOGOS_ASSERT_EQ(records[0]["addrs"][0].get<std::string>(), addrsS[0]);
+
+    LOGOS_ASSERT_TRUE(nodeA->discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeB->discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeC.discoStop().success);
+
+    LOGOS_ASSERT_TRUE(nodeA->stop().success);
+    LOGOS_ASSERT_TRUE(nodeB->stop().success);
+    LOGOS_ASSERT_TRUE(nodeC.stop().success);
+    LOGOS_ASSERT_TRUE(nodeS.stop().success);
+}
+
+LOGOS_TEST(disco_advertise_rejects_bad_xpr) {
+    Libp2pModuleImpl node(discoOptions());
+    LOGOS_ASSERT_TRUE(node.start().success);
+
+    std::string serviceId = "checked-service";
+
+    LOGOS_ASSERT_FALSE(node.discoStartAdvertising(serviceId, "", "not base64!").success);
+
+    auto [peerId, addrs] = getPeerInfoPair(node);
+    auto other = node.createXpr(addrs, {{"other-service", {}}}, 0);
+    LOGOS_ASSERT_TRUE(other.success);
+    LOGOS_ASSERT_FALSE(
+        node.discoStartAdvertising(serviceId, "", other.value.get<std::string>()).success);
+
+    auto signedXpr = node.createXpr(addrs, {{serviceId, {}}}, 0);
+    LOGOS_ASSERT_TRUE(signedXpr.success);
+    std::string rawBytes = base64Decode(signedXpr.value.get<std::string>());
+    rawBytes[rawBytes.size() / 2] ^= 0xff;
+    std::string tampered = base64Encode(
+        std::vector<uint8_t>(rawBytes.begin(), rawBytes.end()));
+    LOGOS_ASSERT_FALSE(node.discoStartAdvertising(serviceId, "", tampered).success);
+
+    LOGOS_ASSERT_TRUE(node.stop().success);
 }
 
 LOGOS_TEST(disco_start_stop_advertising) {
@@ -121,7 +190,7 @@ LOGOS_TEST(disco_start_stop_advertising) {
 
     std::string serviceId = "ephemeral-service";
 
-    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId, "").success);
+    LOGOS_ASSERT_TRUE(nodeA.discoStartAdvertising(serviceId, "", "").success);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     LOGOS_ASSERT_TRUE(nodeA.discoStopAdvertising(serviceId).success);

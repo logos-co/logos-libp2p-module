@@ -43,23 +43,27 @@ operation fails, they print a useful error message to `stderr` and return
 ## Controlling libp2p Logs
 
 The wrapped libp2p binding can emit runtime logs. Tutorials set the log
-level to `LogLevel::Fatal` by default so `stdout` only shows the tutorial's
+level to `"fatal"` by default so `stdout` only shows the tutorial's
 own progress messages during normal runs. Choose another level such as
-`LogLevel::Info`, `LogLevel::Debug`, or `LogLevel::Trace` when you need more
+`"info"`, `"debug"`, or `"trace"` when you need more
 detail while debugging:
 
 ```cpp
-setLogLevel(LogLevel::Debug);
+setLogLevel("debug");
 // ... or
-Libp2pModuleImpl::setLogLevel(LogLevel::Debug);
+Libp2pModuleImpl::setLogLevel("debug");
 ```
 
-Log levels are inclusive minimum thresholds: `LogLevel::Trace` emits trace
-and above, `LogLevel::Debug` emits debug and above, and so on.
-`LogLevel::None` is the lowest threshold, so it emits all logs; it does not
-disable logging. Use `LogLevel::Fatal` for the quietest built-in threshold.
+The level names are `"none"`, `"trace"`, `"debug"`, `"info"`, `"notice"`,
+`"warn"`, `"error"` and `"fatal"`; any other name returns a failed result
+and leaves the level as it was.
 
-In your own application, `LogLevel::Error` is often a useful default. 
+Log levels are inclusive minimum thresholds: `"trace"` emits trace
+and above, `"debug"` emits debug and above, and so on.
+`"none"` is the lowest threshold, so it emits all logs; it does not
+disable logging. Use `"fatal"` for the quietest built-in threshold.
+
+In your own application, `"error"` is often a useful default.
 It keeps normal output quiet while still surfacing conditions
 that may indicate libp2p is misbehaving or that your integration code needs an
 adjustment. Some error logs describe remote-peer behavior, retries, or
@@ -103,7 +107,7 @@ int main()
     printf("=== Tutorial 0: Introduction and Common Patterns ===\n\n");
 
     // Silence logs from wrapped library.
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel("fatal");
 
 ```
 
@@ -209,11 +213,10 @@ nix --extra-experimental-features 'nix-command flakes' develop --command ./tutor
 
 ## Exercise: Enable libp2p debug logs
 
-Change this tutorial's log level from `LogLevel::None` to
-`LogLevel::Debug`:
+Change this tutorial's log level from `"fatal"` to `"debug"`:
 
 ```cpp
-setLogLevel(LogLevel::Debug);
+setLogLevel("debug");
 ```
 
 Compile the tutorial binaries again, using the same command from above.

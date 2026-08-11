@@ -35,7 +35,7 @@ int main()
 {
     printf("=== Tutorial 8: GossipSub - Event Callback Messages ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel("fatal");
 
 /// ## Step 1: Create two nodes with GossipSub enabled
     Libp2pModuleOptions optsA, optsB;

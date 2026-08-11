@@ -39,7 +39,7 @@ int main()
 {
     printf("=== Tutorial 5: Kademlia DHT Basics ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel("fatal");
 
 /// ## Step 1: Create two nodes
 ///
