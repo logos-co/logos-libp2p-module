@@ -69,6 +69,21 @@ enum class LogLevel : int64_t {
     Fatal = LOG_LEVEL_FATAL,   // Fatal only.
 };
 
+// Maps a level name onto LogLevel. The name is what crosses the module
+// boundary — LIDL has no enum, and the numeric LOG_LEVEL_* values belong to the
+// Nim binding, so they are no contract for a caller in another language.
+inline bool parseLogLevel(const std::string& name, LogLevel& out) {
+    if (name == "none") { out = LogLevel::None; return true; }
+    if (name == "trace") { out = LogLevel::Trace; return true; }
+    if (name == "debug") { out = LogLevel::Debug; return true; }
+    if (name == "info") { out = LogLevel::Info; return true; }
+    if (name == "notice") { out = LogLevel::Notice; return true; }
+    if (name == "warn") { out = LogLevel::Warn; return true; }
+    if (name == "error") { out = LogLevel::Error; return true; }
+    if (name == "fatal") { out = LogLevel::Fatal; return true; }
+    return false;
+}
+
 enum class KeyScheme : int64_t {
     Rsa = KEY_SCHEME_RSA,
     Ed25519 = KEY_SCHEME_ED25519,
@@ -156,7 +171,7 @@ public:
 
     std::function<void(const std::string& eventName, const std::string& data)> emitEvent;
 
-    static void setLogLevel(LogLevel level);
+    static StdLogosResult setLogLevel(const std::string& level);
 
     bool ok();
     StdLogosResult status();
@@ -212,7 +227,7 @@ public:
 
     StdLogosResult discoStart();
     StdLogosResult discoStop();
-    StdLogosResult discoStartAdvertising(const std::string& serviceId, const std::string& serviceData);
+    StdLogosResult discoStartAdvertising(const std::string& serviceId, const std::string& serviceData, const std::string& advertisement);
     StdLogosResult discoStopAdvertising(const std::string& serviceId);
     StdLogosResult discoRegisterInterest(const std::string& serviceId);
     StdLogosResult discoUnregisterInterest(const std::string& serviceId);
@@ -344,6 +359,6 @@ private:
     }
 };
 
-inline void setLogLevel(LogLevel level) {
+inline StdLogosResult setLogLevel(const std::string& level) {
     return Libp2pModuleImpl::setLogLevel(level);
 }

@@ -26,7 +26,7 @@ int main()
 {
     printf("=== Tutorial 10: Peer Store Management ===\n\n");
 
-    setLogLevel(LogLevel::Fatal);
+    setLogLevel("fatal");
 
 /// ## Step 1: Create two nodes
 ///

@@ -14,13 +14,29 @@ StdLogosResult Libp2pModuleImpl::discoStop() {
     });
 }
 
+/// A non-empty `advertisement` is the base64 signed XPR createXpr returns, and it
+/// is published verbatim, so a service reachable on another switch is advertised
+/// with that switch's peer id and addresses. libp2p rejects one that fails to
+/// decode, exceeds the record size limit, or omits `serviceId`.
 StdLogosResult Libp2pModuleImpl::discoStartAdvertising(
     const std::string& serviceId,
-    const std::string& serviceData)
+    const std::string& serviceData,
+    const std::string& advertisement)
 {
+    std::string advertBytes;
+    if (!advertisement.empty()) {
+        try {
+            advertBytes = base64Decode(advertisement);
+        } catch (const std::invalid_argument& e) {
+            return {false, {},
+                    std::string("discoStartAdvertising: invalid base64: ") + e.what()};
+        }
+    }
+
     StartAdvertisingRequest req{};
     req.serviceId = nimffi_str(serviceId.c_str());
     req.serviceData = nimffiBytes(serviceData);
+    req.advertisement = nimffiBytes(advertBytes);
     return callSync("Failed to start advertising", [&](SyncPromise* p) {
         return libp2p_ctx_service_disco_start_advertising(ctx, &req,
                                                           &Libp2pModuleImpl::cbBool, p);

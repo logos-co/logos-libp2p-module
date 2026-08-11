@@ -225,8 +225,14 @@ StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
     return createContext();
 }
 
-void Libp2pModuleImpl::setLogLevel(LogLevel level) {
-    g_requestedLogLevel.store(static_cast<int64_t>(level));
+StdLogosResult Libp2pModuleImpl::setLogLevel(const std::string& level) {
+    LogLevel parsed{};
+    if (!parseLogLevel(level, parsed)) {
+        return {false, {}, "Unknown log level '" + level +
+                           "'; expected none, trace, debug, info, notice, warn, error or fatal"};
+    }
+    g_requestedLogLevel.store(static_cast<int64_t>(parsed));
+    return {true, {}, ""};
 }
 
 void Libp2pModuleImpl::destroyContext() {
@@ -287,7 +293,7 @@ StdLogosResult Libp2pModuleImpl::newPrivateKey(const std::string& scheme) {
     req.scheme = static_cast<int64_t>(parsed);
     return callSyncWith("Failed to generate private key",
         [&](SyncPromise* p) {
-            return libp2p_ctx_new_private_key(ctx, &req, &Libp2pModuleImpl::cbBytes, p);
+            return libp2p_static_new_private_key(&req, &Libp2pModuleImpl::cbBytes, p);
         },
         [](const SyncResult& r) -> StdLogosResult {
             return {true, hexEncode(r.buffer.data(), r.buffer.size()), ""};
