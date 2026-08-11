@@ -51,6 +51,8 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@v12
 
       - name: Setup Cachix
+        # the cache is an optimization: a failed push must not fail the job
+        continue-on-error: true
         uses: cachix/cachix-action@v15
         with:
           name: logos-co
@@ -80,6 +82,8 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@v12
 
       - name: Setup Cachix
+        # the cache is an optimization: a failed push must not fail the job
+        continue-on-error: true
         uses: cachix/cachix-action@v15
         with:
           name: logos-co
@@ -112,6 +116,8 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@v12
 
       - name: Setup Cachix
+        # the cache is an optimization: a failed push must not fail the job
+        continue-on-error: true
         uses: cachix/cachix-action@v15
         with:
           name: logos-co

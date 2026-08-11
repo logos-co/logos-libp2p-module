@@ -11,11 +11,13 @@ logos_test(
     NAME libp2p_module_unit_tests
     MODULE_SOURCES
         ../src/utils.cpp
+        ../src/topic_queues.cpp
     TEST_SOURCES
         main.cpp
         unit_config.cpp
         unit_metrics.cpp
         unit_sync.cpp
+        unit_topic_queues.cpp
     EXTRA_INCLUDES
         ../lib
     EXTRA_LINK_LIBS
@@ -36,6 +38,7 @@ if(LIBP2P_PATH)
         NAME libp2p_module_tests
         MODULE_SOURCES
             ../src/utils.cpp
+            ../src/topic_queues.cpp
             ../src/plugin.cpp
             ../src/callbacks.cpp
             ../src/kademlia.cpp

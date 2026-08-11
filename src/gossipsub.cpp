@@ -1,7 +1,5 @@
 #include "plugin.h"
 
-#include <chrono>
-
 StdLogosResult Libp2pModuleImpl::gossipsubPublish(
     const std::string& topic, const std::string& data)
 {
@@ -26,32 +24,20 @@ StdLogosResult Libp2pModuleImpl::gossipsubSubscribe(const std::string& topic) {
 
 StdLogosResult Libp2pModuleImpl::gossipsubUnsubscribe(const std::string& topic) {
     if (!ctx) return {false, {}, "No libp2p context"};
-    return callSync("Failed to unsubscribe", [&](SyncPromise* p) {
+    auto res = callSync("Failed to unsubscribe", [&](SyncPromise* p) {
         return libp2p_ctx_gossipsub_unsubscribe(ctx, nimffi_str(topic.c_str()),
                                                 &Libp2pModuleImpl::cbBool, p);
     });
+    if (res.success) {
+        m_topicQueues.release(topic);
+    }
+    return res;
 }
 
 StdLogosResult Libp2pModuleImpl::gossipsubNextMessage(const std::string& topic, int64_t timeoutMs) {
-    std::unique_lock<std::mutex> lock(m_queueMutex);
-
-    // .find() avoids inserting an empty queue for every polled topic.
-    auto hasMessage = [&] {
-        auto it = m_topicQueues.find(topic);
-        return it != m_topicQueues.end() && !it->second.empty();
-    };
-
-    if (!hasMessage()) {
-        if (!m_queueCond.wait_for(lock, std::chrono::milliseconds(timeoutMs), hasMessage)) {
-            return {false, {}, "timeout waiting for message"};
-        }
+    std::string msg;
+    if (!m_topicQueues.pop(topic, timeoutMs, msg)) {
+        return {false, {}, "timeout waiting for message"};
     }
-
-    auto it = m_topicQueues.find(topic);
-    if (it == m_topicQueues.end() || it->second.empty()) {
-        return {false, {}, "queue is empty"};
-    }
-    std::string msg = std::move(it->second.front());
-    it->second.pop();
     return {true, msg, ""};
 }

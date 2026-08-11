@@ -93,8 +93,17 @@ void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
 
     m_privKey.assign(options.privKey.begin(), options.privKey.end());
 
-    m_libp2pConfig.mountGossipsub = options.mountGossipsub;
-    m_libp2pConfig.gossipsubTriggerSelf = options.gossipsubTriggerSelf;
+    m_topicQueues.setBounds(options.gossipsubQueueMaxMessages,
+                            options.gossipsubQueueMaxBytes);
+
+    m_libp2pConfig.gossipsub.mount = options.mountGossipsub;
+    m_libp2pConfig.gossipsub.triggerSelf = options.gossipsubTriggerSelf;
+    m_libp2pConfig.gossipsub.maxMessageSize = options.gossipsubMaxMessageSize;
+    m_libp2pConfig.gossipsub.overheadRateLimit.bytes = options.gossipsubOverheadRateLimitBytes;
+    m_libp2pConfig.gossipsub.overheadRateLimit.intervalMs =
+        options.gossipsubOverheadRateLimitIntervalMs;
+    m_libp2pConfig.gossipsub.disconnectPeerAboveRateLimit =
+        options.gossipsubDisconnectPeerAboveRateLimit;
     m_libp2pConfig.mountKad = options.mountKad;
     m_libp2pConfig.mountServiceDiscovery = options.mountServiceDiscovery;
 
@@ -254,9 +263,14 @@ StdLogosResult Libp2pModuleImpl::start() {
 }
 
 StdLogosResult Libp2pModuleImpl::stop() {
-    return callSync("Failed to stop libp2p", [&](SyncPromise* p) {
+    auto res = callSync("Failed to stop libp2p", [&](SyncPromise* p) {
         return libp2p_ctx_stop(ctx, &Libp2pModuleImpl::cbBool, p);
     });
+    // A node that failed to stop is still delivering, so it keeps its backlog.
+    if (res.success) {
+        m_topicQueues.releaseAll();
+    }
+    return res;
 }
 
 bool Libp2pModuleImpl::ok() {

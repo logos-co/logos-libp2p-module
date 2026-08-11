@@ -18,7 +18,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <queue>
 
 #include <nlohmann/json.hpp>
 
@@ -34,6 +33,7 @@
 
 #include "config.h"
 #include "metric.h"
+#include "topic_queues.h"
 #include "utils.h"
 
 // Timeouts (milliseconds) for the sync-over-async libp2p bridge. nim-ffi never
@@ -274,9 +274,7 @@ private:
     // The Nim side owns stream lifetimes and hands out opaque uint64 stream
     // ids; the wrapper forwards them verbatim, so no local stream table.
 
-    std::mutex m_queueMutex;
-    std::condition_variable m_queueCond;
-    std::unordered_map<std::string, std::queue<std::string>> m_topicQueues;
+    TopicQueues m_topicQueues;
 
     std::mutex m_inboundStreamMutex;
     std::condition_variable m_inboundStreamCond;

@@ -20,6 +20,11 @@
 /// the callback used by worker threads, so registering it late can miss
 /// messages.
 ///
+/// Every delivered message also lands in the per-topic queue that
+/// `gossipsubNextMessage()` drains, which a callback-only application never
+/// reads. Set `{ "gossipsubQueueMaxBytes": 0 }` in the module config to skip
+/// that queue; the `"gossipsubMessage"` event still fires.
+///
 /// -----------
 
 #include <chrono>
@@ -199,6 +204,7 @@ int main()
 ///   - Use `emitEvent` for event-driven GossipSub message reception
 ///   - Register the callback before subscribing
 ///   - The `"gossipsubMessage"` event payload contains the topic and data
+///   - Set `gossipsubQueueMaxBytes` to 0 so the unread poll queue costs nothing
 ///   - A condition variable is one way to bridge callback delivery back to
 ///     synchronous example code
 ///   - Always unsubscribe and stop cleanly

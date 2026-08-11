@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -29,6 +31,20 @@ struct Libp2pModuleOptions {
     bool mountGossipsub = true;
     bool mountKad = true;
     bool mountServiceDiscovery = true;
+
+    // Bounds on the per-topic backlog gossipsubNextMessage() drains; either at
+    // 0 disables it. Keep the byte bound above gossipsubMaxMessageSize, since a
+    // larger message never fits. See TopicQueues.
+    size_t gossipsubQueueMaxMessages = 1024;
+    size_t gossipsubQueueMaxBytes = 4 * 1024 * 1024;
+
+    // Ingress limits nim-libp2p applies; 0 leaves each one at the core default.
+    // The rate limit needs both bytes and interval, and it only counts hits
+    // until gossipsubDisconnectPeerAboveRateLimit enforces it.
+    int64_t gossipsubMaxMessageSize = 0;
+    int64_t gossipsubOverheadRateLimitBytes = 0;
+    int64_t gossipsubOverheadRateLimitIntervalMs = 0;
+    bool gossipsubDisconnectPeerAboveRateLimit = false;
 
     // Raw private key bytes for a stable peer identity; empty generates a fresh key.
     std::vector<uint8_t> privKey = {};
@@ -78,8 +94,30 @@ inline TransportType parseTransport(const nlohmann::json& j, TransportType fallb
     return fallback;
 }
 
+/// is_number_unsigned() rejects negatives and floats in one check; a negative
+/// queue bound read straight into size_t would wrap into a huge positive one,
+/// and nim-libp2p refuses a negative ingress limit. The range check keeps a
+/// value above the target type from truncating into a smaller bound, or from
+/// wrapping into the negative the sign check just rejected.
+template <typename T>
+T parseNonNegative(const nlohmann::json& j, const char* key, T fallback) {
+    auto it = j.find(key);
+    if (it == j.end()) {
+        return fallback;
+    }
+    if (!it->is_number_unsigned()) {
+        throw std::invalid_argument(std::string(key) + " must be a non-negative integer");
+    }
+    const auto raw = it->get<uint64_t>();
+    if (raw > static_cast<uint64_t>(std::numeric_limits<T>::max())) {
+        throw std::invalid_argument(std::string(key) + " is out of range");
+    }
+    return static_cast<T>(raw);
+}
+
 /// Overlays present keys onto `o`. Throws nlohmann type_error on a wrong-typed
-/// field; load() catches it and falls back to defaults.
+/// field, or std::invalid_argument on an out-of-range one; load() catches both
+/// and falls back to defaults.
 inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
     if (!j.is_object()) {
         return;
@@ -112,6 +150,18 @@ inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
     o.mountGossipsub = j.value("mountGossipsub", o.mountGossipsub);
     o.mountKad = j.value("mountKad", o.mountKad);
     o.mountServiceDiscovery = j.value("mountServiceDiscovery", o.mountServiceDiscovery);
+    o.gossipsubQueueMaxMessages =
+        parseNonNegative(j, "gossipsubQueueMaxMessages", o.gossipsubQueueMaxMessages);
+    o.gossipsubQueueMaxBytes =
+        parseNonNegative(j, "gossipsubQueueMaxBytes", o.gossipsubQueueMaxBytes);
+    o.gossipsubMaxMessageSize =
+        parseNonNegative(j, "gossipsubMaxMessageSize", o.gossipsubMaxMessageSize);
+    o.gossipsubOverheadRateLimitBytes =
+        parseNonNegative(j, "gossipsubOverheadRateLimitBytes", o.gossipsubOverheadRateLimitBytes);
+    o.gossipsubOverheadRateLimitIntervalMs = parseNonNegative(
+        j, "gossipsubOverheadRateLimitIntervalMs", o.gossipsubOverheadRateLimitIntervalMs);
+    o.gossipsubDisconnectPeerAboveRateLimit = j.value(
+        "gossipsubDisconnectPeerAboveRateLimit", o.gossipsubDisconnectPeerAboveRateLimit);
 }
 
 } // namespace libp2p_module_config

@@ -875,11 +875,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1786205383,
-        "narHash": "sha256-YyEW2uOMXpNXrepEV3aZmiUMSA1uExzbDNfhdLpSQ2c=",
+        "lastModified": 1786437902,
+        "narHash": "sha256-35Td/Bm/giVudIJPxPkT1fqqa/HrMd5HsrmvZAMHvbM=",
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "91abb9cac603a45d30c6dc5f9fdb8a9202e70bc2",
+        "rev": "01068c839e3ce4f04cd5307478e50c6816ba472c",
         "type": "github"
       },
       "original": {
