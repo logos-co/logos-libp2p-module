@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -32,7 +33,8 @@ struct Libp2pModuleOptions {
     bool mountServiceDiscovery = true;
 
     // Bounds on the per-topic backlog gossipsubNextMessage() drains; either at
-    // 0 disables it. See TopicQueues.
+    // 0 disables it. Keep the byte bound above gossipsubMaxMessageSize, since a
+    // larger message never fits. See TopicQueues.
     size_t gossipsubQueueMaxMessages = 1024;
     size_t gossipsubQueueMaxBytes = 4 * 1024 * 1024;
 
@@ -94,7 +96,9 @@ inline TransportType parseTransport(const nlohmann::json& j, TransportType fallb
 
 /// is_number_unsigned() rejects negatives and floats in one check; a negative
 /// queue bound read straight into size_t would wrap into a huge positive one,
-/// and nim-libp2p refuses a negative ingress limit.
+/// and nim-libp2p refuses a negative ingress limit. The range check keeps a
+/// value above the target type from truncating into a smaller bound, or from
+/// wrapping into the negative the sign check just rejected.
 template <typename T>
 T parseNonNegative(const nlohmann::json& j, const char* key, T fallback) {
     auto it = j.find(key);
@@ -104,7 +108,11 @@ T parseNonNegative(const nlohmann::json& j, const char* key, T fallback) {
     if (!it->is_number_unsigned()) {
         throw std::invalid_argument(std::string(key) + " must be a non-negative integer");
     }
-    return it->get<T>();
+    const auto raw = it->get<uint64_t>();
+    if (raw > static_cast<uint64_t>(std::numeric_limits<T>::max())) {
+        throw std::invalid_argument(std::string(key) + " is out of range");
+    }
+    return static_cast<T>(raw);
 }
 
 /// Overlays present keys onto `o`. Throws nlohmann type_error on a wrong-typed

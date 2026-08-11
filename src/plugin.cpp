@@ -266,7 +266,10 @@ StdLogosResult Libp2pModuleImpl::stop() {
     auto res = callSync("Failed to stop libp2p", [&](SyncPromise* p) {
         return libp2p_ctx_stop(ctx, &Libp2pModuleImpl::cbBool, p);
     });
-    m_topicQueues.releaseAll();
+    // A node that failed to stop is still delivering, so it keeps its backlog.
+    if (res.success) {
+        m_topicQueues.releaseAll();
+    }
     return res;
 }
 

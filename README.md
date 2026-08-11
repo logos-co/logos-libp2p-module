@@ -62,9 +62,10 @@ message limit is still 1 GiB per topic.
 
 Past either bound the newest message is dropped and counted in
 `libp2p_module_gossipsub_queue_dropped_total`, reported per topic by
-`collectMetrics` alongside `libp2p_module_gossipsub_queue_depth`. An empty queue
-always accepts one message, so a byte bound below the message size cannot stall
-a topic. Set `gossipsubQueueMaxBytes` to `0` if your application reads only the
+`collectMetrics` alongside `libp2p_module_gossipsub_queue_depth`. The byte bound
+holds on an empty queue too, so keep `gossipsubQueueMaxBytes` above
+`gossipsubMaxMessageSize`: a larger message never fits and is always dropped.
+Set `gossipsubQueueMaxBytes` to `0` if your application reads only the
 `gossipsubMessage` event. `gossipsubMaxMessageSize` below raises the per-message
 ceiling, so raise it and the queue bounds together.
 

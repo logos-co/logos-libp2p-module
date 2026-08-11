@@ -203,21 +203,25 @@ LOGOS_TEST(gossipsub_queue_drops_newest_over_byte_bound) {
     assertDropsNewest(opts, "byte-bound-topic", 400, 10, 2);
 }
 
-// An empty queue accepts any single message, so a byte bound below the message
-// size cannot stall the topic.
-LOGOS_TEST(gossipsub_queue_accepts_oversized_message_when_empty) {
+// The byte bound holds on an empty queue too: a payload larger than the bound
+// is dropped and counted, and the event still fires.
+LOGOS_TEST(gossipsub_queue_drops_oversized_message_when_empty) {
     Libp2pModuleOptions opts;
     opts.gossipsubQueueMaxBytes = 64;
     Libp2pModuleImpl node(opts);
+    std::atomic<int> delivered{0};
+    node.emitEvent = [&](const std::string& name, const std::string&) {
+        if (name == "gossipsubMessage") ++delivered;
+    };
     LOGOS_ASSERT_TRUE(node.start().success);
 
     std::string topic = "oversized-topic";
     LOGOS_ASSERT_TRUE(node.gossipsubSubscribe(topic).success);
     LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, std::string(4096, 'y')).success);
 
-    auto res = node.gossipsubNextMessage(topic, 1000);
-    LOGOS_ASSERT_TRUE(res.success);
-    LOGOS_ASSERT_EQ(res.value.get<std::string>().size(), size_t(4096));
+    awaitDropped(node, topic, 1);
+    LOGOS_ASSERT_FALSE(node.gossipsubNextMessage(topic, 200).success);
+    LOGOS_ASSERT_EQ(delivered.load(), 1);
 
     LOGOS_ASSERT_TRUE(node.stop().success);
 }

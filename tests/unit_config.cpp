@@ -129,14 +129,18 @@ LOGOS_TEST(apply_reads_gossipsub_ingress_limits) {
 }
 
 // A negative queue bound read straight into size_t would become a huge positive
-// one, and nim-libp2p refuses a negative ingress limit.
+// one, and nim-libp2p refuses a negative ingress limit. A value above the target
+// type is just as bad: it truncates into a smaller bound, or wraps back into the
+// negative the sign check rejects.
 LOGOS_TEST(apply_rejects_out_of_range_gossipsub_bounds) {
     for (const char* raw : {R"({"gossipsubQueueMaxBytes": -1})",
                             R"({"gossipsubQueueMaxMessages": "many"})",
                             R"({"gossipsubQueueMaxMessages": 1.5})",
                             R"({"gossipsubMaxMessageSize": -1})",
                             R"({"gossipsubOverheadRateLimitBytes": -1})",
-                            R"({"gossipsubOverheadRateLimitIntervalMs": -1})"}) {
+                            R"({"gossipsubOverheadRateLimitIntervalMs": -1})",
+                            R"({"gossipsubMaxMessageSize": 9223372036854775808})",
+                            R"({"gossipsubOverheadRateLimitBytes": 9223372036854775808})"}) {
         Libp2pModuleOptions opts;
         bool threw = false;
         try {
