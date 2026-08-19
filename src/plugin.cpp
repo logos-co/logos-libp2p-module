@@ -120,6 +120,21 @@ void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
     m_libp2pConfig.autonat = options.autonat;
     m_libp2pConfig.autonatV2 = options.autonatV2;
     m_libp2pConfig.autonatV2Server = options.autonatV2Server;
+    m_libp2pConfig.natPortMappingAuto = options.natPortMappingAuto;
+    m_libp2pConfig.natPortMappingUpnp = options.natPortMappingUpnp;
+    m_libp2pConfig.natPortMappingNatPmp = options.natPortMappingNatPmp;
+    m_natExplicitIp = options.natExplicitIp;
+    m_libp2pConfig.natExplicitIp = nimffi_str(m_natExplicitIp.c_str());
+    m_libp2pConfig.natDiscoveryTimeoutMs = options.natDiscoveryTimeoutMs;
+    m_libp2pConfig.natMappingTimeoutMs = options.natMappingTimeoutMs;
+    m_libp2pConfig.natReachabilityV1 = options.natReachabilityV1;
+    m_libp2pConfig.natReachabilityV2 = options.natReachabilityV2;
+    m_libp2pConfig.natReachabilityScheduleIntervalMs =
+        options.natReachabilityScheduleIntervalMs;
+    m_libp2pConfig.natHolePunching = options.natHolePunching;
+    m_libp2pConfig.natHolePunchingMaxNumRelays = options.natHolePunchingMaxNumRelays;
+    m_libp2pConfig.natHolePunchingScheduleIntervalMs =
+        options.natHolePunchingScheduleIntervalMs;
 
     m_addrs = options.addrs;
     if (m_addrs.empty()) {

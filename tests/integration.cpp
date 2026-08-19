@@ -280,6 +280,19 @@ LOGOS_TEST(integration_create_node_invalid_config_fails) {
     LOGOS_ASSERT_TRUE(res.error.find("invalid config") != std::string::npos);
 }
 
+LOGOS_TEST(integration_create_node_invalid_nat_config_fails) {
+    for (const char* raw : {
+             R"({"natPortMappingAuto": true, "natPortMappingUpnp": true})",
+             R"({"natPortMappingUpnp": true, "natPortMappingNatPmp": true})",
+             R"({"natReachabilityV1": true, "autonatV2": true})",
+         }) {
+        Libp2pModuleImpl node;
+        auto res = node.createNode(raw);
+        LOGOS_ASSERT_FALSE(res.success);
+        LOGOS_ASSERT_TRUE(res.error.find("mutually exclusive") != std::string::npos);
+    }
+}
+
 LOGOS_TEST(integration_quic_ping_round_trip) {
     const int PING_SIZE = 32;
 
