@@ -79,6 +79,7 @@ LOGOS_TEST(custom_handlers_protocol_stream_event) {
 
     LOGOS_ASSERT_TRUE(nodeA.start().success);
     auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
+    const std::string peerIdA = getPeerInfoPair(nodeA).first;
     LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 500).success);
 
     auto dialResult = nodeA.dial(peerIdB, proto);
@@ -93,6 +94,7 @@ LOGOS_TEST(custom_handlers_protocol_stream_event) {
 
     auto j = json::parse(capturedData);
     LOGOS_ASSERT_TRUE(j["proto"].get<std::string>() == proto);
+    LOGOS_ASSERT_TRUE(j["peerId"].get<std::string>() == peerIdA);
     uint64_t serverStreamId = j["streamId"].get<uint64_t>();
     LOGOS_ASSERT_NE(serverStreamId, static_cast<uint64_t>(0));
 
@@ -118,14 +120,17 @@ LOGOS_TEST(protocol_bridge_request_accept_roundtrip) {
 
     const std::string request = "ping-over-the-bridge";
     auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
+    const std::string peerIdA = getPeerInfoPair(nodeA).first;
 
     std::string serverSawRequest;
+    std::string serverSawPeerId;
     bool serverOk = false;
     std::thread server([&] {
         auto acc = nodeB.protocolAcceptStream(json{{"proto", proto}, {"timeoutMs", 5000}}.dump());
         if (!acc.success) return;
         uint64_t sid = acc.value["streamId"].get<uint64_t>();
         if (sid == 0) return;
+        serverSawPeerId = acc.value["peerId"].get<std::string>();
 
         auto rd = nodeB.streamReadLpJson(json{{"streamId", sid}, {"timeoutMs", 5000}}.dump());
         if (!rd.success) return;
@@ -151,6 +156,7 @@ LOGOS_TEST(protocol_bridge_request_accept_roundtrip) {
 
     LOGOS_ASSERT_TRUE(serverOk);
     LOGOS_ASSERT_TRUE(serverSawRequest == request);
+    LOGOS_ASSERT_TRUE(serverSawPeerId == peerIdA);
     LOGOS_ASSERT_TRUE(resp.success);
     std::string respStr = base64Decode(resp.value["responseB64"].get<std::string>());
     LOGOS_ASSERT_TRUE(respStr == "echo:" + request);
@@ -248,6 +254,39 @@ LOGOS_TEST(protocol_bridge_release_purges_inbound_queue) {
     LOGOS_ASSERT_TRUE(nodeA.streamRelease(clientStreamId).success);
     LOGOS_ASSERT_TRUE(nodeA.stop().success);
     LOGOS_ASSERT_TRUE(nodeB.stop().success);
+}
+
+LOGOS_TEST(protocol_bridge_ping_peer) {
+    Libp2pModuleImpl nodeA;
+    Libp2pModuleImpl nodeB;
+
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
+
+    auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
+    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 500).success);
+
+    auto ping = nodeA.pingPeer(peerIdB, 5000);
+    LOGOS_ASSERT_TRUE(ping.success);
+    LOGOS_ASSERT_TRUE(ping.value["peerId"].get<std::string>() == peerIdB);
+    LOGOS_ASSERT_TRUE(ping.value["rttMs"].get<double>() >= 0.0);
+
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
+}
+
+LOGOS_TEST(protocol_bridge_ping_unknown_peer_fails) {
+    Libp2pModuleImpl nodeA;
+    Libp2pModuleImpl nodeC;
+
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeC.start().success);
+
+    const std::string peerIdC = getPeerInfoPair(nodeC).first;
+    LOGOS_ASSERT_FALSE(nodeA.pingPeer(peerIdC, 1000).success);
+
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeC.stop().success);
 }
 
 LOGOS_TEST(protocol_bridge_write_requires_dataB64) {

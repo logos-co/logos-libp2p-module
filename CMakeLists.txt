@@ -17,6 +17,8 @@ logos_module(
         src/utils.cpp
         src/topic_queues.h
         src/topic_queues.cpp
+        src/stream_queues.h
+        src/stream_queues.cpp
         src/plugin.cpp
         src/callbacks.cpp
         src/kademlia.cpp

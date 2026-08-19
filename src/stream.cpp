@@ -71,7 +71,19 @@ StdLogosResult Libp2pModuleImpl::streamCloseWithEOF(uint64_t streamId) {
 }
 
 StdLogosResult Libp2pModuleImpl::streamRelease(uint64_t streamId) {
-    return callSync("Failed to release stream", [&](SyncPromise* p) {
+    auto res = callSync("Failed to release stream", [&](SyncPromise* p) {
         return libp2p_ctx_stream_release(ctx, streamId, &Libp2pModuleImpl::cbBool, p);
     });
+    m_inboundStreams.remove(streamId);
+    return res;
+}
+
+void Libp2pModuleImpl::releaseStreamNoWait(uint64_t streamId) {
+    if (!ctx) return;
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    int ret = libp2p_ctx_stream_release(ctx, streamId, &Libp2pModuleImpl::cbBool, p);
+    if (ret != 0 && f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+        delete p;
+    }
 }

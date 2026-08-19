@@ -12,11 +12,13 @@ logos_test(
     MODULE_SOURCES
         ../src/utils.cpp
         ../src/topic_queues.cpp
+        ../src/stream_queues.cpp
     TEST_SOURCES
         main.cpp
         unit_config.cpp
         unit_metrics.cpp
         unit_sync.cpp
+        unit_stream_queues.cpp
         unit_topic_queues.cpp
     EXTRA_INCLUDES
         ../lib
@@ -39,6 +41,7 @@ if(LIBP2P_PATH)
         MODULE_SOURCES
             ../src/utils.cpp
             ../src/topic_queues.cpp
+            ../src/stream_queues.cpp
             ../src/plugin.cpp
             ../src/callbacks.cpp
             ../src/kademlia.cpp

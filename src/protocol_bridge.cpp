@@ -1,10 +1,23 @@
 #include "plugin.h"
 
 #include <charconv>
+#include <cstring>
+#include <random>
 
 using json = nlohmann::json;
 
 namespace {
+
+// The libp2p ping protocol: write 32 random bytes, expect them back.
+constexpr char kPingCodec[] = "/ipfs/ping/1.0.0";
+constexpr size_t kPingSize = 32;
+
+std::string randomPingPayload() {
+    std::random_device rd;
+    std::string out(kPingSize, '\0');
+    for (auto& c : out) c = static_cast<char>(rd() & 0xff);
+    return out;
+}
 
 uint64_t asStreamId(const json& v) {
     if (v.is_number_unsigned()) return v.get<uint64_t>();
@@ -188,24 +201,56 @@ StdLogosResult Libp2pModuleImpl::protocolAcceptStream(const std::string& argsJso
         return {false, {}, "protocolAcceptStream: bad args (need {proto, timeoutMs?})"};
     }
 
-    std::unique_lock<std::mutex> lock(m_inboundStreamMutex);
-    auto hasStream = [&] {
-        auto it = m_inboundStreamQueues.find(proto);
-        return it != m_inboundStreamQueues.end() && !it->second.empty();
-    };
-    if (!hasStream()) {
-        auto wait = std::chrono::milliseconds(timeoutMs > 0 ? timeoutMs : 0);
-        if (!m_inboundStreamCond.wait_for(lock, wait, hasStream)) {
-            return {false, {}, "timeout waiting for inbound stream"};
-        }
+    InboundStream stream;
+    if (!m_inboundStreams.pop(proto, timeoutMs > 0 ? timeoutMs : 0, stream)) {
+        return {false, {}, "timeout waiting for inbound stream"};
     }
-    auto it = m_inboundStreamQueues.find(proto);
-    if (it == m_inboundStreamQueues.end() || it->second.empty()) {
-        return {false, {}, "no inbound stream"};
-    }
-    uint64_t streamId = it->second.front();
-    it->second.pop_front();
-    lock.unlock();
 
-    return {true, json{{"streamId", streamId}, {"proto", proto}}, ""};
+    return {true,
+            json{{"streamId", stream.streamId}, {"proto", proto}, {"peerId", stream.peerId}},
+            ""};
+}
+
+StdLogosResult Libp2pModuleImpl::pingPeer(const std::string& peerId, int64_t timeoutMs) {
+    auto d = dial(peerId, kPingCodec);
+    if (!d.success) return {false, {}, "pingPeer: dial failed: " + d.error};
+    uint64_t streamId = 0;
+    try { streamId = d.value.get<uint64_t>(); } catch (...) {}
+    if (streamId == 0) return {false, {}, "pingPeer: dial returned no stream"};
+
+    const std::string payload = randomPingPayload();
+    const auto sentAt = std::chrono::steady_clock::now();
+
+    auto w = streamWrite(streamId, payload);
+    if (!w.success) {
+        streamRelease(streamId);
+        return {false, {}, "pingPeer: write failed: " + w.error};
+    }
+
+    StreamReadExactlyRequest readReq{};
+    readReq.streamId = streamId;
+    readReq.numBytes = static_cast<int64_t>(kPingSize);
+    std::vector<uint8_t> echo;
+    auto r = callSyncWith("pingPeer: read failed",
+        [&](SyncPromise* p) {
+            return libp2p_ctx_stream_read_exactly(ctx, &readReq, &Libp2pModuleImpl::cbRead, p);
+        },
+        [&](const SyncResult& s) -> StdLogosResult {
+            echo = s.buffer;
+            return {true, {}, ""};
+        },
+        awaitTimeoutFor(timeoutMs));
+    const auto rtt = std::chrono::steady_clock::now() - sentAt;
+    streamRelease(streamId);
+    if (!r.success) return r;
+
+    if (echo.size() != payload.size() ||
+        std::memcmp(echo.data(), payload.data(), payload.size()) != 0) {
+        return {false, {}, "pingPeer: peer echoed a different payload"};
+    }
+
+    json out;
+    out["peerId"] = peerId;
+    out["rttMs"] = std::chrono::duration<double, std::milli>(rtt).count();
+    return {true, out, ""};
 }
