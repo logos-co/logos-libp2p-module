@@ -21,6 +21,18 @@ struct Libp2pModuleOptions {
     bool autonat = false;
     bool autonatV2 = false;
     bool autonatV2Server = false;
+    bool natPortMappingAuto = false;
+    bool natPortMappingUpnp = false;
+    bool natPortMappingNatPmp = false;
+    std::string natExplicitIp = {};
+    int64_t natDiscoveryTimeoutMs = 0;
+    int64_t natMappingTimeoutMs = 0;
+    bool natReachabilityV1 = false;
+    bool natReachabilityV2 = false;
+    int64_t natReachabilityScheduleIntervalMs = 0;
+    bool natHolePunching = false;
+    int64_t natHolePunchingMaxNumRelays = 0;
+    int64_t natHolePunchingScheduleIntervalMs = 0;
     bool circuitRelay = false;
     bool circuitRelayClient = false;
     int maxConnections = 50;
@@ -115,6 +127,35 @@ T parseNonNegative(const nlohmann::json& j, const char* key, T fallback) {
     return static_cast<T>(raw);
 }
 
+inline int64_t parseInt64(const nlohmann::json& j, const char* key, int64_t fallback) {
+    auto it = j.find(key);
+    if (it == j.end()) {
+        return fallback;
+    }
+    if (!it->is_number_integer() && !it->is_number_unsigned()) {
+        throw std::invalid_argument(std::string(key) + " must be an integer");
+    }
+    if (it->is_number_unsigned()) {
+        const auto raw = it->get<uint64_t>();
+        if (raw > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+            throw std::invalid_argument(std::string(key) + " is out of range");
+        }
+        return static_cast<int64_t>(raw);
+    }
+    return it->get<int64_t>();
+}
+
+inline int64_t parseDurationMs(const nlohmann::json& j, const char* key,
+                               int64_t fallback) {
+    const auto value = parseInt64(j, key, fallback);
+    constexpr int64_t maxMilliseconds =
+        std::numeric_limits<int64_t>::max() / 1000000;
+    if (value > maxMilliseconds) {
+        throw std::invalid_argument(std::string(key) + " is out of range");
+    }
+    return value;
+}
+
 /// Overlays present keys onto `o`. Throws nlohmann type_error on a wrong-typed
 /// field, or std::invalid_argument on an out-of-range one; load() catches both
 /// and falls back to defaults.
@@ -140,6 +181,26 @@ inline void apply(const nlohmann::json& j, Libp2pModuleOptions& o) {
     o.autonat = j.value("autonat", o.autonat);
     o.autonatV2 = j.value("autonatV2", o.autonatV2);
     o.autonatV2Server = j.value("autonatV2Server", o.autonatV2Server);
+    o.natPortMappingAuto = j.value("natPortMappingAuto", o.natPortMappingAuto);
+    o.natPortMappingUpnp = j.value("natPortMappingUpnp", o.natPortMappingUpnp);
+    o.natPortMappingNatPmp = j.value("natPortMappingNatPmp", o.natPortMappingNatPmp);
+    o.natExplicitIp = j.value("natExplicitIp", o.natExplicitIp);
+    if (o.natExplicitIp.find('\0') != std::string::npos) {
+        throw std::invalid_argument("natExplicitIp must not contain NUL bytes");
+    }
+    o.natDiscoveryTimeoutMs =
+        parseDurationMs(j, "natDiscoveryTimeoutMs", o.natDiscoveryTimeoutMs);
+    o.natMappingTimeoutMs =
+        parseDurationMs(j, "natMappingTimeoutMs", o.natMappingTimeoutMs);
+    o.natReachabilityV1 = j.value("natReachabilityV1", o.natReachabilityV1);
+    o.natReachabilityV2 = j.value("natReachabilityV2", o.natReachabilityV2);
+    o.natReachabilityScheduleIntervalMs = parseDurationMs(
+        j, "natReachabilityScheduleIntervalMs", o.natReachabilityScheduleIntervalMs);
+    o.natHolePunching = j.value("natHolePunching", o.natHolePunching);
+    o.natHolePunchingMaxNumRelays = parseInt64(
+        j, "natHolePunchingMaxNumRelays", o.natHolePunchingMaxNumRelays);
+    o.natHolePunchingScheduleIntervalMs = parseDurationMs(
+        j, "natHolePunchingScheduleIntervalMs", o.natHolePunchingScheduleIntervalMs);
     o.circuitRelay = j.value("circuitRelay", o.circuitRelay);
     o.circuitRelayClient = j.value("circuitRelayClient", o.circuitRelayClient);
     o.maxConnections = j.value("maxConnections", o.maxConnections);

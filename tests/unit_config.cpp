@@ -128,6 +128,68 @@ LOGOS_TEST(apply_reads_gossipsub_ingress_limits) {
     LOGOS_ASSERT_TRUE(opts.gossipsubDisconnectPeerAboveRateLimit);
 }
 
+LOGOS_TEST(apply_reads_nat_config) {
+    Libp2pModuleOptions opts;
+    cfg::apply(json::parse(R"({
+        "natPortMappingAuto": true,
+        "natPortMappingUpnp": true,
+        "natPortMappingNatPmp": true,
+        "natExplicitIp": "203.0.113.1",
+        "natDiscoveryTimeoutMs": 1000,
+        "natMappingTimeoutMs": 2000,
+        "natReachabilityV1": true,
+        "natReachabilityV2": true,
+        "natReachabilityScheduleIntervalMs": 3000,
+        "natHolePunching": true,
+        "natHolePunchingMaxNumRelays": 4,
+        "natHolePunchingScheduleIntervalMs": 5000
+    })"), opts);
+
+    LOGOS_ASSERT_TRUE(opts.natPortMappingAuto);
+    LOGOS_ASSERT_TRUE(opts.natPortMappingUpnp);
+    LOGOS_ASSERT_TRUE(opts.natPortMappingNatPmp);
+    LOGOS_ASSERT_TRUE(opts.natExplicitIp == "203.0.113.1");
+    LOGOS_ASSERT_EQ(opts.natDiscoveryTimeoutMs, int64_t(1000));
+    LOGOS_ASSERT_EQ(opts.natMappingTimeoutMs, int64_t(2000));
+    LOGOS_ASSERT_TRUE(opts.natReachabilityV1);
+    LOGOS_ASSERT_TRUE(opts.natReachabilityV2);
+    LOGOS_ASSERT_EQ(opts.natReachabilityScheduleIntervalMs, int64_t(3000));
+    LOGOS_ASSERT_TRUE(opts.natHolePunching);
+    LOGOS_ASSERT_EQ(opts.natHolePunchingMaxNumRelays, 4);
+    LOGOS_ASSERT_EQ(opts.natHolePunchingScheduleIntervalMs, int64_t(5000));
+}
+
+LOGOS_TEST(apply_validates_nat_config_boundaries) {
+    Libp2pModuleOptions opts;
+    cfg::apply(json::parse(R"({"natHolePunchingMaxNumRelays": 2147483648})"), opts);
+    LOGOS_ASSERT_EQ(opts.natHolePunchingMaxNumRelays, int64_t(2147483648));
+
+    cfg::apply(json::parse(R"({"natDiscoveryTimeoutMs": -1})"), opts);
+    LOGOS_ASSERT_EQ(opts.natDiscoveryTimeoutMs, int64_t(-1));
+
+    constexpr uint64_t tooManyMilliseconds =
+        static_cast<uint64_t>(std::numeric_limits<int64_t>::max() / 1000000) + 1;
+    for (const char* key : {"natDiscoveryTimeoutMs", "natMappingTimeoutMs",
+                            "natReachabilityScheduleIntervalMs",
+                            "natHolePunchingScheduleIntervalMs"}) {
+        bool threw = false;
+        try {
+            cfg::apply(json{{key, tooManyMilliseconds}}, opts);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        LOGOS_ASSERT_TRUE(threw);
+    }
+
+    bool threw = false;
+    try {
+        cfg::apply(json{{"natExplicitIp", std::string("203.0.113.1\0junk", 16)}}, opts);
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    LOGOS_ASSERT_TRUE(threw);
+}
+
 // A negative queue bound read straight into size_t would become a huge positive
 // one, and nim-libp2p refuses a negative ingress limit. A value above the target
 // type is just as bad: it truncates into a smaller bound, or wraps back into the
@@ -243,6 +305,18 @@ LOGOS_TEST(options_defaults) {
     LOGOS_ASSERT_FALSE(opts.autonat);
     LOGOS_ASSERT_FALSE(opts.autonatV2);
     LOGOS_ASSERT_FALSE(opts.autonatV2Server);
+    LOGOS_ASSERT_FALSE(opts.natPortMappingAuto);
+    LOGOS_ASSERT_FALSE(opts.natPortMappingUpnp);
+    LOGOS_ASSERT_FALSE(opts.natPortMappingNatPmp);
+    LOGOS_ASSERT_TRUE(opts.natExplicitIp.empty());
+    LOGOS_ASSERT_EQ(opts.natDiscoveryTimeoutMs, int64_t(0));
+    LOGOS_ASSERT_EQ(opts.natMappingTimeoutMs, int64_t(0));
+    LOGOS_ASSERT_FALSE(opts.natReachabilityV1);
+    LOGOS_ASSERT_FALSE(opts.natReachabilityV2);
+    LOGOS_ASSERT_EQ(opts.natReachabilityScheduleIntervalMs, int64_t(0));
+    LOGOS_ASSERT_FALSE(opts.natHolePunching);
+    LOGOS_ASSERT_EQ(opts.natHolePunchingMaxNumRelays, 0);
+    LOGOS_ASSERT_EQ(opts.natHolePunchingScheduleIntervalMs, int64_t(0));
     LOGOS_ASSERT_FALSE(opts.circuitRelay);
     LOGOS_ASSERT_EQ(opts.maxConnections, 50);
     LOGOS_ASSERT_EQ(opts.maxInConnections, 25);

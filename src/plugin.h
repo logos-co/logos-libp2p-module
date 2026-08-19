@@ -267,6 +267,7 @@ private:
     std::vector<BootstrapNode> m_bootstrapNodes;
 
     SecureBytes m_privKey;
+    std::string m_natExplicitIp;
 
     // Creates a context from `cfg` without adopting it as the member `ctx`.
     SyncResult spawnContext(Libp2pConfig& cfg);
