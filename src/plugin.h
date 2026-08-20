@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <deque>
 #include <functional>
 #include <future>
 #include <map>
@@ -33,6 +32,7 @@
 
 #include "config.h"
 #include "metric.h"
+#include "stream_queues.h"
 #include "topic_queues.h"
 #include "utils.h"
 
@@ -204,6 +204,7 @@ public:
     StdLogosResult streamRelease(uint64_t streamId);
 
     StdLogosResult protocolRequest(const std::string& argsJson);
+    StdLogosResult pingPeer(const std::string& peerId, int64_t timeoutMs);
     StdLogosResult streamReadLpJson(const std::string& argsJson);
     StdLogosResult streamWriteLpJson(const std::string& argsJson);
     StdLogosResult streamCloseJson(const std::string& argsJson);
@@ -277,9 +278,10 @@ private:
 
     TopicQueues m_topicQueues;
 
-    std::mutex m_inboundStreamMutex;
-    std::condition_variable m_inboundStreamCond;
-    std::unordered_map<std::string, std::deque<uint64_t>> m_inboundStreamQueues;
+    InboundStreamQueues m_inboundStreams;
+
+    // Releases without waiting, for callers on the Nim dispatch thread that must not block it.
+    void releaseStreamNoWait(uint64_t streamId);
 
     void applyOptions(const Libp2pModuleOptions& options);
     StdLogosResult createContext();
@@ -357,6 +359,16 @@ private:
         auto r = awaitResult(f, awaitMs);
         if (!r.ok) return {false, {}, std::string(errPrefix) + ": " + r.message};
         return transform(r);
+    }
+
+    // Submits without awaiting, for a caller that must not block its thread.
+    template <class Invoke>
+    static void callAsync(Invoke&& invoke) {
+        auto* p = new SyncPromise();
+        auto f = p->get_future();
+        if (invoke(p) != 0 && f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+            delete p;
+        }
     }
 };
 

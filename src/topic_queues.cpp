@@ -60,35 +60,22 @@ void TopicQueues::releaseAll() {
     }
 }
 
-// A scrape must not hold the enqueue path while it builds its series, so it
-// takes one cheap sample per topic under the lock and formats outside it.
 std::vector<Metric> TopicQueues::metrics() const {
-    struct Sample {
-        std::string topic;
-        size_t depth;
-        uint64_t dropped;
-    };
-    std::vector<Sample> samples;
+    std::vector<QueueSample> samples;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         samples.reserve(m_topics.size());
         for (const auto& [topic, t] : m_topics) {
-            samples.push_back(Sample{topic, t.messages.size(), t.dropped});
+            samples.push_back(QueueSample{topic, t.messages.size(), t.dropped});
         }
     }
 
-    std::vector<Metric> series;
-    series.reserve(samples.size() * 2);
-    for (auto& s : samples) {
-        series.push_back(Metric{"libp2p_module_gossipsub_queue_depth", "gauge",
-                                "messages waiting in the per-topic poll queue",
-                                {{"topic", s.topic}}, static_cast<double>(s.depth)});
-        series.push_back(Metric{"libp2p_module_gossipsub_queue_dropped_total", "counter",
-                                "messages dropped because the per-topic poll queue was full",
-                                {{"topic", std::move(s.topic)}},
-                                static_cast<double>(s.dropped)});
-    }
-    return series;
+    return queueSeries(std::move(samples),
+        QueueSeriesNames{"topic",
+                         "libp2p_module_gossipsub_queue_depth",
+                         "messages waiting in the per-topic poll queue",
+                         "libp2p_module_gossipsub_queue_dropped_total",
+                         "messages dropped because the per-topic poll queue was full"});
 }
 
 size_t TopicQueues::topicCount() const {
