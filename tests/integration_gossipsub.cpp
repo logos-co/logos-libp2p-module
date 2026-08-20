@@ -12,7 +12,9 @@
 namespace {
 // -1 when the topic has no drop series yet.
 int64_t droppedCount(Libp2pModuleImpl& node, const std::string& topic) {
-    for (const auto& m : node.collectMetrics()["metrics"]) {
+    // Iterating collectMetrics()["metrics"] walks the temporary after it dies.
+    const auto payload = node.collectMetrics();
+    for (const auto& m : payload["metrics"]) {
         if (m.value("name", std::string{}) != "libp2p_module_gossipsub_queue_dropped_total") {
             continue;
         }
