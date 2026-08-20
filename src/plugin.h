@@ -249,16 +249,17 @@ public:
     LogosMap collectMetrics();
 
 private:
+    // Guards `ctx`: shared to submit, unique to swap it. Never held across an await or a teardown, which wait on Nim workers.
+    mutable std::shared_mutex m_ctxLock;
     LibP2PCtx* ctx = nullptr;
+
     Libp2pConfig m_libp2pConfig = {};
 
     // Set when construction fails; surfaced through status() since the
     // constructor cannot signal failure to the codegen default-constructor.
     std::string m_initError;
 
-    // Backing storage the Libp2pConfig's NimFfiStr/seq views borrow from; it
-    // must outlive every libp2p_ctx_create call. Built once in applyOptions and
-    // never mutated afterwards, so the views stay valid.
+    // Backing storage the Libp2pConfig's NimFfiStr/seq views borrow from. applyOptions rebuilds it, so it and every create run under m_createLock.
     std::vector<std::string> m_addrs;
     std::vector<NimFfiStr> m_addrsFfi;
 
@@ -284,9 +285,18 @@ private:
     void releaseStreamNoWait(uint64_t streamId);
 
     void applyOptions(const Libp2pModuleOptions& options);
+    bool hasCtx() const;
+
+    // Serializes the create path: applyOptions rebuilds the buffers the config views borrow, so it must not run under a create.
+    std::mutex m_createLock;
+    StdLogosResult ensureContext();
     StdLogosResult createContext();
     void destroyContext();
     StdLogosResult nodeInfoBoundPorts();
+
+    // Held shared for the body of an event listener, which runs on the Nim dispatch thread against a bare `this`. destroyContext takes it unique to wait one out.
+    std::shared_timed_mutex m_listenerLock;
+    void drainListeners();
 
     // Reply trampolines: one per generated response type. Each turns the typed
     // (err_code, reply, err_msg) callback into a SyncResult and resolves the
@@ -332,19 +342,37 @@ private:
     template <class Invoke, class Transform>
     StdLogosResult callSyncWith(const char* errPrefix, Invoke&& invoke, Transform&& transform,
                                 int awaitMs = kDefaultOpTimeoutMs) {
-        if (!ctx) return {false, {}, "No libp2p context"};
-        return callStaticWith(errPrefix, std::forward<Invoke>(invoke),
-                              std::forward<Transform>(transform), awaitMs);
+        SyncPromise* p = nullptr;
+        std::future<SyncResult> f;
+        int ret = 0;
+        {
+            // The check and the submit are one section: a destroy between them frees the context the binding is handed.
+            std::shared_lock<std::shared_mutex> lock(m_ctxLock);
+            if (!ctx) return {false, {}, "No libp2p context"};
+
+            p = new SyncPromise();
+            f = p->get_future();
+            ret = invoke(p);
+        }
+
+        return awaitReply(errPrefix, p, f, ret, std::forward<Transform>(transform), awaitMs);
     }
 
-    // Same dance without the context check, for the `{.ffiStatic.}` bindings:
-    // they take no ctx and run on the library's own static context.
+    // Same dance without the context check, for the `{.ffiStatic.}` bindings, which run on the library's own static context.
     template <class Invoke, class Transform>
     static StdLogosResult callStaticWith(const char* errPrefix, Invoke&& invoke, Transform&& transform,
                                          int awaitMs = kDefaultOpTimeoutMs) {
         auto* p = new SyncPromise();
         auto f = p->get_future();
         int ret = invoke(p);
+        return awaitReply(errPrefix, p, f, ret, std::forward<Transform>(transform), awaitMs);
+    }
+
+    // Second half of every op, run with no lock held: reclaim on a submit failure, else await and map.
+    template <class Transform>
+    static StdLogosResult awaitReply(const char* errPrefix, SyncPromise* p,
+                                     std::future<SyncResult>& f, int ret,
+                                     Transform&& transform, int awaitMs) {
         if (ret != 0) {
             // A submit-time failure (encode/OOM/missing-callback) fires the
             // reply callback synchronously — which owns and deletes p — before
@@ -363,7 +391,10 @@ private:
 
     // Submits without awaiting, for a caller that must not block its thread.
     template <class Invoke>
-    static void callAsync(Invoke&& invoke) {
+    void callAsync(Invoke&& invoke) {
+        std::shared_lock<std::shared_mutex> lock(m_ctxLock);
+        if (!ctx) return;
+
         auto* p = new SyncPromise();
         auto f = p->get_future();
         if (invoke(p) != 0 && f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {

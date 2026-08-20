@@ -12,7 +12,7 @@ StdLogosResult Libp2pModuleImpl::gossipsubPublish(
 }
 
 StdLogosResult Libp2pModuleImpl::gossipsubSubscribe(const std::string& topic) {
-    if (!ctx) return {false, {}, "No libp2p context"};
+    if (!hasCtx()) return {false, {}, "No libp2p context"};
     // Delivered messages surface through the on_pubsub_message listener, which
     // needs the emit snapshot published to forward gossipsubMessage events.
     publishEmitEvent();
@@ -23,7 +23,7 @@ StdLogosResult Libp2pModuleImpl::gossipsubSubscribe(const std::string& topic) {
 }
 
 StdLogosResult Libp2pModuleImpl::gossipsubUnsubscribe(const std::string& topic) {
-    if (!ctx) return {false, {}, "No libp2p context"};
+    if (!hasCtx()) return {false, {}, "No libp2p context"};
     auto res = callSync("Failed to unsubscribe", [&](SyncPromise* p) {
         return libp2p_ctx_gossipsub_unsubscribe(ctx, nimffi_str(topic.c_str()),
                                                 &Libp2pModuleImpl::cbBool, p);
