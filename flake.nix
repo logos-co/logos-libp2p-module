@@ -1,6 +1,12 @@
 {
   description = "Logos Libp2p Module";
 
+  # Pull pre-built artifacts from the self-hosted Logos Attic cache(Nix binary cache).
+  nixConfig = {
+    extra-substituters = [ "https://cache.nix.logos.co/public" ];
+    extra-trusted-public-keys = [ "public:l4HrXgL4nw246+LBh2SOJyhz64BoGegOYLheT/iIAPU=" ];
+  };
+
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
     libp2p.url = "github:vacp2p/nim-libp2p/master";
