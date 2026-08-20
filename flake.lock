@@ -875,16 +875,16 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1786465623,
-        "narHash": "sha256-DGuu3wX/EKetYG849E0ASZWD1GrYKH+0dfFsMmRbDT0=",
+        "lastModified": 1787230257,
+        "narHash": "sha256-uh1uEboviz6DMwFd7Evenrb04XWSRmvWvzLC3XBrSAc=",
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "0253e455f4da4230ac3101105bcc51b21c037121",
+        "rev": "86439e860a7d04329af51f097ef3e46eb1249bec",
         "type": "github"
       },
       "original": {
         "owner": "vacp2p",
-        "ref": "master",
+        "ref": "feat/cbind/poll-accept-stream",
         "repo": "nim-libp2p",
         "type": "github"
       }
