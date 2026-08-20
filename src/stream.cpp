@@ -80,10 +80,7 @@ StdLogosResult Libp2pModuleImpl::streamRelease(uint64_t streamId) {
 
 void Libp2pModuleImpl::releaseStreamNoWait(uint64_t streamId) {
     if (!ctx) return;
-    auto* p = new SyncPromise();
-    auto f = p->get_future();
-    int ret = libp2p_ctx_stream_release(ctx, streamId, &Libp2pModuleImpl::cbBool, p);
-    if (ret != 0 && f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-        delete p;
-    }
+    callAsync([&](SyncPromise* p) {
+        return libp2p_ctx_stream_release(ctx, streamId, &Libp2pModuleImpl::cbBool, p);
+    });
 }

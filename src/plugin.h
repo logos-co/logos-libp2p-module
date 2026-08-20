@@ -360,6 +360,16 @@ private:
         if (!r.ok) return {false, {}, std::string(errPrefix) + ": " + r.message};
         return transform(r);
     }
+
+    // Submits without awaiting, for a caller that must not block its thread.
+    template <class Invoke>
+    static void callAsync(Invoke&& invoke) {
+        auto* p = new SyncPromise();
+        auto f = p->get_future();
+        if (invoke(p) != 0 && f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+            delete p;
+        }
+    }
 };
 
 inline StdLogosResult setLogLevel(const std::string& level) {

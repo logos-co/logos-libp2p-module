@@ -13,9 +13,13 @@ constexpr char kPingCodec[] = "/ipfs/ping/1.0.0";
 constexpr size_t kPingSize = 32;
 
 std::string randomPingPayload() {
+    static_assert(kPingSize % sizeof(std::random_device::result_type) == 0);
     std::random_device rd;
     std::string out(kPingSize, '\0');
-    for (auto& c : out) c = static_cast<char>(rd() & 0xff);
+    for (size_t i = 0; i < kPingSize; i += sizeof(std::random_device::result_type)) {
+        const auto draw = rd();
+        std::memcpy(out.data() + i, &draw, sizeof(draw));
+    }
     return out;
 }
 
@@ -89,8 +93,7 @@ StdLogosResult Libp2pModuleImpl::protocolRequest(const std::string& argsJson) {
 
     auto d = dial(peerId, proto);
     if (!d.success) return {false, {}, "protocolRequest: dial failed: " + d.error};
-    uint64_t streamId = 0;
-    try { streamId = d.value.get<uint64_t>(); } catch (...) {}
+    const uint64_t streamId = asStreamId(d.value);
     if (streamId == 0) return {false, {}, "protocolRequest: dial returned no stream"};
 
     auto w = streamWriteLp(streamId, requestBytes);
@@ -214,8 +217,7 @@ StdLogosResult Libp2pModuleImpl::protocolAcceptStream(const std::string& argsJso
 StdLogosResult Libp2pModuleImpl::pingPeer(const std::string& peerId, int64_t timeoutMs) {
     auto d = dial(peerId, kPingCodec);
     if (!d.success) return {false, {}, "pingPeer: dial failed: " + d.error};
-    uint64_t streamId = 0;
-    try { streamId = d.value.get<uint64_t>(); } catch (...) {}
+    const uint64_t streamId = asStreamId(d.value);
     if (streamId == 0) return {false, {}, "pingPeer: dial returned no stream"};
 
     const std::string payload = randomPingPayload();

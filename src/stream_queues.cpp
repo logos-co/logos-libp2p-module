@@ -49,38 +49,27 @@ bool InboundStreamQueues::remove(uint64_t streamId) {
 void InboundStreamQueues::releaseAll() {
     std::lock_guard<std::mutex> lock(m_mutex);
     for (auto it = m_protocols.begin(); it != m_protocols.end();) {
-        it = it->second.retire() ? std::next(it) : m_protocols.erase(it);
+        const bool keepForDropCounter = it->second.retire();
+        it = keepForDropCounter ? std::next(it) : m_protocols.erase(it);
     }
 }
 
-// A scrape samples under the lock and formats outside it, so it never holds the enqueue path.
 std::vector<Metric> InboundStreamQueues::metrics() const {
-    struct Sample {
-        std::string proto;
-        size_t depth;
-        uint64_t dropped;
-    };
-    std::vector<Sample> samples;
+    std::vector<QueueSample> samples;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         samples.reserve(m_protocols.size());
         for (const auto& [proto, p] : m_protocols) {
-            samples.push_back(Sample{proto, p.streams.size(), p.dropped});
+            samples.push_back(QueueSample{proto, p.streams.size(), p.dropped});
         }
     }
 
-    std::vector<Metric> series;
-    series.reserve(samples.size() * 2);
-    for (auto& s : samples) {
-        series.push_back(Metric{"libp2p_module_protocol_stream_queue_depth", "gauge",
-                                "inbound streams waiting in the per-protocol accept queue",
-                                {{"proto", s.proto}}, static_cast<double>(s.depth)});
-        series.push_back(Metric{"libp2p_module_protocol_stream_dropped_total", "counter",
-                                "inbound streams dropped because the accept queue was full",
-                                {{"proto", std::move(s.proto)}},
-                                static_cast<double>(s.dropped)});
-    }
-    return series;
+    return queueSeries(std::move(samples),
+        QueueSeriesNames{"proto",
+                         "libp2p_module_protocol_stream_queue_depth",
+                         "inbound streams waiting in the per-protocol accept queue",
+                         "libp2p_module_protocol_stream_dropped_total",
+                         "inbound streams dropped because the accept queue was full"});
 }
 
 bool InboundStreamQueues::Protocol::retire() {

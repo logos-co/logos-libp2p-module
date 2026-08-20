@@ -11,7 +11,7 @@
 
 #include "metric.h"
 
-// A queued entry is the only handle a polling consumer has: the stream stays open on the Nim side until the host releases it.
+// A handle, not a stream: the Nim side keeps the stream open until the host releases it.
 struct InboundStream {
     uint64_t streamId = 0;
     std::string peerId;
@@ -21,7 +21,7 @@ inline constexpr size_t kMaxInboundStreamsPerProtocol = 1024;
 
 class InboundStreamQueues {
 public:
-    /// Past the per-protocol cap the newest stream is dropped and counted; the caller then releases it.
+    /// Over the cap the newest stream is dropped and counted; the caller releases it.
     bool push(const std::string& proto, InboundStream stream);
 
     bool pop(const std::string& proto, int64_t timeoutMs, InboundStream& out);
@@ -29,7 +29,7 @@ public:
     /// Drops a stream the host released before anyone accepted it.
     bool remove(uint64_t streamId);
 
-    /// Frees the queued streams, keeping the drop counters, since a reset counter reads as a target restart.
+    /// Drops the queued handles once the node or the context is gone, which is what frees the streams.
     void releaseAll();
 
     std::vector<Metric> metrics() const;

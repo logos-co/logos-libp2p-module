@@ -1,5 +1,3 @@
-// InboundStreamQueues in isolation (no Libp2pModuleImpl, links without libp2p.so).
-
 #include <logos_test.h>
 #include <stream_queues.h>
 
@@ -68,7 +66,7 @@ LOGOS_TEST(stream_queues_remove_takes_a_stream_out) {
     LOGOS_ASSERT_EQ(out.streamId, static_cast<uint64_t>(2));
 }
 
-// releaseAll frees the streams; a drop counter already reported must survive it.
+// A drop counter already reported must survive releaseAll.
 LOGOS_TEST(stream_queues_release_all_keeps_the_drop_counter) {
     InboundStreamQueues queues;
     for (size_t i = 0; i < kMaxInboundStreamsPerProtocol + 1; ++i) {
