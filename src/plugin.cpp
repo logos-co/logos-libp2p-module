@@ -211,15 +211,25 @@ StdLogosResult Libp2pModuleImpl::createContext() {
         return {false, {}, m_initError};
     }
 
+    std::unique_lock<std::shared_mutex> lock(m_ctxLock);
     ctx = r.newCtx;
 
-    // Register listeners before start so incoming protocol streams and pubsub
-    // messages are delivered once the node is running. Destroying the context
-    // frees the listener boxes.
+    // Registered before start so incoming protocol streams and pubsub messages are delivered once the node runs; destroying the context frees the listener boxes.
     libp2p_ctx_add_on_incoming_stream_listener(ctx, &Libp2pModuleImpl::onIncomingStream, this);
     libp2p_ctx_add_on_pubsub_message_listener(ctx, &Libp2pModuleImpl::onPubsubMessage, this);
 
     return {true, {}, ""};
+}
+
+bool Libp2pModuleImpl::hasCtx() const {
+    std::shared_lock<std::shared_mutex> lock(m_ctxLock);
+    return ctx != nullptr;
+}
+
+StdLogosResult Libp2pModuleImpl::ensureContext() {
+    std::lock_guard<std::mutex> lock(m_createLock);
+    if (hasCtx()) return {true, {}, ""};
+    return createContext();
 }
 
 StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
@@ -231,7 +241,8 @@ StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
         fprintf(stderr, "libp2p_module: %s\n", msg.c_str());
         return {false, {}, msg};
     }
-    if (ctx) {
+    std::lock_guard<std::mutex> lock(m_createLock);
+    if (hasCtx()) {
         std::string msg = "createNode: node already created";
         fprintf(stderr, "libp2p_module: %s\n", msg.c_str());
         return {false, {}, msg};
@@ -250,14 +261,31 @@ StdLogosResult Libp2pModuleImpl::setLogLevel(const std::string& level) {
     return {true, {}, ""};
 }
 
-void Libp2pModuleImpl::destroyContext() {
-    if (!ctx) {
+void Libp2pModuleImpl::drainListeners() {
+    if (!m_listenerLock.try_lock_for(std::chrono::milliseconds(kDefaultOpTimeoutMs))) {
+        fprintf(stderr, "libp2p_module: an event listener is still running after %d ms;"
+                        " freeing the module under it\n", kDefaultOpTimeoutMs);
         return;
     }
-    // Synchronous: runs the Nim destructor (which drops the node and its
-    // streams) and frees the C-side context wrapper and listener boxes.
-    destroyContextChecked(ctx);
-    ctx = nullptr;
+    m_listenerLock.unlock();
+}
+
+void Libp2pModuleImpl::destroyContext() {
+    LibP2PCtx* doomed = nullptr;
+    {
+        // Scoped: a listener holds m_listenerLock and then wants m_ctxLock, so drainListeners below must not be reached with m_ctxLock still held.
+        std::unique_lock<std::shared_mutex> lock(m_ctxLock);
+        doomed = ctx;
+        ctx = nullptr;
+    }
+    if (!doomed) {
+        return;
+    }
+
+    // Synchronous: runs the Nim destructor (dropping the node and its streams) and frees the C-side context wrapper and listener boxes.
+    destroyContextChecked(doomed);
+
+    drainListeners();
     m_inboundStreams.releaseAll();
 }
 
@@ -268,10 +296,9 @@ Libp2pModuleImpl::~Libp2pModuleImpl() {
 }
 
 StdLogosResult Libp2pModuleImpl::start() {
-    if (!ctx) {
-        auto created = createContext();
-        if (!created.success) return created;
-    }
+    auto ready = ensureContext();
+    if (!ready.success) return ready;
+
     publishEmitEvent();
     return callSync("Failed to start libp2p", [&](SyncPromise* p) {
         return libp2p_ctx_start(ctx, &Libp2pModuleImpl::cbBool, p);
@@ -291,11 +318,11 @@ StdLogosResult Libp2pModuleImpl::stop() {
 }
 
 bool Libp2pModuleImpl::ok() {
-    return ctx != nullptr;
+    return hasCtx();
 }
 
 StdLogosResult Libp2pModuleImpl::status() {
-    if (ctx) return {true, {}, ""};
+    if (hasCtx()) return {true, {}, ""};
     return {false, {}, m_initError.empty() ? "libp2p not initialized" : m_initError};
 }
 
@@ -305,10 +332,9 @@ StdLogosResult Libp2pModuleImpl::newPrivateKey(const std::string& scheme) {
         return {false, {}, "Unknown key scheme '" + scheme +
                            "'; expected rsa, ed25519, secp256k1 or ecdsa"};
     }
-    if (!ctx) {
-        auto created = createContext();
-        if (!created.success) return created;
-    }
+    auto ready = ensureContext();
+    if (!ready.success) return ready;
+
     NewPrivateKeyRequest req{};
     req.scheme = static_cast<int64_t>(parsed);
     return callSyncWith("Failed to generate private key",

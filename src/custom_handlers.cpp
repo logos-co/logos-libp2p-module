@@ -1,7 +1,7 @@
 #include "plugin.h"
 
 StdLogosResult Libp2pModuleImpl::mountProtocol(const std::string& proto) {
-    if (!ctx) return {false, {}, "No libp2p context"};
+    if (!hasCtx()) return {false, {}, "No libp2p context"};
     if (proto.empty()) return {false, {}, "Protocol string is empty"};
     publishEmitEvent();
 
