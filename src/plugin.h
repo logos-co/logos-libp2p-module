@@ -164,6 +164,14 @@ inline StdLogosResult jsonResult(const SyncResult& r, nlohmann::json emptyDefaul
     return {true, r.data, ""};
 }
 
+class Libp2pModuleImpl;
+
+// Listener user_data. It outlives the module whenever the context teardown fails, because the Nim event thread may still fire: a late callback then reads a null owner instead of a freed module.
+struct ListenerGate {
+    std::shared_mutex lock;
+    Libp2pModuleImpl* owner = nullptr;
+};
+
 class Libp2pModuleImpl {
 public:
     Libp2pModuleImpl(const Libp2pModuleOptions& options = Libp2pModuleOptions::load());
@@ -294,9 +302,9 @@ private:
     void destroyContext();
     StdLogosResult nodeInfoBoundPorts();
 
-    // Held shared for the body of an event listener, which runs on the Nim dispatch thread against a bare `this`. destroyContext takes it unique to wait one out.
-    std::shared_timed_mutex m_listenerLock;
-    void drainListeners();
+    // Handed to the event listeners instead of `this`; owned by the module until a teardown that reports failure hands it to the event thread for good.
+    ListenerGate* m_gate = nullptr;
+    void detachListeners();
 
     // Reply trampolines: one per generated response type. Each turns the typed
     // (err_code, reply, err_msg) callback into a SyncResult and resolves the

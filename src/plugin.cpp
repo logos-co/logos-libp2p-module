@@ -16,14 +16,14 @@ std::string defaultListenAddr(TransportType transport) {
     return "/ip4/127.0.0.1/tcp/0";
 }
 
-// Tears a context down and reports a failed teardown. The context is gone
-// either way, but a non-OK code means the Nim side could not stop cleanly and
-// its worker threads may still be live, which is worth a line in the log.
-void destroyContextChecked(LibP2PCtx* c) {
+// False means the Nim side could not stop cleanly, so its worker threads may still be live.
+bool destroyContextChecked(LibP2PCtx* c) {
     int rc = libp2p_ctx_destroy(c);
     if (rc != NIMFFI_RET_OK) {
         fprintf(stderr, "libp2p_module: libp2p_ctx_destroy failed (rc=%d)\n", rc);
+        return false;
     }
+    return true;
 }
 
 // Pulls the port out of a multiaddr (the segment after /tcp/ or /udp/).
@@ -214,9 +214,12 @@ StdLogosResult Libp2pModuleImpl::createContext() {
     std::unique_lock<std::shared_mutex> lock(m_ctxLock);
     ctx = r.newCtx;
 
+    m_gate = new ListenerGate();
+    m_gate->owner = this;
+
     // Registered before start so incoming protocol streams and pubsub messages are delivered once the node runs; destroying the context frees the listener boxes.
-    libp2p_ctx_add_on_incoming_stream_listener(ctx, &Libp2pModuleImpl::onIncomingStream, this);
-    libp2p_ctx_add_on_pubsub_message_listener(ctx, &Libp2pModuleImpl::onPubsubMessage, this);
+    libp2p_ctx_add_on_incoming_stream_listener(ctx, &Libp2pModuleImpl::onIncomingStream, m_gate);
+    libp2p_ctx_add_on_pubsub_message_listener(ctx, &Libp2pModuleImpl::onPubsubMessage, m_gate);
 
     return {true, {}, ""};
 }
@@ -261,19 +264,21 @@ StdLogosResult Libp2pModuleImpl::setLogLevel(const std::string& level) {
     return {true, {}, ""};
 }
 
-void Libp2pModuleImpl::drainListeners() {
-    if (!m_listenerLock.try_lock_for(std::chrono::milliseconds(kDefaultOpTimeoutMs))) {
-        fprintf(stderr, "libp2p_module: an event listener is still running after %d ms;"
-                        " freeing the module under it\n", kDefaultOpTimeoutMs);
+// Waits out a listener that is already running, and stops any later one before it touches the module. The wait has no timeout: a running listener holds a bare pointer to the module, and no deadline makes that pointer safe to free.
+void Libp2pModuleImpl::detachListeners() {
+    if (!m_gate) {
         return;
     }
-    m_listenerLock.unlock();
+    std::unique_lock<std::shared_mutex> lock(m_gate->lock);
+    m_gate->owner = nullptr;
 }
 
 void Libp2pModuleImpl::destroyContext() {
+    // Before the teardown, so the Nim event thread never sits in a module callback while the teardown waits to join it.
+    detachListeners();
+
     LibP2PCtx* doomed = nullptr;
     {
-        // Scoped: a listener holds m_listenerLock and then wants m_ctxLock, so drainListeners below must not be reached with m_ctxLock still held.
         std::unique_lock<std::shared_mutex> lock(m_ctxLock);
         doomed = ctx;
         ctx = nullptr;
@@ -283,9 +288,14 @@ void Libp2pModuleImpl::destroyContext() {
     }
 
     // Synchronous: runs the Nim destructor (dropping the node and its streams) and frees the C-side context wrapper and listener boxes.
-    destroyContextChecked(doomed);
+    const bool stopped = destroyContextChecked(doomed);
 
-    drainListeners();
+    // A failed teardown leaves the listener boxes, and the thread that reads them, alive: the gate they point at has to stay.
+    if (stopped) {
+        delete m_gate;
+    }
+    m_gate = nullptr;
+
     m_inboundStreams.releaseAll();
 }
 
