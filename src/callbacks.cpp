@@ -151,9 +151,11 @@ void Libp2pModuleImpl::cbPeerStoreEntry(
 // the whole body — a serialization failure (e.g. non-UTF-8 pubsub payload in
 // the emitted event) must not take the process down.
 void Libp2pModuleImpl::onIncomingStream(const IncomingStreamEvent* evt, void* ud) {
-    auto* self = static_cast<Libp2pModuleImpl*>(ud);
-    if (!self || !evt) return;
-    std::shared_lock<std::shared_timed_mutex> guard(self->m_listenerLock);
+    auto* gate = static_cast<ListenerGate*>(ud);
+    if (!gate || !evt) return;
+    std::shared_lock<std::shared_mutex> guard(gate->lock);
+    auto* self = gate->owner;
+    if (!self) return;
     try {
         const std::string proto = nfStr(evt->proto);
         const std::string peerId = nfStr(evt->peerId);
@@ -171,9 +173,11 @@ void Libp2pModuleImpl::onIncomingStream(const IncomingStreamEvent* evt, void* ud
 }
 
 void Libp2pModuleImpl::onPubsubMessage(const PubsubMessageEvent* evt, void* ud) {
-    auto* self = static_cast<Libp2pModuleImpl*>(ud);
-    if (!self || !evt) return;
-    std::shared_lock<std::shared_timed_mutex> guard(self->m_listenerLock);
+    auto* gate = static_cast<ListenerGate*>(ud);
+    if (!gate || !evt) return;
+    std::shared_lock<std::shared_mutex> guard(gate->lock);
+    auto* self = gate->owner;
+    if (!self) return;
     try {
         std::string topic = nfStr(evt->topic);
         auto bytes = nfBytes(evt->data);
