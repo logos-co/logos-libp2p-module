@@ -1,5 +1,7 @@
 #include <logos_test.h>
 #include <plugin.h>
+#include <chrono>
+#include <thread>
 #include "test_helpers.h"
 
 LOGOS_TEST(kad_put_get) {
@@ -120,9 +122,18 @@ LOGOS_TEST(kad_random_records) {
     LOGOS_ASSERT_TRUE(nodeB.start().success);
     auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
 
+    // nodeB stores its record on nodeA a few ms after start(), so poll for it.
     auto res = nodeA.kadGetRandomRecords();
     LOGOS_ASSERT_TRUE(res.success);
     auto records = res.value;
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (records.empty() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        res = nodeA.kadGetRandomRecords();
+        LOGOS_ASSERT_TRUE(res.success);
+        records = res.value;
+    }
 
     LOGOS_ASSERT_FALSE(records.empty());
     LOGOS_ASSERT_TRUE(records[0]["peerId"].get<std::string>() == peerIdB);
