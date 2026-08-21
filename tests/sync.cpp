@@ -2,6 +2,9 @@
 #include <plugin.h>
 #include "test_helpers.h"
 
+#include <atomic>
+#include <thread>
+
 LOGOS_TEST(sync_connect_disconnect_peer) {
     Libp2pModuleImpl plugin;
     LOGOS_ASSERT_TRUE(plugin.start().success);
@@ -253,5 +256,47 @@ LOGOS_TEST(sync_kad_random_records) {
     LOGOS_ASSERT_TRUE(res.success);
     LOGOS_ASSERT_TRUE(res.value.is_array());
 
+    LOGOS_ASSERT_TRUE(plugin.stop().success);
+}
+
+LOGOS_TEST(sync_stop_without_a_context_is_rejected) {
+    Libp2pModuleImpl plugin;
+
+    auto res = plugin.stop();
+    LOGOS_ASSERT_FALSE(res.success);
+    LOGOS_ASSERT_TRUE(res.error == "No libp2p context");
+}
+
+// A reader on another thread while start() installs the context: every call sees either no context or a fully installed one, and TSAN sees no race on the pointer.
+LOGOS_TEST(sync_reader_races_context_create) {
+    Libp2pModuleImpl plugin;
+
+    std::atomic<bool> reading{false};
+    std::atomic<bool> done{false};
+    std::atomic<bool> unexpectedError{false};
+
+    std::thread reader([&] {
+        reading.store(true, std::memory_order_release);
+        while (!done.load(std::memory_order_relaxed)) {
+            auto res = plugin.peerInfo();
+            if (!res.success && res.error != "No libp2p context" &&
+                res.error.rfind("Failed to get peer info", 0) != 0) {
+                unexpectedError.store(true, std::memory_order_relaxed);
+            }
+        }
+    });
+
+    // The reader must be inside its loop before the create publishes the pointer, or there is no race to observe.
+    while (!reading.load(std::memory_order_acquire)) {
+        std::this_thread::yield();
+    }
+
+    LOGOS_ASSERT_TRUE(plugin.start().success);
+    done.store(true, std::memory_order_relaxed);
+    reader.join();
+
+    LOGOS_ASSERT_FALSE(unexpectedError.load());
+    // The hammering left a usable context behind, not one the race half-installed.
+    LOGOS_ASSERT_TRUE(plugin.peerInfo().success);
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }

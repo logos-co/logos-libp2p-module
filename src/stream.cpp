@@ -79,7 +79,6 @@ StdLogosResult Libp2pModuleImpl::streamRelease(uint64_t streamId) {
 }
 
 void Libp2pModuleImpl::releaseStreamNoWait(uint64_t streamId) {
-    if (!ctx) return;
     callAsync([&](SyncPromise* p) {
         return libp2p_ctx_stream_release(ctx, streamId, &Libp2pModuleImpl::cbBool, p);
     });
