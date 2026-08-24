@@ -164,13 +164,8 @@ inline StdLogosResult jsonResult(const SyncResult& r, nlohmann::json emptyDefaul
     return {true, r.data, ""};
 }
 
-class Libp2pModuleImpl;
-
-// Listener user_data. It outlives the module whenever the context teardown fails, because the Nim event thread may still fire: a late callback then reads a null owner instead of a freed module.
-struct ListenerGate {
-    std::shared_mutex lock;
-    Libp2pModuleImpl* owner = nullptr;
-};
+// Defined below the class. A forward declaration of the module class above it makes the codegen header parser read that declaration as the class body and publish no methods at all.
+struct ListenerGate;
 
 class Libp2pModuleImpl {
 public:
@@ -409,6 +404,12 @@ private:
             delete p;
         }
     }
+};
+
+// Listener user_data. It outlives the module whenever the context teardown fails, because the Nim event thread may still fire: a late callback then reads a null owner instead of a freed module.
+struct ListenerGate {
+    std::shared_mutex lock;
+    Libp2pModuleImpl* owner = nullptr;
 };
 
 inline StdLogosResult setLogLevel(const std::string& level) {
