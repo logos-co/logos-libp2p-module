@@ -171,7 +171,8 @@ jobs:
           "set -e;
           sudo apt-get update;
           sudo apt-get install -y curl git;
-          curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm;
+          curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors -o /tmp/nix-install.sh https://install.determinate.systems/nix;
+          sh /tmp/nix-install.sh install --no-confirm;
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh;
           nix flake check --system x86_64-linux --print-build-logs --show-trace
           --max-jobs 2 --cores 2 --max-silent-time 900
