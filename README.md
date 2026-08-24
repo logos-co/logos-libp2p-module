@@ -139,6 +139,54 @@ A scripted version of this flow runs in CI and locally via
 
 ---
 
+# Custom-protocol bridge
+
+Another module can run its own length-prefixed protocol on this node, instead of
+starting a second libp2p node. Every argument and every result is one JSON
+string, and every payload is base64, because that is the only shape the
+universal codegen marshals.
+
+| Call | Args | Result |
+| --- | --- | --- |
+| `protocolRequest` | `{peerId, proto, multiaddrs?, requestB64, timeoutMs?, maxSize?, expectResponse?}` | `{responseB64}` |
+| `mountProtocol` | `proto` | (none) |
+| `protocolAcceptStream` | `{proto, timeoutMs?}` | `{streamId, proto, peerId}` |
+| `streamReadLpJson` | `{streamId, maxSize?, timeoutMs?}` | `{dataB64}` |
+| `streamWriteLpJson` | `{streamId, dataB64}` | (none) |
+| `streamCloseJson` / `streamReleaseJson` | `{streamId}` | (none) |
+| `pingPeer` | `peerId`, `timeoutMs` | `{peerId, rttMs}` |
+
+`protocolRequest` does connect, dial, write, read and release in one call, so it
+covers a request and response exchange.
+
+The module boundary carries no push events, so an inbound stream waits in a
+per-protocol queue and the consumer polls it with `protocolAcceptStream`.
+`peerId` is the peer that opened the stream, which a service protocol needs to
+answer the right peer. A stream leaves the queue when `protocolAcceptStream`
+hands it out, when `streamReleaseJson` releases it, or when the node stops.
+Mounting needs no event listener, so a consumer that only polls never sets one.
+
+Each inbound stream also fires a `protocolStream` event with the same
+`{streamId, proto, peerId}`. Drive a stream from the queue or from the event,
+never from both: the two report the same stream, and the second reader finds a
+handle another one already released.
+
+The queue holds 1024 streams per protocol. Past that the newest inbound stream
+is released, and the drop is counted, so a consumer that stops polling loses
+streams instead of pinning them:
+
+| Metric | Type | Labels |
+| --- | --- | --- |
+| `libp2p_module_protocol_stream_queue_depth` | gauge | `proto` |
+| `libp2p_module_protocol_stream_dropped_total` | counter | `proto` |
+
+`pingPeer` dials `/ipfs/ping/1.0.0` on a peer this node is already connected to.
+Use it for a health check; it opens no connection of its own. `rttMs` is
+measured around the write and the read, so it carries the two FFI hops on top of
+the wire time. Compare it against itself over time, not against `ping(8)`.
+
+---
+
 # Building
 Currently the recommended and supported building way is using Nix
 

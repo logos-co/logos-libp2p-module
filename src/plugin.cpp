@@ -258,6 +258,7 @@ void Libp2pModuleImpl::destroyContext() {
     // streams) and frees the C-side context wrapper and listener boxes.
     destroyContextChecked(ctx);
     ctx = nullptr;
+    m_inboundStreams.releaseAll();
 }
 
 Libp2pModuleImpl::~Libp2pModuleImpl() {
@@ -284,6 +285,7 @@ StdLogosResult Libp2pModuleImpl::stop() {
     // A node that failed to stop is still delivering, so it keeps its backlog.
     if (res.success) {
         m_topicQueues.releaseAll();
+        m_inboundStreams.releaseAll();
     }
     return res;
 }

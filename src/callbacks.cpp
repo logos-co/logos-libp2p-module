@@ -154,9 +154,17 @@ void Libp2pModuleImpl::onIncomingStream(const IncomingStreamEvent* evt, void* ud
     auto* self = static_cast<Libp2pModuleImpl*>(ud);
     if (!self || !evt) return;
     try {
+        const std::string proto = nfStr(evt->proto);
+        const std::string peerId = nfStr(evt->peerId);
+        if (!self->m_inboundStreams.push(proto, InboundStream{evt->streamId, peerId})) {
+            self->releaseStreamNoWait(evt->streamId);
+            return;
+        }
+
         json j;
         j["streamId"] = evt->streamId;
-        j["proto"] = nfStr(evt->proto);
+        j["proto"] = proto;
+        j["peerId"] = peerId;
         self->emitEventSafe("protocolStream", j.dump());
     } catch (...) {}
 }

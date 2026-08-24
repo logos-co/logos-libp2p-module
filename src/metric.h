@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -19,6 +22,35 @@ struct Metric {
     double value = 0.0;
     int64_t timestamp = 0;
 };
+
+// One sample of a poll queue, taken under its lock and formatted outside it.
+struct QueueSample {
+    std::string key;
+    size_t depth;
+    uint64_t dropped;
+};
+
+struct QueueSeriesNames {
+    const char* label;
+    const char* depth;
+    const char* depthHelp;
+    const char* dropped;
+    const char* droppedHelp;
+};
+
+inline std::vector<Metric> queueSeries(std::vector<QueueSample> samples,
+                                       const QueueSeriesNames& names) {
+    std::vector<Metric> series;
+    series.reserve(samples.size() * 2);
+    for (auto& s : samples) {
+        series.push_back(Metric{names.depth, "gauge", names.depthHelp,
+                                {{names.label, s.key}}, static_cast<double>(s.depth)});
+        series.push_back(Metric{names.dropped, "counter", names.droppedHelp,
+                                {{names.label, std::move(s.key)}},
+                                static_cast<double>(s.dropped)});
+    }
+    return series;
+}
 
 inline void from_json(const nlohmann::json& j, Metric& m) {
     j.at("name").get_to(m.name);
