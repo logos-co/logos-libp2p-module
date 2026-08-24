@@ -28,13 +28,16 @@ logos_test(
 
 # Integration tests (real libp2p library)
 
+option(LIBP2P_TESTS_REQUIRE_LIB "Fail if the libp2p library is missing" OFF)
+
+# The target rpaths whatever this returns, so only the shared library qualifies.
 find_library(LIBP2P_PATH
-    NAMES libp2p.so libp2p.dylib
+    NAMES liblibp2p.so libp2p.so liblibp2p.dylib libp2p.dylib
     PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../lib
     NO_DEFAULT_PATH)
 
 if(LIBP2P_PATH)
-    message(STATUS "[Libp2pTests] libp2p found: ${LIBP2P_PATH} — building integration tests")
+    message(STATUS "[Libp2pTests] libp2p found: ${LIBP2P_PATH}, building integration tests")
 
     logos_test(
         NAME libp2p_module_tests
@@ -74,6 +77,8 @@ if(LIBP2P_PATH)
     set_target_properties(libp2p_module_tests PROPERTIES
         BUILD_RPATH "${LIBP2P_DIR}"
     )
+elseif(LIBP2P_TESTS_REQUIRE_LIB)
+    message(FATAL_ERROR "[Libp2pTests] libp2p not found in ../lib")
 else()
-    message(STATUS "[Libp2pTests] libp2p not found in ../lib — skipping integration tests")
+    message(STATUS "[Libp2pTests] libp2p not found in ../lib, skipping integration tests")
 endif()

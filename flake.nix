@@ -49,6 +49,9 @@
         };
       };
 
+      # Every test derivation needs this, or a missing library is a silent skip again.
+      requireLibp2pLib = "-DLIBP2P_TESTS_REQUIRE_LIB=ON";
+
       module = logos-module-builder.lib.mkLogosModule {
         src = ./.;
         configFile = ./metadata.json;
@@ -56,6 +59,7 @@
         inherit externalLibInputs;
         tests = {
           dir = ./tests;
+          extraCmakeFlags = [ requireLibp2pLib ];
         };
       };
 
@@ -73,7 +77,7 @@
         configFile = ./metadata.json;
         flakeInputs = inputs;
         inherit externalLibInputs;
-        extraCmakeFlags = [ "-DCMAKE_BUILD_TYPE=Debug" ];
+        extraCmakeFlags = [ "-DCMAKE_BUILD_TYPE=Debug" requireLibp2pLib ];
       };
 
       mkSanitized = system: sanitizer: runtimeOpts:
@@ -82,8 +86,10 @@
           clang = pkgs.clang;
           llvm = pkgs.llvm;  # llvm-symbolizer; symbol-based suppressions need it
           sanFlags = "-fsanitize=${sanitizer} -fno-omit-frame-pointer -g -O1";
+          # deadlock: libstdc++ leaves a std::mutex undestroyed on glibc, so tsan fuses two tests' stack-recycled locks into one node of its lock-order graph.
           tsanSuppressions = pkgs.writeText "tsan.supp" ''
             race:libp2p.so
+            deadlock:libp2p.so
           '';
           # Wrapper code (Libp2pModuleImpl, src/*.cpp) is NOT suppressed —
           # real wrapper leaks (e.g. src/plugin.cpp:121 privkey) still surface.
