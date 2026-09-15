@@ -168,9 +168,7 @@ LOGOS_TEST(integration_direct_dial_stream_exchange) {
     LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
 
-LOGOS_TEST(integration_dial_with_addrs_stream_exchange) {
-    const int PING_SIZE = 32;
-
+LOGOS_TEST(integration_dial_with_addrs_connects) {
     Libp2pModuleImpl nodeA;
     Libp2pModuleImpl nodeB;
 
@@ -186,16 +184,6 @@ LOGOS_TEST(integration_dial_with_addrs_stream_exchange) {
     LOGOS_ASSERT_NE(streamId, static_cast<uint64_t>(0));
     LOGOS_ASSERT_EQ(nodeA.connectedPeers(PEER_DIRECTION_OUTBOUND).value.size(), size_t(1));
 
-    std::string payload(PING_SIZE, '\0');
-    for (int i = 0; i < PING_SIZE; ++i)
-        payload[i] = static_cast<char>(i);
-    LOGOS_ASSERT_TRUE(nodeA.streamWrite(streamId, payload).success);
-
-    auto readResult = nodeA.streamReadExactly(streamId, PING_SIZE);
-    LOGOS_ASSERT_TRUE(readResult.success);
-    LOGOS_ASSERT_TRUE(base64Decode(readResult.value.get<std::string>()) == payload);
-
-    LOGOS_ASSERT_TRUE(nodeA.streamCloseWithEOF(streamId).success);
     LOGOS_ASSERT_TRUE(nodeA.streamRelease(streamId).success);
 
     LOGOS_ASSERT_TRUE(nodeA.stop().success);

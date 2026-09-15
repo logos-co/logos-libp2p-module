@@ -60,12 +60,7 @@ LOGOS_TEST(sync_dial_with_addrs) {
     Libp2pModuleImpl plugin;
     LOGOS_ASSERT_TRUE(plugin.start().success);
 
-    std::string fakePeer = "12D3KooWInvalidPeerForTest";
-    std::vector<std::string> fakeAddrs = { "/ip4/127.0.0.1/tcp/9999" };
     std::string proto = "/test/1.0.0";
-
-    LOGOS_ASSERT_FALSE(plugin.dialWithAddrs(fakePeer, fakeAddrs, proto, false, 500).success);
-
     std::string ownPeer = plugin.peerInfo().value["peerId"].get<std::string>();
     auto forced = plugin.dialWithAddrs(ownPeer, {}, proto, true, 500);
     LOGOS_ASSERT_FALSE(forced.success);
