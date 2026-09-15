@@ -192,6 +192,7 @@ public:
     StdLogosResult peerInfo();
     StdLogosResult connectedPeers(int64_t direction);
     StdLogosResult dial(const std::string& peerId, const std::string& proto);
+    StdLogosResult dialWithAddrs(const std::string& peerId, const std::vector<std::string>& multiaddrs, const std::string& proto, bool forceDial, int64_t timeoutMs);
 
     StdLogosResult circuitRelayReserve(const std::string& relayPeerId, const std::vector<std::string>& relayAddrs);
     StdLogosResult dialCircuitRelay(const std::string& dstPeerId, const std::string& multiaddr, const std::string& proto);
