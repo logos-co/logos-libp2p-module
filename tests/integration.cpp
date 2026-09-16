@@ -168,6 +168,28 @@ LOGOS_TEST(integration_direct_dial_stream_exchange) {
     LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
 
+LOGOS_TEST(integration_dial_with_addrs_connects) {
+    Libp2pModuleImpl nodeA;
+    Libp2pModuleImpl nodeB;
+
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
+
+    auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
+
+    auto dialResult = nodeA.dialWithAddrs(peerIdB, addrsB, "/ipfs/ping/1.0.0", false, 500);
+    LOGOS_ASSERT_TRUE(dialResult.success);
+
+    uint64_t streamId = dialResult.value.get<uint64_t>();
+    LOGOS_ASSERT_NE(streamId, static_cast<uint64_t>(0));
+    LOGOS_ASSERT_EQ(nodeA.connectedPeers(PEER_DIRECTION_OUTBOUND).value.size(), size_t(1));
+
+    LOGOS_ASSERT_TRUE(nodeA.streamRelease(streamId).success);
+
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
+}
+
 LOGOS_TEST(integration_circuit_relay_routing) {
     const int PING_SIZE = 32;
 

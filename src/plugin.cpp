@@ -458,9 +458,25 @@ StdLogosResult Libp2pModuleImpl::connectedPeers(int64_t direction) {
 }
 
 StdLogosResult Libp2pModuleImpl::dial(const std::string& peerId, const std::string& proto) {
+    return dialWithAddrs(peerId, {}, proto, false, 0);
+}
+
+StdLogosResult Libp2pModuleImpl::dialWithAddrs(
+    const std::string& peerId,
+    const std::vector<std::string>& multiaddrs,
+    const std::string& proto,
+    bool forceDial,
+    int64_t timeoutMs)
+{
+    auto addrsFfi = toNimFfiStrs(multiaddrs);
+
     DialRequest req{};
     req.peerId = nimffi_str(peerId.c_str());
     req.proto = nimffi_str(proto.c_str());
+    req.multiaddrs = LibP2PSeq_Str{addrsFfi.data(), addrsFfi.size()};
+    req.forceDial = forceDial;
+    req.timeoutMs = timeoutMs;
+
     return callSyncWith("Failed to dial",
         [&](SyncPromise* p) {
             return libp2p_ctx_dial(ctx, &req, &Libp2pModuleImpl::cbDial, p);
@@ -468,7 +484,8 @@ StdLogosResult Libp2pModuleImpl::dial(const std::string& peerId, const std::stri
         [](const SyncResult& r) -> StdLogosResult {
             if (r.data.is_number()) return {true, r.data, ""};
             return {true, 0, ""};
-        });
+        },
+        awaitTimeoutFor(timeoutMs));
 }
 
 StdLogosResult Libp2pModuleImpl::circuitRelayReserve(

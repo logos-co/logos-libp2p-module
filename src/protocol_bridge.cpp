@@ -86,12 +86,8 @@ StdLogosResult Libp2pModuleImpl::protocolRequest(const std::string& argsJson) {
         return {false, {}, std::string("protocolRequest: bad requestB64: ") + e.what()};
     }
 
-    if (!multiaddrs.empty()) {
-        auto c = connectPeer(peerId, multiaddrs, timeoutMs > 0 ? timeoutMs : kDefaultOpTimeoutMs);
-        if (!c.success) return {false, {}, "protocolRequest: connect failed: " + c.error};
-    }
-
-    auto d = dial(peerId, proto);
+    auto d = dialWithAddrs(peerId, multiaddrs, proto, false,
+                           timeoutMs > 0 ? timeoutMs : kDefaultOpTimeoutMs);
     if (!d.success) return {false, {}, "protocolRequest: dial failed: " + d.error};
     const uint64_t streamId = asStreamId(d.value);
     if (streamId == 0) return {false, {}, "protocolRequest: dial returned no stream"};
