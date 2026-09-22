@@ -89,6 +89,16 @@ jobs:
           name: logos-co
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+      # Pinned here, not as flake inputs: their input trees dominate flake.lock.
+      - name: Build logoscore and lgpm
+        run: |
+          logoscore=$(nix build --no-link --print-out-paths \
+            'github:logos-co/logos-logoscore-cli/4e8c7395f631a89c4fb849a27bfda2b4157ed3d2')
+          lgpm=$(nix build --no-link --print-out-paths \
+            'github:logos-co/logos-package-manager/d3af2972f51d9c542537d80d60ad8d20282ddcd1#cli')
+          echo "LOGOSCORE_BIN=$logoscore/bin/logoscore" >> "$GITHUB_ENV"
+          echo "LGPM_BIN=$lgpm/bin/lgpm" >> "$GITHUB_ENV"
+
       - name: Run openmetrics e2e
         run: nix run .#openmetrics-e2e
 
