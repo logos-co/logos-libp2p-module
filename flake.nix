@@ -8,7 +8,7 @@
   };
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/0.3.1";
     libp2p.url = "github:vacp2p/nim-libp2p/master";
 
     openmetrics-module = {
@@ -221,10 +221,16 @@
           };
         });
 
+      # Windows exposes only the contract, so delivery_module's cross build can
+      # resolve this optional dependency. The module itself is not built there.
+      windowsPackages = {
+        x86_64-windows = { inherit (module.packages.x86_64-windows) lidl; };
+      };
+
     in module // {
       apps = mergedApps;
       checks = module.checks or {};
-      packages = mergedPackages;
+      packages = mergedPackages // windowsPackages;
       devShells = mergedDevShells;
     };
 }
