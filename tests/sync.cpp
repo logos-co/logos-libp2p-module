@@ -192,7 +192,7 @@ LOGOS_TEST(sync_gossipsub_unsubscribe) {
 }
 
 LOGOS_TEST(sync_kad_get_put_value) {
-    Libp2pModuleImpl plugin(Libp2pModuleOptions{ .mountServiceDiscovery = false });
+    Libp2pModuleImpl plugin;
     LOGOS_ASSERT_TRUE(plugin.start().success);
 
     std::string key = "sync-test-key";
@@ -208,7 +208,7 @@ LOGOS_TEST(sync_kad_get_put_value) {
 }
 
 LOGOS_TEST(sync_key_to_cid_and_providers) {
-    Libp2pModuleImpl plugin(Libp2pModuleOptions{ .mountServiceDiscovery = false });
+    Libp2pModuleImpl plugin;
     LOGOS_ASSERT_TRUE(plugin.start().success);
 
     std::string key = "sync-provider-test-key";

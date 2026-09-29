@@ -46,12 +46,11 @@ int main()
 /// We need at least two nodes to demonstrate DHT operations. In a
 /// real network, one node would be a well-known bootstrap peer.
 ///
-/// > **Important**: This tutorial stores arbitrary values, so it disables
-/// > service discovery and mounts the plain Kademlia DHT.
+/// > **Important**: Service discovery is disabled by default, so these options
+/// > mount the plain Kademlia DHT used for arbitrary values.
     Libp2pModuleOptions optsA;
     optsA.addrs = {"/ip4/127.0.0.1/tcp/9390"};
     optsA.mountKad = true;
-    optsA.mountServiceDiscovery = false;
     // Node A is the bootstrap — no special config needed, just its address.
 
     Libp2pModuleImpl nodeA(optsA);
@@ -81,7 +80,6 @@ int main()
     Libp2pModuleOptions optsB;
     optsB.addrs = {"/ip4/127.0.0.1/tcp/9391"};
     optsB.mountKad = true;
-    optsB.mountServiceDiscovery = false;
     optsB.bootstrapNodes = {{peerIdA, addrsA}};
 
     Libp2pModuleImpl nodeB(optsB);

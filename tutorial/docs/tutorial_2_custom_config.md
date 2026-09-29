@@ -19,7 +19,7 @@ configuration fields:
 | `maxConnsPerPeer` | `int` | `1` | Max connections per peer |
 | `mountGossipsub` | `bool` | `true` | Enable GossipSub |
 | `mountKad` | `bool` | `true` | Enable Kademlia DHT |
-| `mountServiceDiscovery` | `bool` | `true` | Enable service discovery |
+| `mountServiceDiscovery` | `bool` | `false` | Enable service discovery |
 
 ## Binding to a fixed port
 

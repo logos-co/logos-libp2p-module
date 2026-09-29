@@ -42,7 +42,7 @@ struct Libp2pModuleOptions {
     bool gossipsubTriggerSelf = true;
     bool mountGossipsub = true;
     bool mountKad = true;
-    bool mountServiceDiscovery = true;
+    bool mountServiceDiscovery = false;
 
     // Bounds on the per-topic backlog gossipsubNextMessage() drains; either at
     // 0 disables it. Keep the byte bound above gossipsubMaxMessageSize, since a

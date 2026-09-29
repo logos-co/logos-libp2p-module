@@ -5,13 +5,12 @@
 #include "test_helpers.h"
 
 LOGOS_TEST(kad_put_get) {
-    Libp2pModuleImpl nodeA(Libp2pModuleOptions{ .mountServiceDiscovery = false });
+    Libp2pModuleImpl nodeA;
     LOGOS_ASSERT_TRUE(nodeA.start().success);
     auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
 
     Libp2pModuleImpl nodeB(Libp2pModuleOptions{
         .bootstrapNodes = { {peerIdA, addrsA} },
-        .mountServiceDiscovery = false,
     });
     LOGOS_ASSERT_TRUE(nodeB.start().success);
 
