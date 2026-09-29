@@ -129,7 +129,7 @@ else
 fi
 
 # The node rejected the bad config before tearing down, so it stays up.
-check "getNodeInfo Version after rejected reconfigure" "$(info Version)" "0.1.0"
+check "getNodeInfo Version after rejected reconfigure" "$(info Version)" "1.1.0"
 
 call stop
 
