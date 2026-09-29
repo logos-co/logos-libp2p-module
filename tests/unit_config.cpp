@@ -54,7 +54,7 @@ LOGOS_TEST(apply_overlays_present_keys) {
         ],
         "transport": "quic",
         "maxConnections": 200,
-        "mountServiceDiscovery": false
+        "mountServiceDiscovery": true
     })");
 
     Libp2pModuleOptions opts;
@@ -67,7 +67,7 @@ LOGOS_TEST(apply_overlays_present_keys) {
     LOGOS_ASSERT_EQ(opts.bootstrapNodes[0].second.size(), 2u);
     LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_QUIC);
     LOGOS_ASSERT_EQ(opts.maxConnections, 200);
-    LOGOS_ASSERT_FALSE(opts.mountServiceDiscovery);
+    LOGOS_ASSERT_TRUE(opts.mountServiceDiscovery);
     // Untouched keys keep their defaults.
     LOGOS_ASSERT_TRUE(opts.mountKad);
     LOGOS_ASSERT_EQ(opts.maxInConnections, 25);
@@ -83,6 +83,7 @@ LOGOS_TEST(apply_partial_keeps_defaults) {
     LOGOS_ASSERT_TRUE(opts.addrs.empty());
     LOGOS_ASSERT_TRUE(opts.bootstrapNodes.empty());
     LOGOS_ASSERT_EQ(opts.transport, TRANSPORT_TYPE_TCP);
+    LOGOS_ASSERT_FALSE(opts.mountServiceDiscovery);
 }
 
 LOGOS_TEST(apply_non_object_is_noop) {
@@ -323,6 +324,7 @@ LOGOS_TEST(options_defaults) {
     LOGOS_ASSERT_EQ(opts.maxOutConnections, 25);
     LOGOS_ASSERT_EQ(opts.maxConnsPerPeer, 1);
     LOGOS_ASSERT_TRUE(opts.gossipsubTriggerSelf);
+    LOGOS_ASSERT_FALSE(opts.mountServiceDiscovery);
     LOGOS_ASSERT_EQ(opts.gossipsubQueueMaxMessages, size_t(1024));
     LOGOS_ASSERT_EQ(opts.gossipsubQueueMaxBytes, size_t(4 * 1024 * 1024));
     LOGOS_ASSERT_EQ(opts.gossipsubMaxMessageSize, int64_t(0));

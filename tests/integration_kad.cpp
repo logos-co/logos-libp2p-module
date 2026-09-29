@@ -10,7 +10,7 @@ LOGOS_TEST(kad_put_get) {
     auto [peerIdA, addrsA] = getPeerInfoPair(nodeA);
 
     Libp2pModuleImpl nodeB(Libp2pModuleOptions{
-        .bootstrapNodes = { {peerIdA, addrsA} }
+        .bootstrapNodes = { {peerIdA, addrsA} },
     });
     LOGOS_ASSERT_TRUE(nodeB.start().success);
 

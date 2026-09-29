@@ -7,7 +7,7 @@
   "maxConnsPerPeer": 1,
   "mountGossipsub": true,
   "mountKad": true,
-  "mountServiceDiscovery": true,
+  "mountServiceDiscovery": false,
   "gossipsubQueueMaxMessages": 1024,
   "gossipsubQueueMaxBytes": 4194304,
   "gossipsubMaxMessageSize": 1048576,
