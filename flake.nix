@@ -9,7 +9,7 @@
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder/0.3.1";
-    libp2p.url = "github:vacp2p/nim-libp2p/5049604c8172c67f70bffa4aae8a1d96580d4bdc";
+    libp2p.url = "github:vacp2p/nim-libp2p/d5fef6fdc12b1adbe3fe1d89cc6a27a1a605e2b5";
 
     openmetrics-module = {
       url = "github:logos-co/openmetrics-module";
