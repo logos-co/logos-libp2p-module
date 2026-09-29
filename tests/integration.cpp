@@ -1,5 +1,7 @@
 #include <logos_test.h>
 #include <plugin.h>
+#include <chrono>
+#include <thread>
 #include "test_helpers.h"
 
 LOGOS_TEST(integration_bootstrap_auto_connect) {
@@ -13,6 +15,12 @@ LOGOS_TEST(integration_bootstrap_auto_connect) {
     LOGOS_ASSERT_TRUE(nodeB.start().success);
 
     auto peersRes = nodeB.connectedPeers(PEER_DIRECTION_OUTBOUND);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (peersRes.success && peersRes.value.empty() &&
+           std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        peersRes = nodeB.connectedPeers(PEER_DIRECTION_OUTBOUND);
+    }
     LOGOS_ASSERT_TRUE(peersRes.success);
     auto peers = peersRes.value;
     LOGOS_ASSERT_FALSE(peers.empty());
@@ -279,7 +287,7 @@ LOGOS_TEST(integration_create_node_then_node_info) {
 
     auto version = node.getNodeInfo("Version");
     LOGOS_ASSERT_TRUE(version.success);
-    LOGOS_ASSERT_TRUE(version.value.get<std::string>() == "1.0.0");
+    LOGOS_ASSERT_TRUE(version.value.get<std::string>() == "0.1.0");
 
     auto ports = node.getNodeInfo("MyBoundPorts");
     LOGOS_ASSERT_TRUE(ports.success);

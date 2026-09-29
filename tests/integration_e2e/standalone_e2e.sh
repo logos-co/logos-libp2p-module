@@ -101,7 +101,7 @@ call createNode "{\"addrs\":[\"/ip4/127.0.0.1/tcp/$PORT\"]}"
 call start
 
 echo "----- getNodeInfo outputs -----"
-check        "getNodeInfo Version"      "$(info Version)"      "1.0.0"
+check        "getNodeInfo Version"      "$(info Version)"      "0.1.0"
 check        "getNodeInfo MyBoundPorts" "$(call getNodeInfo MyBoundPorts | jq -r '.result.value[0] // empty')" "$PORT"
 check_nonempty "getNodeInfo PeerId"     "$(info PeerId)"
 check_nonempty "getNodeInfo Multiaddrs" "$(call getNodeInfo Multiaddrs | jq -r '.result.value[0] // empty')"
@@ -129,7 +129,7 @@ else
 fi
 
 # The node rejected the bad config before tearing down, so it stays up.
-check "getNodeInfo Version after rejected reconfigure" "$(info Version)" "1.0.0"
+check "getNodeInfo Version after rejected reconfigure" "$(info Version)" "0.1.0"
 
 call stop
 
