@@ -1,5 +1,17 @@
 name: Open Code Review
 
+# Security model of this workflow, and why it is shaped the way it is:
+#
+# 1. This runs on `issue_comment`, so anyone who can open an issue on this
+#    repository can trigger it. The shared workflow is expected to authorise
+#    the commenter and to restrict which commands it honours.
+# 2. The reusable workflow is pinned to an immutable commit SHA, not to
+#    `@main`. A branch reference means whoever can push to that branch can
+#    change the code that runs with this repository's secrets
+#    (DEEPSEEK_API_KEY, QWEN_API_KEY) and its write-scoped token. Bump the SHA
+#    deliberately, with review.
+# 3. `permissions` is least-privilege: the job may comment and label, and can
+#    read the tree, but must never be able to push code.
 on:
   issue_comment:
     types: [created]
@@ -13,7 +25,8 @@ permissions:
 # authorization, model selection, concurrency, and review behavior is shared.
 jobs:
   review:
-    uses: iftech/common-open-code-review/.github/workflows/open_code_review.yml@main
+    # Pinned to commit c1158a4396136e9cd54650a22482736ab86a4f77 (main, 2026-10-01).
+    uses: iftech/common-open-code-review/.github/workflows/open_code_review.yml@c1158a4396136e9cd54650a22482736ab86a4f77
     secrets:
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
