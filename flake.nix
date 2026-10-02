@@ -8,11 +8,11 @@
   };
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder/0.3.1";
-    libp2p.url = "github:vacp2p/nim-libp2p/d5fef6fdc12b1adbe3fe1d89cc6a27a1a605e2b5";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/c99a5f82620e172292d13e79aaa71ca9c6463677";
+    libp2p.url = "github:vacp2p/nim-libp2p/db88bc391401f99971e9ca6039344f8802fbec31";
 
     openmetrics-module = {
-      url = "github:logos-co/openmetrics-module";
+      url = "github:logos-co/openmetrics-module/5dbca2441ce478a6373df924cc4abd79640e74db";
       inputs.logos-module-builder.follows = "logos-module-builder";
     };
   };
