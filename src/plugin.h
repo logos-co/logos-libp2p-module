@@ -221,6 +221,7 @@ public:
     StdLogosResult gossipsubNextMessage(const std::string& topic, int64_t timeoutMs);
 
     StdLogosResult toCid(const std::string& key);
+    StdLogosResult kadWaitBootstrap(int64_t timeoutMs);
     StdLogosResult kadFindNode(const std::string& peerId);
     StdLogosResult kadPutValue(const std::string& key, const std::string& value);
     StdLogosResult kadGetValue(const std::string& key, int64_t quorum);

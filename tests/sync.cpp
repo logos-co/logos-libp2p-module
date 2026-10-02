@@ -233,6 +233,16 @@ LOGOS_TEST(sync_key_to_cid_and_providers) {
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
 
+LOGOS_TEST(sync_kad_wait_bootstrap) {
+    Libp2pModuleImpl plugin;
+    LOGOS_ASSERT_FALSE(plugin.kadWaitBootstrap(1000).success);
+
+    LOGOS_ASSERT_TRUE(plugin.start().success);
+    LOGOS_ASSERT_TRUE(plugin.kadWaitBootstrap(5000).success);
+
+    LOGOS_ASSERT_TRUE(plugin.stop().success);
+}
+
 LOGOS_TEST(sync_kad_find_node) {
     Libp2pModuleImpl plugin;
     LOGOS_ASSERT_TRUE(plugin.start().success);

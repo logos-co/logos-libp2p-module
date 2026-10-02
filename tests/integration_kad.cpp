@@ -13,6 +13,7 @@ LOGOS_TEST(kad_put_get) {
         .bootstrapNodes = { {peerIdA, addrsA} },
     });
     LOGOS_ASSERT_TRUE(nodeB.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.kadWaitBootstrap(5000).success);
 
     std::string key = "integration-key";
     std::string value = "hello";
@@ -38,18 +39,21 @@ LOGOS_TEST(kad_find_node) {
         .bootstrapNodes = { {peerIdA, addrsA} }
     });
     LOGOS_ASSERT_TRUE(nodeB.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.kadWaitBootstrap(5000).success);
     auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
 
     Libp2pModuleImpl nodeC(Libp2pModuleOptions{
         .bootstrapNodes = { {peerIdA, addrsA} }
     });
     LOGOS_ASSERT_TRUE(nodeC.start().success);
+    LOGOS_ASSERT_TRUE(nodeC.kadWaitBootstrap(5000).success);
     auto [peerIdC, addrsC] = getPeerInfoPair(nodeC);
 
     Libp2pModuleImpl nodeD(Libp2pModuleOptions{
         .bootstrapNodes = { {peerIdA, addrsA} }
     });
     LOGOS_ASSERT_TRUE(nodeD.start().success);
+    LOGOS_ASSERT_TRUE(nodeD.kadWaitBootstrap(5000).success);
 
     auto result = nodeD.kadFindNode(peerIdB);
     LOGOS_ASSERT_TRUE(result.success);
@@ -83,6 +87,7 @@ LOGOS_TEST(kad_start_stop_providing) {
         .bootstrapNodes = { {peerIdA, addrsA} }
     });
     LOGOS_ASSERT_TRUE(nodeB.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.kadWaitBootstrap(5000).success);
 
     std::string key = "provider-test-key";
     auto cidResult = nodeA.toCid(key);
@@ -120,6 +125,7 @@ LOGOS_TEST(kad_random_records) {
     optsB.bootstrapNodes = { {peerIdA, addrsA} };
     Libp2pModuleImpl nodeB(optsB);
     LOGOS_ASSERT_TRUE(nodeB.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.kadWaitBootstrap(5000).success);
     auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
 
     // nodeB stores its record on nodeA a few ms after start(), so poll for it.

@@ -2,6 +2,12 @@
 
 using json = nlohmann::json;
 
+StdLogosResult Libp2pModuleImpl::kadWaitBootstrap(int64_t timeoutMs) {
+    return callSync("Failed to wait for DHT bootstrap", [&](SyncPromise* p) {
+        return libp2p_ctx_kad_wait_bootstrap(ctx, timeoutMs, &Libp2pModuleImpl::cbBool, p);
+    }, awaitTimeoutFor(timeoutMs));
+}
+
 StdLogosResult Libp2pModuleImpl::kadFindNode(const std::string& peerId) {
     return callSyncWith("Failed to find node",
         [&](SyncPromise* p) {
