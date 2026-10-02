@@ -70,14 +70,19 @@ returns the expected `Version` / `MyBoundPorts` / `PeerId` / `Multiaddrs`. It
 also covers the negative paths — an unknown `getNodeInfo` field and a malformed
 `createNode` config are rejected, with the failure reason landing in the daemon
 log. Like the openmetrics e2e it starts a live daemon, so it runs outside the
-`nix flake check` sandbox:
+`nix flake check` sandbox.
+
+Both e2e scripts take `logoscore` and `lgpm` from `LOGOSCORE_BIN` / `LGPM_BIN`,
+else from `PATH`. Neither is a flake input, so build them first. This builds
+their latest commit; CI pins the tested revs in
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 ```bash
+export LOGOSCORE_BIN=$(nix build --no-link --print-out-paths \
+  github:logos-co/logos-logoscore-cli)/bin/logoscore
+export LGPM_BIN=$(nix build --no-link --print-out-paths \
+  github:logos-co/logos-package-manager#cli)/bin/lgpm
 nix run .#standalone-e2e
-# or against your own builds:
-LOGOSCORE_BIN=/path/to/logoscore \
-LGPM_BIN=/path/to/lgpm \
-  nix run .#standalone-e2e
 ```
 
 The C++ integration layer covers the same API in-process
@@ -98,12 +103,4 @@ sandbox — as its own CI step and locally via:
 nix run .#openmetrics-e2e
 ```
 
-The `logoscore` and `lgpm` binaries are pinned via flake inputs, so this needs
-no prebuilt binaries. To run against your own builds, set `LOGOSCORE_BIN` /
-`LGPM_BIN`:
-
-```bash
-LOGOSCORE_BIN=/path/to/logoscore \
-LGPM_BIN=/path/to/lgpm \
-  nix run .#openmetrics-e2e
-```
+It needs `LOGOSCORE_BIN` and `LGPM_BIN` set, as the standalone e2e above does.
