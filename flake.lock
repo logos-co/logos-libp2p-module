@@ -79,17 +79,17 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1790952784,
-        "narHash": "sha256-BwqnhpTOqkq4X3ez6RHsa2MQjpTiUlvAUp9v7X2Exb0=",
+        "lastModified": 1791300463,
+        "narHash": "sha256-KQElRndl9beZYz0Ci9MIjnhf1OLCIhDeea1X8Lbprqs=",
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "db88bc391401f99971e9ca6039344f8802fbec31",
+        "rev": "e111fe4847c7789e3ed3d6cc123bdac5e11ce525",
         "type": "github"
       },
       "original": {
         "owner": "vacp2p",
         "repo": "nim-libp2p",
-        "rev": "db88bc391401f99971e9ca6039344f8802fbec31",
+        "rev": "e111fe4847c7789e3ed3d6cc123bdac5e11ce525",
         "type": "github"
       }
     },

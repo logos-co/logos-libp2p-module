@@ -1,7 +1,7 @@
 {
     "name": "libp2p_module",
     "display_name": "libp2p Networking",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "Libp2p network protocol module for Logos",
     "author": "Logos Core Team",
     "type": "core",

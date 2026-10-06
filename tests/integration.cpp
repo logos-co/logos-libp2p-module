@@ -287,7 +287,7 @@ LOGOS_TEST(integration_create_node_then_node_info) {
 
     auto version = node.getNodeInfo("Version");
     LOGOS_ASSERT_TRUE(version.success);
-    LOGOS_ASSERT_TRUE(version.value.get<std::string>() == "1.1.0");
+    LOGOS_ASSERT_TRUE(version.value.get<std::string>() == "1.1.1");
 
     auto ports = node.getNodeInfo("MyBoundPorts");
     LOGOS_ASSERT_TRUE(ports.success);
