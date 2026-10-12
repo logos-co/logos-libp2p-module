@@ -20,6 +20,7 @@ env:
 
 jobs:
   flake-check:
+    environment: ${{ (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main') && 'public-cache' || '' }}
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
@@ -47,16 +48,16 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v12
-
-      - name: Setup Cachix
-        # the cache is an optimization: a failed push must not fail the job
-        continue-on-error: true
-        uses: cachix/cachix-action@v15
+      # Logos nix cache: reads cache.nix.logos.co (public + ci) and publishes
+      # what this job builds; logos-co.cachix.org stays as a read-only fallback.
+      - name: Set up Nix and the Logos cache
+        uses: logos-co/setup-nix-cache-action@v1
         with:
-          name: logos-co
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
+          attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
+          extra-nix-config: |
+            extra-substituters = https://logos-co.cachix.org
+            extra-trusted-public-keys = logos-co.cachix.org-1:12K8609ho1pCt0erUQrOrs/KmOuhWq/EhVwhzQRb35E=
 
       - name: Run flake checks
         env:
@@ -68,6 +69,7 @@ jobs:
             --show-trace
 
   e2e:
+    environment: ${{ (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main') && 'public-cache' || '' }}
     name: E2E (x86_64-linux)
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -78,16 +80,16 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v12
-
-      - name: Setup Cachix
-        # the cache is an optimization: a failed push must not fail the job
-        continue-on-error: true
-        uses: cachix/cachix-action@v15
+      # Logos nix cache: reads cache.nix.logos.co (public + ci) and publishes
+      # what this job builds; logos-co.cachix.org stays as a read-only fallback.
+      - name: Set up Nix and the Logos cache
+        uses: logos-co/setup-nix-cache-action@v1
         with:
-          name: logos-co
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
+          attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
+          extra-nix-config: |
+            extra-substituters = https://logos-co.cachix.org
+            extra-trusted-public-keys = logos-co.cachix.org-1:12K8609ho1pCt0erUQrOrs/KmOuhWq/EhVwhzQRb35E=
 
       # Pinned here, not as flake inputs: their input trees dominate flake.lock.
       - name: Build logoscore and lgpm
@@ -107,6 +109,7 @@ jobs:
         run: nix run .#standalone-e2e
 
   sanitizers:
+    environment: ${{ (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main') && 'public-cache' || '' }}
     name: Sanitizers (${{ matrix.sanitizer }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -122,16 +125,16 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v12
-
-      - name: Setup Cachix
-        # the cache is an optimization: a failed push must not fail the job
-        continue-on-error: true
-        uses: cachix/cachix-action@v15
+      # Logos nix cache: reads cache.nix.logos.co (public + ci) and publishes
+      # what this job builds; logos-co.cachix.org stays as a read-only fallback.
+      - name: Set up Nix and the Logos cache
+        uses: logos-co/setup-nix-cache-action@v1
         with:
-          name: logos-co
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
+          attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
+          extra-nix-config: |
+            extra-substituters = https://logos-co.cachix.org
+            extra-trusted-public-keys = logos-co.cachix.org-1:12K8609ho1pCt0erUQrOrs/KmOuhWq/EhVwhzQRb35E=
 
       - name: Build + run tests under ${{ matrix.sanitizer }}
         run: |
