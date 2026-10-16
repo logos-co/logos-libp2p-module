@@ -342,12 +342,9 @@ StdLogosResult Libp2pModuleImpl::newPrivateKey(const std::string& scheme) {
         return {false, {}, "Unknown key scheme '" + scheme +
                            "'; expected rsa, ed25519, secp256k1 or ecdsa"};
     }
-    auto ready = ensureContext();
-    if (!ready.success) return ready;
-
     NewPrivateKeyRequest req{};
     req.scheme = static_cast<int64_t>(parsed);
-    return callSyncWith("Failed to generate private key",
+    return callStaticWith("Failed to generate private key",
         [&](SyncPromise* p) {
             return libp2p_static_new_private_key(&req, &Libp2pModuleImpl::cbBytes, p);
         },
