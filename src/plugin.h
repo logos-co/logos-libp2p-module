@@ -289,6 +289,9 @@ private:
     // Releases without waiting, for callers on the Nim dispatch thread that must not block it.
     void releaseStreamNoWait(uint64_t streamId);
 
+    // An mplex channel frees only after it reads the remote EOF; pass awaitEof when the peer answers.
+    void closeAndRelease(uint64_t streamId, bool awaitEof = false);
+
     void applyOptions(const Libp2pModuleOptions& options);
     bool hasCtx() const;
 

@@ -275,6 +275,95 @@ LOGOS_TEST(protocol_bridge_ping_peer) {
     LOGOS_ASSERT_TRUE(nodeB.stop().success);
 }
 
+static double openStreams(Libp2pModuleImpl& node) {
+    const auto payload = node.collectMetrics();
+    double sum = 0;
+    for (const auto& m : payload["metrics"])
+        if (m.value("name", std::string{}) == "libp2p_open_streams")
+            sum += m["value"].get<double>();
+    return sum;
+}
+
+// The gauge is process-wide, and gossipsub opens its streams after connectPeer returns.
+static void awaitOpenStreamsAtMost(Libp2pModuleImpl& node, double limit) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (openStreams(node) > limit && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    LOGOS_ASSERT_TRUE(openStreams(node) <= limit);
+}
+
+LOGOS_TEST(protocol_bridge_ping_closes_streams) {
+    const int kPings = 20;
+
+    Libp2pModuleImpl nodeA;
+    Libp2pModuleImpl nodeB;
+
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
+
+    auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
+    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 500).success);
+
+    const double baseline = openStreams(nodeA);
+    LOGOS_ASSERT_TRUE(baseline > 0);
+
+    for (int i = 0; i < kPings; ++i)
+        LOGOS_ASSERT_TRUE(nodeA.pingPeer(peerIdB, 5000).success);
+
+    awaitOpenStreamsAtMost(nodeA, baseline + kPings / 2);
+
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
+}
+
+LOGOS_TEST(protocol_bridge_request_response_closes_streams) {
+    const std::string proto = "/test/bridge/leak/1.0.0";
+    const int kRequests = 20;
+
+    Libp2pModuleImpl nodeA;
+    Libp2pModuleImpl nodeB;
+
+    LOGOS_ASSERT_TRUE(nodeB.start().success);
+    LOGOS_ASSERT_TRUE(nodeB.mountProtocol(proto).success);
+    LOGOS_ASSERT_TRUE(nodeA.start().success);
+
+    auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
+    LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 500).success);
+
+    const std::string reqB64 = base64Encode(std::vector<uint8_t>{0x68, 0x69});
+    const double baseline = openStreams(nodeA);
+    LOGOS_ASSERT_TRUE(baseline > 0);
+
+    for (int i = 0; i < kRequests; ++i) {
+        std::thread server([&] {
+            auto acc = nodeB.protocolAcceptStream(json{{"proto", proto}, {"timeoutMs", 5000}}.dump());
+            if (!acc.success) return;
+            uint64_t sid = acc.value["streamId"].get<uint64_t>();
+            if (sid == 0) return;
+            auto rd = nodeB.streamReadLpJson(json{{"streamId", sid}, {"timeoutMs", 5000}}.dump());
+            if (rd.success)
+                nodeB.streamWriteLpJson(
+                    json{{"streamId", sid}, {"dataB64", rd.value["dataB64"]}}.dump());
+            nodeB.streamReleaseJson(json{{"streamId", sid}}.dump());
+        });
+        auto resp = nodeA.protocolRequest(json{
+            {"peerId", peerIdB},
+            {"multiaddrs", addrsB},
+            {"proto", proto},
+            {"requestB64", reqB64},
+            {"timeoutMs", 5000},
+        }.dump());
+        server.join();
+        LOGOS_ASSERT_TRUE(resp.success);
+        LOGOS_ASSERT_TRUE(resp.value["responseB64"].get<std::string>() == reqB64);
+    }
+
+    awaitOpenStreamsAtMost(nodeA, baseline + kRequests / 2);
+
+    LOGOS_ASSERT_TRUE(nodeA.stop().success);
+    LOGOS_ASSERT_TRUE(nodeB.stop().success);
+}
+
 LOGOS_TEST(protocol_bridge_ping_unknown_peer_fails) {
     Libp2pModuleImpl nodeA;
     Libp2pModuleImpl nodeC;
