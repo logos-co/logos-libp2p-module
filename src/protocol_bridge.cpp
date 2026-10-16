@@ -94,13 +94,12 @@ StdLogosResult Libp2pModuleImpl::protocolRequest(const std::string& argsJson) {
 
     auto w = streamWriteLp(streamId, requestBytes);
     if (!w.success) {
-        streamRelease(streamId);
+        closeAndRelease(streamId);
         return {false, {}, "protocolRequest: write failed: " + w.error};
     }
 
     if (!expectResponse) {
-        streamCloseWithEOF(streamId);
-        streamRelease(streamId);
+        closeAndRelease(streamId, true);
         return {true, json::object(), ""};
     }
 
@@ -112,7 +111,7 @@ StdLogosResult Libp2pModuleImpl::protocolRequest(const std::string& argsJson) {
             return libp2p_ctx_stream_read_lp(ctx, &readReq, &Libp2pModuleImpl::cbRead, p);
         },
         bufferToResult, awaitTimeoutFor(timeoutMs));
-    streamRelease(streamId);
+    closeAndRelease(streamId, r.success);
     if (!r.success) return {false, {}, "protocolRequest: read failed: " + r.error};
 
     json out;
@@ -221,7 +220,7 @@ StdLogosResult Libp2pModuleImpl::pingPeer(const std::string& peerId, int64_t tim
 
     auto w = streamWrite(streamId, payload);
     if (!w.success) {
-        streamRelease(streamId);
+        closeAndRelease(streamId);
         return {false, {}, "pingPeer: write failed: " + w.error};
     }
 
@@ -239,7 +238,7 @@ StdLogosResult Libp2pModuleImpl::pingPeer(const std::string& peerId, int64_t tim
         },
         awaitTimeoutFor(timeoutMs));
     const auto rtt = std::chrono::steady_clock::now() - sentAt;
-    streamRelease(streamId);
+    closeAndRelease(streamId, r.success);
     if (!r.success) return r;
 
     if (echo.size() != payload.size() ||
