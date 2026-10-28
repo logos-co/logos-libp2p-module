@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <string>
 
+#include "test_helpers.h"
+
 namespace {
 // Sets LIBP2P_MODULE_CONFIG for the test body and restores it on scope exit so
 // later default-constructed plugins don't pick up a stale config.
@@ -238,11 +240,11 @@ LOGOS_TEST(config_gossipsub_trigger_self_enabled) {
     LOGOS_ASSERT_TRUE(plugin.gossipsubSubscribe(topic).success);
 
     std::string payload = "hello";
-    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, payload).success);
+    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, toBytes(payload)).success);
 
     auto res = plugin.gossipsubNextMessage(topic, 1000);
     LOGOS_ASSERT_TRUE(res.success);
-    LOGOS_ASSERT_TRUE(res.value.get<std::string>() == payload);
+    LOGOS_ASSERT_TRUE(decodedValue(res) == payload);
 
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
@@ -253,7 +255,7 @@ LOGOS_TEST(config_gossipsub_trigger_self_disabled) {
 
     std::string topic = "self-test";
     LOGOS_ASSERT_TRUE(plugin.gossipsubSubscribe(topic).success);
-    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, "hello").success);
+    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, toBytes("hello")).success);
 
     auto res = plugin.gossipsubNextMessage(topic, 500);
     LOGOS_ASSERT_FALSE(res.success);
@@ -270,7 +272,7 @@ LOGOS_TEST(config_gossipsub_ingress_limits_accepted) {
 
     std::string topic = "limits-test";
     LOGOS_ASSERT_TRUE(plugin.gossipsubSubscribe(topic).success);
-    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, "hello").success);
+    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, toBytes("hello")).success);
 
     auto res = plugin.gossipsubNextMessage(topic, 1000);
     LOGOS_ASSERT_TRUE(res.success);

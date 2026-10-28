@@ -1,7 +1,9 @@
 #include "plugin.h"
 
+#include "logos_codec.h"
+
 StdLogosResult Libp2pModuleImpl::gossipsubPublish(
-    const std::string& topic, const std::string& data)
+    const std::string& topic, const std::vector<uint8_t>& data)
 {
     PublishRequest req{};
     req.topic = nimffi_str(topic.c_str());
@@ -39,5 +41,5 @@ StdLogosResult Libp2pModuleImpl::gossipsubNextMessage(const std::string& topic, 
     if (!m_topicQueues.pop(topic, timeoutMs, msg)) {
         return {false, {}, "timeout waiting for message"};
     }
-    return {true, msg, ""};
+    return {true, logos::bytesToJson(std::vector<uint8_t>(msg.begin(), msg.end())), ""};
 }

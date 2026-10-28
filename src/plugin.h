@@ -215,7 +215,7 @@ public:
     StdLogosResult streamReleaseJson(const std::string& argsJson);
     StdLogosResult protocolAcceptStream(const std::string& argsJson);
 
-    StdLogosResult gossipsubPublish(const std::string& topic, const std::string& data);
+    StdLogosResult gossipsubPublish(const std::string& topic, const std::vector<uint8_t>& data);
     StdLogosResult gossipsubSubscribe(const std::string& topic);
     StdLogosResult gossipsubUnsubscribe(const std::string& topic);
     StdLogosResult gossipsubNextMessage(const std::string& topic, int64_t timeoutMs);

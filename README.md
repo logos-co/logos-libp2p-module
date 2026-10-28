@@ -49,6 +49,20 @@ the `config` section of [`metadata.json`](./metadata.json) for the full schema.
 Code that constructs `Libp2pModuleImpl` directly (tutorials, tests) passes
 `Libp2pModuleOptions` to the constructor and bypasses this path.
 
+## GossipSub payloads
+
+GossipSub payloads are bytes. `gossipsubPublish(topic, data)` takes `data` as a
+byte array (`bstr`). `gossipsubNextMessage` returns the payload in the SDK's
+tagged form, `{"_bytes": "<base64url, unpadded>"}`, and the `gossipsubMessage`
+event is `{"topic": "...", "data": {"_bytes": "..."}}`. Decode the tagged form
+with `logos::bytesFromJson` to get the bytes that the sender published.
+
+Version 2.0.0 changes this API. Before 2.0.0, `gossipsubPublish` took a text
+string, and the poll and the event carried the payload as raw text in `data`.
+That path dropped each payload that is not valid UTF-8, with no error and no
+drop count. To migrate, publish bytes and decode the tagged form from both
+`gossipsubNextMessage` and the event `data` field.
+
 ## GossipSub queue bounds
 
 Delivered messages wait in a per-topic queue until `gossipsubNextMessage` pops

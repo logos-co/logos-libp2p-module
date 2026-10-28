@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include "logos_codec.h"
+
 #include <array>
 #include <stdexcept>
 
@@ -104,4 +106,9 @@ std::vector<uint8_t> decodeHex(const std::string& hex) {
         out.push_back(static_cast<uint8_t>((hexNibble(hex[i]) << 4) | hexNibble(hex[i + 1])));
     }
     return out;
+}
+
+std::string decodeTaggedBytes(const nlohmann::json& j) {
+    auto bytes = logos::bytesFromJson(j);
+    return std::string(bytes.begin(), bytes.end());
 }

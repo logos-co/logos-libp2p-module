@@ -184,7 +184,7 @@ LOGOS_TEST(sync_gossipsub_subscribe_publish) {
     std::string msg = "sync-gossipsub-msg";
 
     LOGOS_ASSERT_TRUE(plugin.gossipsubSubscribe(topic).success);
-    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, msg).success);
+    LOGOS_ASSERT_TRUE(plugin.gossipsubPublish(topic, toBytes(msg)).success);
 
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
