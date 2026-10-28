@@ -165,6 +165,18 @@ universal codegen marshals.
 `protocolRequest` does connect, dial, write, read and release in one call, so it
 covers a request and response exchange.
 
+The typed stream reads take plain arguments:
+
+| Call | Args | Result |
+| --- | --- | --- |
+| `streamReadExactly` | `streamId`, `len`, `timeoutMs` | base64 bytes |
+| `streamReadLp` | `streamId`, `maxSize`, `timeoutMs` | base64 bytes |
+
+Each stream read ends after `timeoutMs` and fails with "read timeout". A
+`timeoutMs` of 0 or less uses the default 10 s limit. A read that times out
+resets the stream, because a cut message cannot resync, so every later read on
+it fails. Open a new stream to continue.
+
 The module boundary carries no push events, so an inbound stream waits in a
 per-protocol queue and the consumer polls it with `protocolAcceptStream`.
 `peerId` is the peer that opened the stream, which a service protocol needs to

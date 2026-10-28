@@ -51,6 +51,13 @@ LOGOS_TEST(await_result_times_out_at_its_own_timeout) {
     LOGOS_ASSERT_LT(elapsed, 2000);
 }
 
+LOGOS_TEST(await_timeout_for_clamps_without_overflow) {
+    LOGOS_ASSERT_EQ(awaitTimeoutFor(0), kDefaultOpTimeoutMs);
+    LOGOS_ASSERT_EQ(awaitTimeoutFor(200), 200 + kAwaitSlackMs);
+    LOGOS_ASSERT_EQ(awaitTimeoutFor(INT_MAX - kAwaitSlackMs), INT_MAX);
+    LOGOS_ASSERT_EQ(awaitTimeoutFor(INT64_MAX), INT_MAX);
+}
+
 LOGOS_TEST(parse_json_response_valid) {
     auto r = parseJsonResponse(R"({"peerId": "16Uiu2abc", "addrs": []})", "peerInfo");
     LOGOS_ASSERT_TRUE(r.success);

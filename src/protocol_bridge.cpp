@@ -103,14 +103,7 @@ StdLogosResult Libp2pModuleImpl::protocolRequest(const std::string& argsJson) {
         return {true, json::object(), ""};
     }
 
-    StreamReadLpRequest readReq{};
-    readReq.streamId = streamId;
-    readReq.maxSize = static_cast<int64_t>(maxSize);
-    auto r = callSyncWith("Failed to read LP from stream",
-        [&](SyncPromise* p) {
-            return libp2p_ctx_stream_read_lp(ctx, &readReq, &Libp2pModuleImpl::cbRead, p);
-        },
-        bufferToResult, awaitTimeoutFor(timeoutMs));
+    auto r = streamReadLp(streamId, maxSize, timeoutMs);
     closeAndRelease(streamId, r.success);
     if (!r.success) return {false, {}, "protocolRequest: read failed: " + r.error};
 
@@ -135,14 +128,7 @@ StdLogosResult Libp2pModuleImpl::streamReadLpJson(const std::string& argsJson) {
         return {false, {}, "streamReadLpJson: bad args (need {streamId, maxSize?, timeoutMs?})"};
     }
 
-    StreamReadLpRequest readReq{};
-    readReq.streamId = streamId;
-    readReq.maxSize = static_cast<int64_t>(maxSize);
-    auto r = callSyncWith("Failed to read LP from stream",
-        [&](SyncPromise* p) {
-            return libp2p_ctx_stream_read_lp(ctx, &readReq, &Libp2pModuleImpl::cbRead, p);
-        },
-        bufferToResult, awaitTimeoutFor(timeoutMs));
+    auto r = streamReadLp(streamId, maxSize, timeoutMs);
     if (!r.success) return r;
 
     json out;
@@ -224,25 +210,12 @@ StdLogosResult Libp2pModuleImpl::pingPeer(const std::string& peerId, int64_t tim
         return {false, {}, "pingPeer: write failed: " + w.error};
     }
 
-    StreamReadExactlyRequest readReq{};
-    readReq.streamId = streamId;
-    readReq.numBytes = static_cast<int64_t>(kPingSize);
-    std::vector<uint8_t> echo;
-    auto r = callSyncWith("pingPeer: read failed",
-        [&](SyncPromise* p) {
-            return libp2p_ctx_stream_read_exactly(ctx, &readReq, &Libp2pModuleImpl::cbRead, p);
-        },
-        [&](const SyncResult& s) -> StdLogosResult {
-            echo = s.buffer;
-            return {true, {}, ""};
-        },
-        awaitTimeoutFor(timeoutMs));
+    auto r = streamReadExactly(streamId, kPingSize, timeoutMs);
     const auto rtt = std::chrono::steady_clock::now() - sentAt;
     closeAndRelease(streamId, r.success);
-    if (!r.success) return r;
+    if (!r.success) return {false, {}, "pingPeer: read failed: " + r.error};
 
-    if (echo.size() != payload.size() ||
-        std::memcmp(echo.data(), payload.data(), payload.size()) != 0) {
+    if (base64Decode(r.value.get<std::string>()) != payload) {
         return {false, {}, "pingPeer: peer echoed a different payload"};
     }
 

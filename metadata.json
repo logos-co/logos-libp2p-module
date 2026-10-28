@@ -15,6 +15,11 @@
     "include": ["libp2p.so", "libp2p.dylib", "libp2p.dll"],
     "capabilities": [],
 
+    "methods": {
+        "streamReadExactly": "(streamId: uint64, len: uint64, timeoutMs: int64) -> base64 bytes. The read fails with \"read timeout\" after timeoutMs; values <= 0 use the default 10 s limit.",
+        "streamReadLp": "(streamId: uint64, maxSize: uint64, timeoutMs: int64) -> base64 bytes. The read fails with \"read timeout\" after timeoutMs; values <= 0 use the default 10 s limit."
+    },
+
     "config": {
         "env": "LIBP2P_MODULE_CONFIG",
         "description": "JSON config — inline, or a path to a JSON file — overlaid onto the default options when the module is loaded. Every key is optional; an omitted key keeps its default. The same schema is accepted at call time by createNode, which rebuilds the node before start.",
