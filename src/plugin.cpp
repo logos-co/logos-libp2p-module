@@ -54,7 +54,7 @@ void reapLateContext(std::future<SyncResult> f) {
     }).detach();
 }
 
-constexpr char kModuleVersion[] = "1.1.1";
+constexpr char kModuleVersion[] = "2.0.0";
 
 std::atomic<int64_t> g_requestedLogLevel{LOG_LEVEL_DEBUG};
 }

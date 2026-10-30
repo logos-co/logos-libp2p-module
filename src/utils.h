@@ -68,6 +68,10 @@ std::string base64Encode(const std::vector<uint8_t>& data);
 // (bad chars, misplaced/excess padding, wrong length, non-canonical tail bits).
 std::string base64Decode(const std::string& in);
 
+// Decodes the SDK's tagged bytes form, {"_bytes": "<base64url, unpadded>"}.
+// Throws on any other shape.
+std::string decodeTaggedBytes(const nlohmann::json& j);
+
 // Encodes raw bytes as lowercase hex.
 std::string hexEncode(const uint8_t* data, size_t len);
 

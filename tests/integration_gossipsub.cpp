@@ -6,6 +6,9 @@
 #include <set>
 #include <thread>
 #include <chrono>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
 #include <string>
 #include "test_helpers.h"
 
@@ -48,14 +51,14 @@ void assertDropsNewest(const Libp2pModuleOptions& opts, const std::string& topic
     auto marker = [](int i) { return std::to_string(i) + ":"; };
     for (int i = 0; i < sent; ++i) {
         LOGOS_ASSERT_TRUE(
-            node.gossipsubPublish(topic, marker(i) + std::string(payloadSize, 'x')).success);
+            node.gossipsubPublish(topic, toBytes(marker(i) + std::string(payloadSize, 'x'))).success);
     }
     awaitDropped(node, topic, sent - kept);
 
     for (int i = 0; i < kept; ++i) {
         auto res = node.gossipsubNextMessage(topic, 1000);
         LOGOS_ASSERT_TRUE(res.success);
-        LOGOS_ASSERT_TRUE(res.value.get<std::string>().rfind(marker(i), 0) == 0);
+        LOGOS_ASSERT_TRUE(decodedValue(res).rfind(marker(i), 0) == 0);
     }
     LOGOS_ASSERT_FALSE(node.gossipsubNextMessage(topic, 200).success);
 
@@ -66,6 +69,29 @@ void assertDropsNewest(const Libp2pModuleOptions& opts, const std::string& topic
 
     LOGOS_ASSERT_TRUE(node.stop().success);
 }
+
+// Declare it before the node, so it outlives a callback fired during teardown.
+struct EventCapture {
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::vector<nlohmann::json> events;
+
+    std::function<void(const std::string&, const std::string&)> listener() {
+        return [this](const std::string& name, const std::string& data) {
+            if (name != "gossipsubMessage") return;
+            std::lock_guard<std::mutex> lock(mtx);
+            events.push_back(nlohmann::json::parse(data));
+            cv.notify_one();
+        };
+    }
+
+    // Null when no event arrives in time.
+    nlohmann::json first() {
+        std::unique_lock<std::mutex> lock(mtx);
+        cv.wait_for(lock, std::chrono::seconds(3), [&] { return !events.empty(); });
+        return events.empty() ? nlohmann::json() : events.front();
+    }
+};
 }
 
 LOGOS_TEST(gossipsub_subscribe_and_publish) {
@@ -84,11 +110,11 @@ LOGOS_TEST(gossipsub_subscribe_and_publish) {
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
     std::string payload = "Hello from Node A";
-    LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, payload).success);
+    LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, toBytes(payload)).success);
 
     auto res = nodeB.gossipsubNextMessage(topic, 1000);
     LOGOS_ASSERT_TRUE(res.success);
-    LOGOS_ASSERT_TRUE(res.value.get<std::string>() == payload);
+    LOGOS_ASSERT_TRUE(decodedValue(res) == payload);
 
     LOGOS_ASSERT_TRUE(nodeA.stop().success);
     LOGOS_ASSERT_TRUE(nodeB.stop().success);
@@ -115,12 +141,12 @@ LOGOS_TEST(gossipsub_multiple_subscribers) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     std::string payload = "Broadcast message";
-    LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, payload).success);
+    LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, toBytes(payload)).success);
 
     for (auto& sub : subscribers) {
         auto res = sub->gossipsubNextMessage(topic, 1000);
         LOGOS_ASSERT_TRUE(res.success);
-        LOGOS_ASSERT_TRUE(res.value.get<std::string>() == payload);
+        LOGOS_ASSERT_TRUE(decodedValue(res) == payload);
         LOGOS_ASSERT_TRUE(sub->stop().success);
     }
 
@@ -136,7 +162,7 @@ LOGOS_TEST(gossipsub_subscribe_unsubscribe) {
     LOGOS_ASSERT_TRUE(node.gossipsubUnsubscribe(topic).success);
 
     std::string payload = "Test after unsubscribe";
-    LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, payload).success);
+    LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, toBytes(payload)).success);
 
     LOGOS_ASSERT_FALSE(node.gossipsubNextMessage(topic, 500).success);
 
@@ -149,7 +175,7 @@ LOGOS_TEST(gossipsub_unsubscribe_releases_queue) {
 
     std::string topic = "released-topic";
     LOGOS_ASSERT_TRUE(node.gossipsubSubscribe(topic).success);
-    LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, "buffered before unsubscribe").success);
+    LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, toBytes("buffered before unsubscribe")).success);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     LOGOS_ASSERT_TRUE(node.gossipsubUnsubscribe(topic).success);
@@ -170,7 +196,7 @@ LOGOS_TEST(gossipsub_queue_buffers_up_to_cap) {
     const int NUM_MSGS = 50;
     for (int i = 0; i < NUM_MSGS; ++i) {
         LOGOS_ASSERT_TRUE(
-            node.gossipsubPublish(topic, "msg-" + std::to_string(i)).success);
+            node.gossipsubPublish(topic, toBytes("msg-" + std::to_string(i))).success);
     }
 
     // Every published message is buffered and drainable; delivery order is not
@@ -179,7 +205,7 @@ LOGOS_TEST(gossipsub_queue_buffers_up_to_cap) {
     for (int i = 0; i < NUM_MSGS; ++i) {
         auto res = node.gossipsubNextMessage(topic, 2000);
         LOGOS_ASSERT_TRUE(res.success);
-        drained.insert(res.value.get<std::string>());
+        drained.insert(decodedValue(res));
     }
     LOGOS_ASSERT_EQ(drained.size(), size_t(NUM_MSGS));
     for (int i = 0; i < NUM_MSGS; ++i) {
@@ -219,7 +245,7 @@ LOGOS_TEST(gossipsub_queue_drops_oversized_message_when_empty) {
 
     std::string topic = "oversized-topic";
     LOGOS_ASSERT_TRUE(node.gossipsubSubscribe(topic).success);
-    LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, std::string(4096, 'y')).success);
+    LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, toBytes(std::string(4096, 'y'))).success);
 
     awaitDropped(node, topic, 1);
     LOGOS_ASSERT_FALSE(node.gossipsubNextMessage(topic, 200).success);
@@ -245,7 +271,7 @@ LOGOS_TEST(gossipsub_queue_disabled_when_a_bound_is_zero) {
 
         std::string topic = "no-queue-topic";
         LOGOS_ASSERT_TRUE(node.gossipsubSubscribe(topic).success);
-        LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, "never buffered").success);
+        LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, toBytes("never buffered")).success);
 
         LOGOS_ASSERT_FALSE(node.gossipsubNextMessage(topic, 500).success);
         LOGOS_ASSERT_EQ(delivered.load(), 1);
@@ -254,8 +280,10 @@ LOGOS_TEST(gossipsub_queue_disabled_when_a_bound_is_zero) {
 }
 
 LOGOS_TEST(gossipsub_binary_payload) {
+    EventCapture events;
     Libp2pModuleImpl nodeA;
     Libp2pModuleImpl nodeB;
+    nodeB.emitEvent = events.listener();
 
     LOGOS_ASSERT_TRUE(nodeA.start().success);
     LOGOS_ASSERT_TRUE(nodeB.start().success);
@@ -268,23 +296,60 @@ LOGOS_TEST(gossipsub_binary_payload) {
     LOGOS_ASSERT_TRUE(nodeA.gossipsubSubscribe(topic).success);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    std::string payload;
-    payload += '\x01';
-    payload += '\x00';
-    payload += '\x02';
-    payload += '\x00';
-    payload += '\x03';
-    LOGOS_ASSERT_EQ(payload.size(), size_t(5));
+    std::vector<uint8_t> payload(256);
+    for (size_t i = 0; i < payload.size(); ++i) payload[i] = static_cast<uint8_t>(i);
+    const std::string expected(payload.begin(), payload.end());
 
     LOGOS_ASSERT_TRUE(nodeA.gossipsubPublish(topic, payload).success);
 
     auto res = nodeB.gossipsubNextMessage(topic, 1000);
     LOGOS_ASSERT_TRUE(res.success);
-    std::string received = res.value.get<std::string>();
+    LOGOS_ASSERT_TRUE(decodedValue(res) == expected);
 
-    LOGOS_ASSERT_EQ(received.size(), size_t(5));
-    LOGOS_ASSERT_TRUE(received == payload);
+    auto event = events.first();
+    LOGOS_ASSERT_FALSE(event.is_null());
+    LOGOS_ASSERT_TRUE(decodeTaggedBytes(event["data"]) == expected);
 
     LOGOS_ASSERT_TRUE(nodeA.stop().success);
     LOGOS_ASSERT_TRUE(nodeB.stop().success);
+}
+
+LOGOS_TEST(gossipsub_event_json_has_only_topic_and_tagged_data) {
+    EventCapture events;
+    Libp2pModuleImpl node;
+    node.emitEvent = events.listener();
+    LOGOS_ASSERT_TRUE(node.start().success);
+
+    std::string topic = "event-shape-topic";
+    LOGOS_ASSERT_TRUE(node.gossipsubSubscribe(topic).success);
+    LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, {0xfb, 0xff}).success);
+
+    auto event = events.first();
+    LOGOS_ASSERT_FALSE(event.is_null());
+    LOGOS_ASSERT_EQ(event.size(), size_t(2));
+    LOGOS_ASSERT_TRUE(event["topic"].get<std::string>() == topic);
+    LOGOS_ASSERT_TRUE(event["data"]["_bytes"].get<std::string>() == "-_8");
+
+    LOGOS_ASSERT_TRUE(node.stop().success);
+}
+
+LOGOS_TEST(gossipsub_empty_payload_reaches_poll_and_event) {
+    EventCapture events;
+    Libp2pModuleImpl node;
+    node.emitEvent = events.listener();
+    LOGOS_ASSERT_TRUE(node.start().success);
+
+    std::string topic = "empty-topic";
+    LOGOS_ASSERT_TRUE(node.gossipsubSubscribe(topic).success);
+    LOGOS_ASSERT_TRUE(node.gossipsubPublish(topic, {}).success);
+
+    auto res = node.gossipsubNextMessage(topic, 1000);
+    LOGOS_ASSERT_TRUE(res.success);
+    LOGOS_ASSERT_TRUE(decodedValue(res).empty());
+
+    auto event = events.first();
+    LOGOS_ASSERT_FALSE(event.is_null());
+    LOGOS_ASSERT_TRUE(decodeTaggedBytes(event["data"]).empty());
+
+    LOGOS_ASSERT_TRUE(node.stop().success);
 }

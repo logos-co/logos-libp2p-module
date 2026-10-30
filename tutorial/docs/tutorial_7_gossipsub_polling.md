@@ -140,13 +140,15 @@ and build the message-forwarding mesh.
 ## Step 5: Publish a message
 
 Node A publishes a message to the topic. It will be forwarded
-to all subscribers, including Node B.
+to all subscribers, including Node B. The payload is raw bytes, so
+protobuf, CBOR and compressed data go through unchanged.
 ```cpp
     std::string payload = "Hello from Node A via GossipSub!";
     printf("\nNode A publishing: \"%s\"\n", payload.c_str());
     printf("  Topic: \"%s\"\n", topic.c_str());
 
-    StdLogosResult publishRes = nodeA.gossipsubPublish(topic, payload);
+    StdLogosResult publishRes = nodeA.gossipsubPublish(
+        topic, std::vector<uint8_t>(payload.begin(), payload.end()));
     if (!publishRes.success) {
         fprintf(stderr, "Publish failed: %s\n", publishRes.error.c_str());
         return 1;
@@ -158,7 +160,9 @@ to all subscribers, including Node B.
 ## Step 6: Receive the message on Node B
 
 `gossipsubNextMessage()` blocks until a message arrives or the
-timeout expires. The timeout is in milliseconds.
+timeout expires. The timeout is in milliseconds. The value is the
+payload in the tagged form `{"_bytes": "<base64url>"}`, so
+`decodeTaggedBytes()` gives back the raw bytes.
 ```cpp
     printf("\nNode B waiting for message...\n");
     StdLogosResult res = nodeB.gossipsubNextMessage(topic, 3000);
@@ -168,7 +172,7 @@ timeout expires. The timeout is in milliseconds.
         return 1;
     }
 
-    std::string received = res.value.get<std::string>();
+    std::string received = decodeTaggedBytes(res.value);
     printf("Node B received: \"%s\"\n", received.c_str());
 
     if (received == payload) {
@@ -210,6 +214,7 @@ timeout expires. The timeout is in milliseconds.
   - Both publisher and subscriber must subscribe to the topic
   - Allow 1-2 seconds for the mesh to form
   - Use `gossipsubNextMessage(topic, timeout)` for polling
+  - Publish takes bytes; the poll returns them in the tagged form
   - The per-topic queue is bounded; watch
     `libp2p_module_gossipsub_queue_dropped_total`
   - Always unsubscribe and stop cleanly

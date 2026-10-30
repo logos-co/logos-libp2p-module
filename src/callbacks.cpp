@@ -1,5 +1,7 @@
 #include "plugin.h"
 
+#include "logos_codec.h"
+
 using json = nlohmann::json;
 
 namespace {
@@ -181,15 +183,11 @@ void Libp2pModuleImpl::onPubsubMessage(const PubsubMessageEvent* evt, void* ud) 
     try {
         std::string topic = nfStr(evt->topic);
         auto bytes = nfBytes(evt->data);
-        std::string payload(bytes.begin(), bytes.end());
+        self->m_topicQueues.push(topic, std::string(bytes.begin(), bytes.end()));
 
-        // Serialized before the queue takes ownership of `payload`.
         json j;
         j["topic"] = topic;
-        j["data"] = payload;
-        std::string event = j.dump();
-
-        self->m_topicQueues.push(topic, std::move(payload));
-        self->emitEventSafe("gossipsubMessage", event);
+        j["data"] = logos::bytesToJson(bytes);
+        self->emitEventSafe("gossipsubMessage", j.dump());
     } catch (...) {}
 }

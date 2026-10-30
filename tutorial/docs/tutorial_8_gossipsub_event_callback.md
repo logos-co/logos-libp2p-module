@@ -13,8 +13,9 @@ In this tutorial we'll:
 ## How Callback Reception Works
 
 The module emits a `"gossipsubMessage"` event when a subscribed node
-receives a GossipSub message. The event payload is JSON with the topic
-and message data.
+receives a GossipSub message. The event payload is JSON:
+`{"topic": "...", "data": {"_bytes": "<base64url>"}}`. `data` holds the
+message bytes in the tagged form.
 
 Register the callback before subscribing. The subscription path snapshots
 the callback used by worker threads, so registering it late can miss
@@ -99,7 +100,8 @@ int main()
 ## Step 3: Register Node A's event callback
 
 The callback listens for `"gossipsubMessage"` events, parses the JSON
-payload, stores the received message, and wakes the waiting main thread.
+payload `{topic, data}`, decodes the tagged message bytes, stores
+them, and wakes the waiting main thread.
 ```cpp
     std::mutex eventMtx;
     std::condition_variable eventCv;
@@ -113,7 +115,7 @@ payload, stores the received message, and wakes the waiting main thread.
 
         auto j = nlohmann::json::parse(data);
         std::string eventTopic = j["topic"].get<std::string>();
-        std::string msg = j["data"].get<std::string>();
+        std::string msg = decodeTaggedBytes(j["data"]);
         printf("Node A callback received on topic \"%s\": \"%s\"\n",
                eventTopic.c_str(), msg.c_str());
 
@@ -164,7 +166,8 @@ registered callback.
     printf("\nNode B publishing: \"%s\"\n", payload.c_str());
     printf("  Topic: \"%s\"\n", topic.c_str());
 
-    StdLogosResult publishRes = nodeB.gossipsubPublish(topic, payload);
+    StdLogosResult publishRes = nodeB.gossipsubPublish(
+        topic, std::vector<uint8_t>(payload.begin(), payload.end()));
     if (!publishRes.success) {
         fprintf(stderr, "Publish failed: %s\n", publishRes.error.c_str());
         return 1;
@@ -230,7 +233,7 @@ asynchronous delivery.
 
   - Use `emitEvent` for event-driven GossipSub message reception
   - Register the callback before subscribing
-  - The `"gossipsubMessage"` event payload contains the topic and data
+  - The `"gossipsubMessage"` event payload is `{topic, data}`
   - Set `gossipsubQueueMaxBytes` to 0 so the unread poll queue costs nothing
   - A condition variable is one way to bridge callback delivery back to
     synchronous example code

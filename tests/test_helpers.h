@@ -16,3 +16,11 @@ inline std::pair<std::string, std::vector<std::string>> getPeerInfoPair(Libp2pMo
     }
     return {peerId, addrs};
 }
+
+inline std::vector<uint8_t> toBytes(const std::string& s) {
+    return std::vector<uint8_t>(s.begin(), s.end());
+}
+
+inline std::string decodedValue(const StdLogosResult& res) {
+    return decodeTaggedBytes(res.value);
+}
