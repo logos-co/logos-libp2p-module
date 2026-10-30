@@ -204,7 +204,7 @@ fires, and Node A receives a new stream.
 
 ## Step 7: Node A reads the message and echoes it back
 ```cpp
-    StdLogosResult readRes = nodeA.streamReadLp(serverStreamId, 4096);
+    StdLogosResult readRes = nodeA.streamReadLp(serverStreamId, 4096, 0);
     if (!readRes.success) {
         fprintf(stderr, "Node A read failed: %s\n",
                 readRes.error.c_str());
@@ -228,7 +228,7 @@ Echo it back:
 
 ## Step 8: Node B reads the echo
 ```cpp
-    StdLogosResult echoRes = nodeB.streamReadLp(clientStreamId, 4096);
+    StdLogosResult echoRes = nodeB.streamReadLp(clientStreamId, 4096, 0);
     if (!echoRes.success) {
         fprintf(stderr, "Node B read echo failed: %s\n",
                 echoRes.error.c_str());

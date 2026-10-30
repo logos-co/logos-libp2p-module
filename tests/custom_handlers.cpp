@@ -385,3 +385,65 @@ LOGOS_TEST(protocol_bridge_write_requires_dataB64) {
     LOGOS_ASSERT_FALSE(r.success);
     LOGOS_ASSERT_TRUE(node.stop().success);
 }
+
+namespace {
+struct IdleStreamPair {
+    Libp2pModuleImpl nodeA;
+    Libp2pModuleImpl nodeB;
+    uint64_t clientStreamId = 0;
+    uint64_t serverStreamId = 0;
+
+    explicit IdleStreamPair(const std::string& proto) {
+        LOGOS_ASSERT_TRUE(nodeB.start().success);
+        LOGOS_ASSERT_TRUE(nodeB.mountProtocol(proto).success);
+        LOGOS_ASSERT_TRUE(nodeA.start().success);
+
+        auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
+        LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 500).success);
+        auto dialResult = nodeA.dial(peerIdB, proto);
+        LOGOS_ASSERT_TRUE(dialResult.success);
+        clientStreamId = dialResult.value.get<uint64_t>();
+
+        auto acc = nodeB.protocolAcceptStream(json{{"proto", proto}, {"timeoutMs", 5000}}.dump());
+        LOGOS_ASSERT_TRUE(acc.success);
+        serverStreamId = acc.value["streamId"].get<uint64_t>();
+    }
+
+    void finish() {
+        LOGOS_ASSERT_TRUE(nodeB.streamRelease(serverStreamId).success);
+        LOGOS_ASSERT_TRUE(nodeA.streamRelease(clientStreamId).success);
+        LOGOS_ASSERT_TRUE(nodeA.stop().success);
+        LOGOS_ASSERT_TRUE(nodeB.stop().success);
+    }
+};
+}  // namespace
+
+LOGOS_TEST(protocol_bridge_read_timeout_resets_stream) {
+    IdleStreamPair p("/test/bridge/readtimeout/1.0.0");
+
+    auto idle = p.nodeB.streamReadLpJson(
+        json{{"streamId", p.serverStreamId}, {"timeoutMs", 200}}.dump());
+    LOGOS_ASSERT_FALSE(idle.success);
+    LOGOS_ASSERT_TRUE(idle.error.find("read timeout") != std::string::npos);
+
+    auto rd = p.nodeB.streamReadLpJson(
+        json{{"streamId", p.serverStreamId}, {"timeoutMs", 5000}}.dump());
+    LOGOS_ASSERT_FALSE(rd.success);
+    LOGOS_ASSERT_TRUE(rd.error.find("read timeout") == std::string::npos);
+
+    p.finish();
+}
+
+LOGOS_TEST(stream_read_exactly_timeout_resets_stream) {
+    IdleStreamPair p("/test/stream/readexactly-timeout/1.0.0");
+
+    auto idle = p.nodeB.streamReadExactly(p.serverStreamId, 5, 200);
+    LOGOS_ASSERT_FALSE(idle.success);
+    LOGOS_ASSERT_TRUE(idle.error.find("read timeout") != std::string::npos);
+
+    auto rd = p.nodeB.streamReadExactly(p.serverStreamId, 5, 5000);
+    LOGOS_ASSERT_FALSE(rd.success);
+    LOGOS_ASSERT_TRUE(rd.error.find("read timeout") == std::string::npos);
+
+    p.finish();
+}

@@ -138,7 +138,7 @@ LOGOS_TEST(sync_stream_read_exactly) {
 
     uint64_t fakeStreamId = 1234;
     size_t len = 16;
-    LOGOS_ASSERT_FALSE(plugin.streamReadExactly(fakeStreamId, len).success);
+    LOGOS_ASSERT_FALSE(plugin.streamReadExactly(fakeStreamId, len, 0).success);
 
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }
@@ -149,7 +149,7 @@ LOGOS_TEST(sync_stream_read_lp) {
 
     uint64_t fakeStreamId = 1234;
     size_t maxSize = 4096;
-    LOGOS_ASSERT_FALSE(plugin.streamReadLp(fakeStreamId, maxSize).success);
+    LOGOS_ASSERT_FALSE(plugin.streamReadLp(fakeStreamId, maxSize, 0).success);
 
     LOGOS_ASSERT_TRUE(plugin.stop().success);
 }

@@ -153,8 +153,8 @@ inline StdLogosResult parseJsonResponse(const std::string& s, const char* errPre
 // default when the op carries no timeout of its own.
 inline int awaitTimeoutFor(int64_t opTimeoutMs) {
     if (opTimeoutMs <= 0) return kDefaultOpTimeoutMs;
-    int64_t v = opTimeoutMs + kAwaitSlackMs;
-    return v > INT_MAX ? INT_MAX : static_cast<int>(v);
+    if (opTimeoutMs > INT_MAX - kAwaitSlackMs) return INT_MAX;
+    return static_cast<int>(opTimeoutMs + kAwaitSlackMs);
 }
 
 // Maps a resolved SyncResult's structured payload into a result, substituting an
@@ -199,8 +199,8 @@ public:
 
     StdLogosResult mountProtocol(const std::string& proto);
 
-    StdLogosResult streamReadExactly(uint64_t streamId, uint64_t len);
-    StdLogosResult streamReadLp(uint64_t streamId, uint64_t maxSize);
+    StdLogosResult streamReadExactly(uint64_t streamId, uint64_t len, int64_t timeoutMs);
+    StdLogosResult streamReadLp(uint64_t streamId, uint64_t maxSize, int64_t timeoutMs);
     StdLogosResult streamWrite(uint64_t streamId, const std::string& data);
     StdLogosResult streamWriteLp(uint64_t streamId, const std::string& data);
     StdLogosResult streamClose(uint64_t streamId);

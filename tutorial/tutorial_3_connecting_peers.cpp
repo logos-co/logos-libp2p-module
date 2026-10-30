@@ -173,7 +173,7 @@ int main()
     }
 
 /// Read the echo (32 bytes back):
-    StdLogosResult readRes = nodeB.streamReadExactly(streamId, 32);
+    StdLogosResult readRes = nodeB.streamReadExactly(streamId, 32, 0);
     if (!readRes.success) {
         fprintf(stderr, "Read failed: %s\n", readRes.error.c_str());
         return 1;
