@@ -38,6 +38,14 @@
               [ "--threads:on --opt:size --noMain --mm:refc --d:metrics" ]
               [ "--threads:on --opt:size --noMain --mm:refc --d:metrics -d:chronicles_runtime_filtering=on" ]
               old.buildPhase;
+            # Experiment only, never merged: a service discovery registrar no
+            # longer makes an advertiser wait for sharing address bits with
+            # the adverts it holds (ipSimCoefficient 1.0 -> 0.0).
+            postPatch = (old.postPatch or "") + ''
+              sed -i 's/Default_IpSimCoefficient\* = 1\.0/Default_IpSimCoefficient* = 0.0/' \
+                libp2p/protocols/service_discovery/types.nim
+              grep -q 'Default_IpSimCoefficient\* = 0\.0' libp2p/protocols/service_discovery/types.nim
+            '';
           });
         });
       };
