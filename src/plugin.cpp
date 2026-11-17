@@ -80,6 +80,7 @@ Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     : ctx(nullptr)
 {
     applyOptions(options);
+    m_eventWorker = std::thread([this] { runEventWorker(); });
 }
 
 void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
@@ -175,11 +176,8 @@ SyncResult Libp2pModuleImpl::spawnContext(Libp2pConfig& cfg) {
 
     int ret = libp2p_ctx_create(&cfg, &Libp2pModuleImpl::cbCreate, p);
     if (ret != 0) {
-        if (f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-            delete p;
-        }
         SyncResult r;
-        r.message = "failed to submit (ret=" + std::to_string(ret) + ")";
+        r.message = submitFailure(p, f, ret);
         return r;
     }
 
@@ -214,12 +212,15 @@ StdLogosResult Libp2pModuleImpl::createContext() {
     std::unique_lock<std::shared_mutex> lock(m_ctxLock);
     ctx = r.newCtx;
 
+    m_stuck = false;
     m_gate = new ListenerGate();
     m_gate->owner = this;
 
     // Registered before start so incoming protocol streams and pubsub messages are delivered once the node runs; destroying the context frees the listener boxes.
     libp2p_ctx_add_on_incoming_stream_listener(ctx, &Libp2pModuleImpl::onIncomingStream, m_gate);
     libp2p_ctx_add_on_pubsub_message_listener(ctx, &Libp2pModuleImpl::onPubsubMessage, m_gate);
+    // The binding has no typed wrapper for nim-ffi's liveness event.
+    libp2p_add_event_listener(ctx->ptr, "not_responding", &Libp2pModuleImpl::onNotResponding, m_gate);
 
     return {true, {}, ""};
 }
@@ -251,6 +252,12 @@ StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
         return {false, {}, msg};
     }
     applyOptions(options);
+    return createContext();
+}
+
+StdLogosResult Libp2pModuleImpl::rebuild() {
+    std::lock_guard<std::mutex> lock(m_createLock);
+    destroyContext();
     return createContext();
 }
 
@@ -296,6 +303,7 @@ void Libp2pModuleImpl::destroyContext() {
     }
     m_gate = nullptr;
 
+    m_outbox.clear();
     m_inboundStreams.releaseAll();
 }
 
@@ -303,6 +311,8 @@ Libp2pModuleImpl::~Libp2pModuleImpl() {
     try {
         destroyContext();
     } catch (...) {}
+    m_outbox.close();
+    m_eventWorker.join();
 }
 
 StdLogosResult Libp2pModuleImpl::start() {
@@ -321,6 +331,7 @@ StdLogosResult Libp2pModuleImpl::stop() {
     });
     // A node that failed to stop is still delivering, so it keeps its backlog.
     if (res.success) {
+        m_outbox.clear();
         m_topicQueues.releaseAll();
         m_inboundStreams.releaseAll();
     }
@@ -328,10 +339,11 @@ StdLogosResult Libp2pModuleImpl::stop() {
 }
 
 bool Libp2pModuleImpl::ok() {
-    return hasCtx();
+    return hasCtx() && !m_stuck;
 }
 
 StdLogosResult Libp2pModuleImpl::status() {
+    if (m_stuck) return {false, {}, "libp2p not responding; call rebuild"};
     if (hasCtx()) return {true, {}, ""};
     return {false, {}, m_initError.empty() ? "libp2p not initialized" : m_initError};
 }

@@ -148,10 +148,7 @@ void Libp2pModuleImpl::cbPeerStoreEntry(
     finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
 }
 
-// Event listeners run on the Nim dispatch thread through a C trampoline, so a
-// C++ exception escaping here would cross the FFI boundary and terminate. Guard
-// the whole body — a serialization failure (e.g. non-UTF-8 pubsub payload in
-// the emitted event) must not take the process down.
+// Listeners run on the Nim event thread: an exception escaping one crosses the FFI boundary and terminates.
 void Libp2pModuleImpl::onIncomingStream(const IncomingStreamEvent* evt, void* ud) {
     auto* gate = static_cast<ListenerGate*>(ud);
     if (!gate || !evt) return;
@@ -159,18 +156,16 @@ void Libp2pModuleImpl::onIncomingStream(const IncomingStreamEvent* evt, void* ud
     auto* self = gate->owner;
     if (!self) return;
     try {
-        const std::string proto = nfStr(evt->proto);
-        const std::string peerId = nfStr(evt->peerId);
-        if (!self->m_inboundStreams.push(proto, InboundStream{evt->streamId, peerId})) {
-            self->releaseStreamNoWait(evt->streamId);
+        OutboxEvent e;
+        e.kind = OutboxEvent::Kind::Stream;
+        e.name = nfStr(evt->proto);
+        e.peerId = nfStr(evt->peerId);
+        e.streamId = evt->streamId;
+        if (!self->m_inboundStreams.push(e.name, InboundStream{e.streamId, e.peerId})) {
+            self->releaseStreamNoWait(e.streamId);
             return;
         }
-
-        json j;
-        j["streamId"] = evt->streamId;
-        j["proto"] = proto;
-        j["peerId"] = peerId;
-        self->emitEventSafe("protocolStream", j.dump());
+        self->m_outbox.push(std::move(e));
     } catch (...) {}
 }
 
@@ -181,13 +176,43 @@ void Libp2pModuleImpl::onPubsubMessage(const PubsubMessageEvent* evt, void* ud) 
     auto* self = gate->owner;
     if (!self) return;
     try {
-        std::string topic = nfStr(evt->topic);
-        auto bytes = nfBytes(evt->data);
-        self->m_topicQueues.push(topic, std::string(bytes.begin(), bytes.end()));
-
-        json j;
-        j["topic"] = topic;
-        j["data"] = logos::bytesToJson(bytes);
-        self->emitEventSafe("gossipsubMessage", j.dump());
+        OutboxEvent e;
+        e.name = nfStr(evt->topic);
+        e.data = nfBytes(evt->data);
+        self->m_outbox.push(std::move(e));
     } catch (...) {}
+}
+
+void Libp2pModuleImpl::onNotResponding(int, const char*, size_t, void* ud) {
+    auto* gate = static_cast<ListenerGate*>(ud);
+    if (!gate) return;
+    std::shared_lock<std::shared_mutex> guard(gate->lock);
+    if (!gate->owner) return;
+    gate->owner->m_stuck = true;
+    fprintf(stderr, "libp2p_module: libp2p not responding\n");
+}
+
+void Libp2pModuleImpl::runEventWorker() {
+    OutboxEvent e;
+    while (m_outbox.pop(e)) {
+        try {
+            deliverEvent(e);
+        } catch (...) {}
+    }
+}
+
+void Libp2pModuleImpl::deliverEvent(const OutboxEvent& e) {
+    json j;
+    if (e.kind == OutboxEvent::Kind::Stream) {
+        j["streamId"] = e.streamId;
+        j["proto"] = e.name;
+        j["peerId"] = e.peerId;
+        emitEventSafe("protocolStream", j.dump());
+        return;
+    }
+
+    m_topicQueues.push(e.name, std::string(e.data.begin(), e.data.end()));
+    j["topic"] = e.name;
+    j["data"] = logos::bytesToJson(e.data);
+    emitEventSafe("gossipsubMessage", j.dump());
 }

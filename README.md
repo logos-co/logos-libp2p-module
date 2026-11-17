@@ -149,6 +149,8 @@ the background, so a `start` success does not mean that discovery is ready. Call
 and leaves the bootstrap running. Lookups still work against a partial routing
 table. A `timeoutMs` of 0 or less uses the default 10 s call budget.
 
+If the Nim worker stalls, `ok` returns `false` and `status` reports `libp2p not responding`. Call `rebuild` to destroy the node and create a fresh one from the current config, then `start` it again. Subscriptions and mounted protocols do not survive a rebuild.
+
 `logoscore` only relays a generic "call failed" to the CLI; the specific reason
 (`createNode: invalid config: …`, `libp2p_new failed: …`) is written to the
 daemon's stderr, so check the daemon output (or its redirected log) when a call
