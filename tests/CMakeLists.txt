@@ -12,6 +12,7 @@ logos_test(
     MODULE_SOURCES
         ../src/utils.cpp
         ../src/topic_queues.cpp
+        ../src/event_outbox.cpp
         ../src/stream_queues.cpp
     TEST_SOURCES
         main.cpp
@@ -21,6 +22,7 @@ logos_test(
         unit_sync.cpp
         unit_stream_queues.cpp
         unit_topic_queues.cpp
+        unit_event_outbox.cpp
     EXTRA_INCLUDES
         ../lib
     EXTRA_LINK_LIBS
@@ -45,6 +47,7 @@ if(LIBP2P_PATH)
         MODULE_SOURCES
             ../src/utils.cpp
             ../src/topic_queues.cpp
+        ../src/event_outbox.cpp
             ../src/stream_queues.cpp
             ../src/plugin.cpp
             ../src/callbacks.cpp

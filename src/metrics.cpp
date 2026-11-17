@@ -33,6 +33,8 @@ LogosMap Libp2pModuleImpl::collectMetrics() {
     series.insert(series.end(), queueSeries.begin(), queueSeries.end());
     auto streamSeries = m_inboundStreams.metrics();
     series.insert(series.end(), streamSeries.begin(), streamSeries.end());
+    auto outboxSeries = m_outbox.metrics();
+    series.insert(series.end(), outboxSeries.begin(), outboxSeries.end());
 
     json payload;
     payload["metrics"] = series;

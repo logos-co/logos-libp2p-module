@@ -15,6 +15,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -31,6 +32,7 @@
 #include <libp2p.h>
 
 #include "config.h"
+#include "event_outbox.h"
 #include "metric.h"
 #include "stream_queues.h"
 #include "topic_queues.h"
@@ -122,6 +124,18 @@ inline SyncResult replyBase(int errCode, const char* errMsg) {
     return r;
 }
 
+// A submit failure fires the reply callback synchronously, and the callback deletes p.
+inline std::string submitFailure(SyncPromise* p, std::future<SyncResult>& f, int ret) {
+    std::string reason;
+    if (f.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        reason = f.get().message;
+    } else {
+        delete p;
+    }
+    if (reason.empty()) reason = "submit failed (ret=" + std::to_string(ret) + ")";
+    return reason;
+}
+
 // Awaits a future with timeout. Returns a failed result on timeout.
 inline SyncResult awaitResult(std::future<SyncResult>& f, int timeoutMs = kDefaultOpTimeoutMs) {
     if (f.wait_for(std::chrono::milliseconds(timeoutMs)) == std::future_status::ready) {
@@ -180,6 +194,7 @@ public:
     StdLogosResult status();
 
     StdLogosResult createNode(const std::string& config);
+    StdLogosResult rebuild();
     StdLogosResult getNodeInfo(const std::string& field);
 
     StdLogosResult start();
@@ -286,6 +301,17 @@ private:
 
     TopicQueues m_topicQueues;
 
+    EventOutbox m_outbox;
+    std::thread m_eventWorker;
+    void runEventWorker();
+    void deliverEvent(const OutboxEvent& event);
+
+    // Held while the worker delivers one event, so stop() can wait out an event popped before clear().
+    std::mutex m_deliverLock;
+
+    // Set by the not_responding listener; destroying the context clears it.
+    std::atomic<bool> m_stuck{false};
+
     InboundStreamQueues m_inboundStreams;
 
     // Releases without waiting, for callers on the Nim dispatch thread that must not block it.
@@ -330,6 +356,7 @@ private:
     // Event listeners registered on the context; the Nim side pushes here.
     static void onIncomingStream(const IncomingStreamEvent* evt, void* ud);
     static void onPubsubMessage(const PubsubMessageEvent* evt, void* ud);
+    static void onNotResponding(int ret, const char* msg, size_t len, void* ud);
 
     using EmitEventFn = std::function<void(const std::string& eventName, const std::string& data)>;
 
@@ -385,15 +412,7 @@ private:
                                      std::future<SyncResult>& f, int ret,
                                      Transform&& transform, int awaitMs) {
         if (ret != 0) {
-            // A submit-time failure (encode/OOM/missing-callback) fires the
-            // reply callback synchronously — which owns and deletes p — before
-            // returning non-zero. Reclaim p only in the (unexpected) case the
-            // callback didn't run, so we never double-free.
-            if (f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-                delete p;
-            }
-            return {false, {}, std::string(errPrefix) +
-                " (ret=" + std::to_string(ret) + ")"};
+            return {false, {}, std::string(errPrefix) + ": " + submitFailure(p, f, ret)};
         }
         auto r = awaitResult(f, awaitMs);
         if (!r.ok) return {false, {}, std::string(errPrefix) + ": " + r.message};

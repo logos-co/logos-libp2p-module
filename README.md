@@ -155,6 +155,8 @@ form `discoStartAdvertising` takes. Pass an element to `decodeXpr` to read `peer
 `{peerId, seqNo, addrs, services}` objects.
 `discoRandomLookup` still returns those objects, because random-walk records are unsigned.
 
+If the Nim worker stalls, `ok` returns `false` and `status` reports `libp2p not responding`. Call `rebuild` to destroy the node and create a fresh one from the current config, then `start` it again. Subscriptions and mounted protocols do not survive a rebuild.
+
 `logoscore` only relays a generic "call failed" to the CLI; the specific reason
 (`createNode: invalid config: …`, `libp2p_new failed: …`) is written to the
 daemon's stderr, so check the daemon output (or its redirected log) when a call
