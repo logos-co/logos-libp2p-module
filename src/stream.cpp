@@ -99,7 +99,7 @@ void Libp2pModuleImpl::closeAndRelease(uint64_t streamId, bool awaitEof) {
 }
 
 void Libp2pModuleImpl::releaseStreamNoWait(uint64_t streamId) {
-    callAsync([&](SyncPromise* p) {
+    callAsync("Failed to release stream", [&](SyncPromise* p) {
         return libp2p_ctx_stream_release(ctx, streamId, &Libp2pModuleImpl::cbBool, p);
     });
 }
