@@ -418,15 +418,17 @@ private:
 
     // Submits without awaiting, for a caller that must not block its thread.
     template <class Invoke>
-    void callAsync(Invoke&& invoke) {
+    void callAsync(const char* errPrefix, Invoke&& invoke) {
         std::shared_lock<std::shared_mutex> lock(m_ctxLock);
         if (!ctx) return;
 
         auto* p = new SyncPromise();
         auto f = p->get_future();
-        if (invoke(p) != 0 && f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-            delete p;
-        }
+        int ret = invoke(p);
+        if (ret == 0) return;
+
+        lock.unlock();
+        fprintf(stderr, "libp2p_module: %s: %s\n", errPrefix, submitFailure(p, f, ret).c_str());
     }
 };
 
