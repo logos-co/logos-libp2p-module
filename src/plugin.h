@@ -322,6 +322,7 @@ private:
     static void cbPublish(int ec, const PublishResponse* reply, const char* em, void* ud);
     static void cbProviders(int ec, const ProvidersResponse* reply, const char* em, void* ud);
     static void cbRecords(int ec, const ExtendedRecordsResponse* reply, const char* em, void* ud);
+    static void cbAdvertisements(int ec, const ExtendedRecordsResponse* reply, const char* em, void* ud);
     static void cbRecord(int ec, const ExtendedPeerRecordEntry* reply, const char* em, void* ud);
     static void cbReservation(int ec, const ReservationResponse* reply, const char* em, void* ud);
     static void cbPeerStoreEntry(int ec, const PeerStoreEntryResponse* reply, const char* em, void* ud);

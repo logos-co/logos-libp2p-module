@@ -54,7 +54,10 @@ LOGOS_TEST(disco_advertise_and_lookup) {
     LOGOS_ASSERT_FALSE(records.empty());
 
     auto [peerIdA, addrsA] = getPeerInfoPair(*nodeA);
-    LOGOS_ASSERT_TRUE(records[0]["peerId"].get<std::string>() == peerIdA);
+    LOGOS_ASSERT_TRUE(records[0].is_string());
+    auto decoded = nodeB->decodeXpr(records[0].get<std::string>());
+    LOGOS_ASSERT_TRUE(decoded.success);
+    LOGOS_ASSERT_TRUE(decoded.value["peerId"].get<std::string>() == peerIdA);
 
     LOGOS_ASSERT_TRUE(nodeA->discoStop().success);
     LOGOS_ASSERT_TRUE(nodeB->discoStop().success);
@@ -136,9 +139,68 @@ LOGOS_TEST(disco_advertise_foreign_xpr) {
 
     // The advertiser published someone else's record, so the discoverer reaches
     // the service switch and not the advertiser.
-    LOGOS_ASSERT_EQ(records[0]["peerId"].get<std::string>(), peerIdS);
-    LOGOS_ASSERT_FALSE(records[0]["addrs"].empty());
-    LOGOS_ASSERT_EQ(records[0]["addrs"][0].get<std::string>(), addrsS[0]);
+    LOGOS_ASSERT_TRUE(records[0].is_string());
+    auto decoded = nodeB->decodeXpr(records[0].get<std::string>());
+    LOGOS_ASSERT_TRUE(decoded.success);
+    LOGOS_ASSERT_EQ(decoded.value["peerId"].get<std::string>(), peerIdS);
+    LOGOS_ASSERT_FALSE(decoded.value["addrs"].empty());
+    LOGOS_ASSERT_EQ(decoded.value["addrs"][0].get<std::string>(), addrsS[0]);
+
+    LOGOS_ASSERT_TRUE(nodeA->discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeB->discoStop().success);
+    LOGOS_ASSERT_TRUE(nodeC.discoStop().success);
+
+    LOGOS_ASSERT_TRUE(nodeA->stop().success);
+    LOGOS_ASSERT_TRUE(nodeB->stop().success);
+    LOGOS_ASSERT_TRUE(nodeC.stop().success);
+    LOGOS_ASSERT_TRUE(nodeS.stop().success);
+}
+
+LOGOS_TEST(spec160_lookup_returns_encoded_advertisements) {
+    Libp2pModuleImpl nodeC(discoOptions());
+    LOGOS_ASSERT_TRUE(nodeC.start().success);
+    LOGOS_ASSERT_TRUE(nodeC.discoStart().success);
+    auto [peerIdC, addrsC] = getPeerInfoPair(nodeC);
+
+    auto nodeA = startDiscoPeer(peerIdC, addrsC);
+    auto nodeB = startDiscoPeer(peerIdC, addrsC);
+
+    Libp2pModuleImpl nodeS(Libp2pModuleOptions{ .mountServiceDiscovery = false });
+    LOGOS_ASSERT_TRUE(nodeS.start().success);
+    auto [peerIdS, addrsS] = getPeerInfoPair(nodeS);
+
+    std::string serviceId = "spec160-service";
+    std::map<std::string, std::vector<uint8_t>> services = {{serviceId, {0x01, 0x00, 0xff}}};
+    auto xpr = nodeS.createXpr(addrsS, services, 0);
+    LOGOS_ASSERT_TRUE(xpr.success);
+    std::string advertisement = xpr.value.get<std::string>();
+
+    LOGOS_ASSERT_TRUE(nodeA->discoStartAdvertising(serviceId, "", advertisement).success);
+    LOGOS_ASSERT_TRUE(nodeB->discoRegisterInterest(serviceId).success);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    auto res = nodeB->discoLookup(serviceId, "");
+    LOGOS_ASSERT_TRUE(res.success);
+    LOGOS_ASSERT_TRUE(res.value.is_array());
+    LOGOS_ASSERT_FALSE(res.value.empty());
+
+    bool everyElementIsAnEncodedAdvertisement = true;
+    bool advertisedBytesReturnedUnchanged = false;
+    for (const auto& ad : res.value) {
+        if (!ad.is_string() || !nodeB->decodeXpr(ad.get<std::string>()).success) {
+            everyElementIsAnEncodedAdvertisement = false;
+            continue;
+        }
+        if (ad.get<std::string>() == advertisement) advertisedBytesReturnedUnchanged = true;
+    }
+    LOGOS_ASSERT_TRUE(everyElementIsAnEncodedAdvertisement);
+    LOGOS_ASSERT_TRUE(advertisedBytesReturnedUnchanged);
+
+    std::string looked = res.value[0].get<std::string>();
+    auto decoded = nodeB->decodeXpr(looked);
+    LOGOS_ASSERT_TRUE(decoded.success);
+    LOGOS_ASSERT_EQ(decoded.value["peerId"].get<std::string>(), peerIdS);
+    LOGOS_ASSERT_TRUE(nodeB->discoStartAdvertising(serviceId, "", looked).success);
 
     LOGOS_ASSERT_TRUE(nodeA->discoStop().success);
     LOGOS_ASSERT_TRUE(nodeB->discoStop().success);
