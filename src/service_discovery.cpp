@@ -43,6 +43,13 @@ StdLogosResult Libp2pModuleImpl::discoStartAdvertising(
     });
 }
 
+StdLogosResult Libp2pModuleImpl::discoStartAdvertising(
+    const std::string& serviceId,
+    const std::string& advertisement)
+{
+    return discoStartAdvertising(serviceId, "", advertisement);
+}
+
 StdLogosResult Libp2pModuleImpl::discoStopAdvertising(const std::string& serviceId) {
     return callSync("Failed to stop advertising", [&](SyncPromise* p) {
         return libp2p_ctx_service_disco_stop_advertising(ctx, nimffi_str(serviceId.c_str()),
@@ -76,6 +83,10 @@ StdLogosResult Libp2pModuleImpl::discoLookup(
             return libp2p_ctx_service_disco_lookup(ctx, &req, &Libp2pModuleImpl::cbRecords, p);
         },
         [](const SyncResult& r) { return jsonResult(r, json::array()); });
+}
+
+StdLogosResult Libp2pModuleImpl::discoLookup(const std::string& serviceId) {
+    return discoLookup(serviceId, "");
 }
 
 StdLogosResult Libp2pModuleImpl::discoRandomLookup() {

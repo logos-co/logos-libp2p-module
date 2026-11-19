@@ -16,6 +16,7 @@ logos_test(
     TEST_SOURCES
         main.cpp
         unit_config.cpp
+        unit_disco_signatures.cpp
         unit_metrics.cpp
         unit_sync.cpp
         unit_stream_queues.cpp

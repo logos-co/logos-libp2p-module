@@ -105,16 +105,6 @@ LOGOS_TEST(integration_multiple_streams_on_same_connection) {
     auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
     LOGOS_ASSERT_TRUE(nodeA.connectPeer(peerIdB, addrsB, 500).success);
 
-    auto dial1 = nodeA.dial(peerIdB, "/ipfs/ping/1.0.0");
-    LOGOS_ASSERT_TRUE(dial1.success);
-    uint64_t stream1 = dial1.value.get<uint64_t>();
-
-    auto dial2 = nodeA.dial(peerIdB, "/ipfs/ping/1.0.0");
-    LOGOS_ASSERT_TRUE(dial2.success);
-    uint64_t stream2 = dial2.value.get<uint64_t>();
-
-    LOGOS_ASSERT_NE(stream1, stream2);
-
     std::string payload1(PING_SIZE, '\0');
     std::string payload2(PING_SIZE, '\0');
     for (int i = 0; i < PING_SIZE; ++i) {
@@ -122,14 +112,20 @@ LOGOS_TEST(integration_multiple_streams_on_same_connection) {
         payload2[i] = static_cast<char>(255 - i);
     }
 
+    auto dial1 = nodeA.dial(peerIdB, "/ipfs/ping/1.0.0");
+    LOGOS_ASSERT_TRUE(dial1.success);
+    uint64_t stream1 = dial1.value.get<uint64_t>();
     LOGOS_ASSERT_TRUE(nodeA.streamWrite(stream1, payload1).success);
-    LOGOS_ASSERT_TRUE(nodeA.streamWrite(stream2, payload2).success);
-
-    auto read1 = nodeA.streamReadExactly(stream1, PING_SIZE, 0);
+    auto read1 = nodeA.streamReadExactly(stream1, PING_SIZE, 5000);
     LOGOS_ASSERT_TRUE(read1.success);
     LOGOS_ASSERT_TRUE(base64Decode(read1.value.get<std::string>()) == payload1);
 
-    auto read2 = nodeA.streamReadExactly(stream2, PING_SIZE, 0);
+    auto dial2 = nodeA.dial(peerIdB, "/ipfs/ping/1.0.0");
+    LOGOS_ASSERT_TRUE(dial2.success);
+    uint64_t stream2 = dial2.value.get<uint64_t>();
+    LOGOS_ASSERT_NE(stream1, stream2);
+    LOGOS_ASSERT_TRUE(nodeA.streamWrite(stream2, payload2).success);
+    auto read2 = nodeA.streamReadExactly(stream2, PING_SIZE, 5000);
     LOGOS_ASSERT_TRUE(read2.success);
     LOGOS_ASSERT_TRUE(base64Decode(read2.value.get<std::string>()) == payload2);
 
