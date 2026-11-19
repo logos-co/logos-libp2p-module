@@ -76,3 +76,26 @@ LOGOS_TEST(parse_json_response_empty_fails) {
     LOGOS_ASSERT_FALSE(r.success);
     LOGOS_ASSERT_TRUE(r.error == "peerInfo: invalid JSON");
 }
+
+LOGOS_TEST(submit_failure_returns_callback_message_when_callback_ran) {
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    finishPromise(p, SyncResult{false, "encode failed", {}, {}, nullptr});
+
+    LOGOS_ASSERT_TRUE(submitFailure(nullptr, f, -3) == "encode failed");
+}
+
+LOGOS_TEST(submit_failure_falls_back_to_ret_when_callback_message_empty) {
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+    finishPromise(p, SyncResult{false, "", {}, {}, nullptr});
+
+    LOGOS_ASSERT_TRUE(submitFailure(nullptr, f, -3) == "submit failed (ret=-3)");
+}
+
+LOGOS_TEST(submit_failure_returns_ret_fallback_when_callback_did_not_run) {
+    auto* p = new SyncPromise();
+    auto f = p->get_future();
+
+    LOGOS_ASSERT_TRUE(submitFailure(p, f, 7) == "submit failed (ret=7)");
+}
