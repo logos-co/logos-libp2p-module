@@ -71,6 +71,7 @@ StdLogosResult Libp2pModuleImpl::discoUnregisterInterest(const std::string& serv
     });
 }
 
+/// Returns an array of base64 signed XPRs, the form discoStartAdvertising takes.
 StdLogosResult Libp2pModuleImpl::discoLookup(
     const std::string& serviceId,
     const std::string& serviceData)
@@ -80,7 +81,7 @@ StdLogosResult Libp2pModuleImpl::discoLookup(
     req.serviceData = nimffiBytes(serviceData);
     return callSyncWith("Failed to lookup",
         [&](SyncPromise* p) {
-            return libp2p_ctx_service_disco_lookup(ctx, &req, &Libp2pModuleImpl::cbRecords, p);
+            return libp2p_ctx_service_disco_lookup(ctx, &req, &Libp2pModuleImpl::cbAdvertisements, p);
         },
         [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
@@ -89,10 +90,11 @@ StdLogosResult Libp2pModuleImpl::discoLookup(const std::string& serviceId) {
     return discoLookup(serviceId, "");
 }
 
+/// Like discoLookup, but entries without a signed record are skipped.
 StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
     return callSyncWith("Failed to random lookup",
         [&](SyncPromise* p) {
-            return libp2p_ctx_service_disco_random_lookup(ctx, &Libp2pModuleImpl::cbRecords, p);
+            return libp2p_ctx_service_disco_random_lookup(ctx, &Libp2pModuleImpl::cbAdvertisements, p);
         },
         [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }
@@ -134,9 +136,8 @@ StdLogosResult Libp2pModuleImpl::createXpr(
 /// seqNo, addrs, services). `xpr` is the base64 string produced by createXpr and
 /// is decoded back to the signed protobuf bytes here, so createXpr's output can
 /// be passed straight in. A bad signature or malformed payload yields a failed
-/// result. `services` comes back as `[{id, data}]` — the shape discoLookup and
-/// discoRandomLookup also use — with each `data` base64-encoded, since it is
-/// arbitrary bytes that may not be valid UTF-8 and this result is untyped JSON.
+/// result. `services` comes back as `[{id, data}]` with each `data` base64-encoded,
+/// since it is arbitrary bytes that may not be valid UTF-8 and this result is untyped JSON.
 /// Feeding it back into createXpr means rebuilding the map and base64-decoding.
 StdLogosResult Libp2pModuleImpl::decodeXpr(const std::string& xpr) {
     if (xpr.empty()) return {false, {}, "decodeXpr: empty XPR"};
