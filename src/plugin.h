@@ -234,10 +234,12 @@ public:
     StdLogosResult discoStart();
     StdLogosResult discoStop();
     StdLogosResult discoStartAdvertising(const std::string& serviceId, const std::string& serviceData, const std::string& advertisement);
+    StdLogosResult discoStartAdvertising(const std::string& serviceId, const std::string& advertisement);
     StdLogosResult discoStopAdvertising(const std::string& serviceId);
     StdLogosResult discoRegisterInterest(const std::string& serviceId);
     StdLogosResult discoUnregisterInterest(const std::string& serviceId);
     StdLogosResult discoLookup(const std::string& serviceId, const std::string& serviceData);
+    StdLogosResult discoLookup(const std::string& serviceId);
     StdLogosResult discoRandomLookup();
     StdLogosResult createXpr(const std::vector<std::string>& addrs,
                              const std::map<std::string, std::vector<uint8_t>>& services,
