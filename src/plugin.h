@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <climits>
+#include <condition_variable>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -46,6 +47,8 @@ inline constexpr int kNewContextTimeoutMs = 5000;
 // Added on top of a caller-supplied op timeout so the C++ await outlives the
 // libp2p operation it wraps instead of racing it.
 inline constexpr int kAwaitSlackMs = 5000;
+// A healthy FFI thread takes a submit in microseconds; past this a teardown abandons the context instead of freeing it under a blocked submitter.
+inline constexpr int kSubmitDrainMs = 2000;
 
 // Result type for internal sync-over-async operations.
 struct SyncResult {
@@ -181,6 +184,52 @@ inline StdLogosResult jsonResult(const SyncResult& r, nlohmann::json emptyDefaul
 // Defined below the class. A forward declaration of the module class above it makes the codegen header parser read that declaration as the class body and publish no methods at all.
 struct ListenerGate;
 
+void endSubmit(ListenerGate* gate);
+
+// Wakes the thread that releases the streams the Nim event thread rejected.
+struct ReleaseWorker {
+    std::mutex lock;
+    std::condition_variable cond;
+    bool wake = false;
+    bool stop = false;
+    bool exited = false;
+
+    void notify() {
+        std::lock_guard<std::mutex> guard(lock);
+        wake = true;
+        cond.notify_all();
+    }
+};
+
+struct SubmitScope {
+    ListenerGate* gate;
+    ~SubmitScope() { endSubmit(gate); }
+};
+
+// What the event worker touches. The module and the worker share it, so a worker stuck in a handler can outlive the module.
+struct EventPipe {
+    EventOutbox outbox;
+    TopicQueues topics;
+    // Held while the worker delivers one event, so stop() and destroyContext() can wait out an event popped before clear().
+    std::timed_mutex deliverLock;
+    std::atomic<std::thread::id> workerId{};
+    std::atomic<uint64_t> deliveryFailures{0};
+
+    // Snapshot of the module's `emitEvent`, taken on a caller thread, so the worker never reads the public field unsynchronized.
+    std::shared_mutex emitLock;
+    std::function<void(const std::string& eventName, const std::string& data)> emitFn;
+
+    std::mutex exitLock;
+    std::condition_variable exitCond;
+    bool exited = false;
+
+    void run();
+    void deliver(const OutboxEvent& event);
+    void reportFailure(const OutboxEvent& event, const char* what);
+    void emitSafe(const std::string& name, const std::string& data);
+    bool waitExit(int timeoutMs);
+};
+
 class Libp2pModuleImpl {
 public:
     Libp2pModuleImpl(const Libp2pModuleOptions& options = Libp2pModuleOptions::load());
@@ -271,7 +320,7 @@ public:
     LogosMap collectMetrics();
 
 private:
-    // Guards `ctx`: shared to submit, unique to swap it. Never held across an await or a teardown, which wait on Nim workers.
+    // Guards `ctx` and `m_gate`: shared to begin a submit, unique to swap them. Never held across a submit, an await or a teardown, which wait on Nim workers.
     mutable std::shared_mutex m_ctxLock;
     LibP2PCtx* ctx = nullptr;
 
@@ -299,23 +348,32 @@ private:
     // The Nim side owns stream lifetimes and hands out opaque uint64 stream
     // ids; the wrapper forwards them verbatim, so no local stream table.
 
-    TopicQueues m_topicQueues;
-
-    EventOutbox m_outbox;
+    // Swapped when rebuild abandons a worker stuck in a handler, so read it through pipe().
+    std::shared_ptr<EventPipe> pipe() const;
+    mutable std::mutex m_pipeLock;
+    std::shared_ptr<EventPipe> m_pipe = std::make_shared<EventPipe>();
     std::thread m_eventWorker;
-    void runEventWorker();
-    void deliverEvent(const OutboxEvent& event);
+    bool onEventWorker() const;
+    // Bounded after an abandoned teardown, when the handler may be blocked in the same wedged context. False when a handler is still running.
+    bool waitDelivery(bool bounded);
+    // Retires a worker stuck in a handler; it keeps its old pipe and never delivers again.
+    void replaceEventWorker();
 
-    // Held while the worker delivers one event, so stop() can wait out an event popped before clear().
-    std::mutex m_deliverLock;
+    std::shared_ptr<ReleaseWorker> m_releaseWorker = std::make_shared<ReleaseWorker>();
+    std::thread m_releaseThread;
+    void runReleases(std::shared_ptr<ReleaseWorker> worker);
+    void stopReleaseThread();
 
     // Set by the not_responding listener; destroying the context clears it.
     std::atomic<bool> m_stuck{false};
 
     InboundStreamQueues m_inboundStreams;
 
-    // Releases without waiting, for callers on the Nim dispatch thread that must not block it.
-    void releaseStreamNoWait(uint64_t streamId);
+    static void releaseStreamNoWait(LibP2PCtx* ctx, uint64_t streamId);
+    // Releases the streams the event thread dropped on this gate's context, on the calling thread.
+    static void flushReleases(ListenerGate* gate, LibP2PCtx* ctx);
+    // False when the stream fits no queue and the caller must release it.
+    bool queueIncomingStream(const IncomingStreamEvent* evt);
 
     // An mplex channel frees only after it reads the remote EOF; pass awaitEof when the peer answers.
     void closeAndRelease(uint64_t streamId, bool awaitEof = false);
@@ -325,14 +383,22 @@ private:
 
     // Serializes the create path: applyOptions rebuilds the buffers the config views borrow, so it must not run under a create.
     std::mutex m_createLock;
+    // Set by the destructor, so a handler cannot create a context that outlives the module.
+    std::atomic<bool> m_closing{false};
+    // Try-locks on the event worker: a blocking lock there deadlocks against a rebuild waiting on the delivery lock.
+    std::unique_lock<std::mutex> lockCreate();
     StdLogosResult ensureContext();
     StdLogosResult createContext();
-    void destroyContext();
+    // False when an emitEvent handler is still running after the teardown.
+    bool destroyContext();
     StdLogosResult nodeInfoBoundPorts();
 
     // Handed to the event listeners instead of `this`; owned by the module until a teardown that reports failure hands it to the event thread for good.
     ListenerGate* m_gate = nullptr;
-    void detachListeners();
+    static void detachListeners(ListenerGate* gate);
+
+    // Counts a submit on the live gate and hands out its context, or returns null once a teardown began; pair with a SubmitScope.
+    ListenerGate* beginSubmit(LibP2PCtx*& ctx);
 
     // Reply trampolines: one per generated response type. Each turns the typed
     // (err_code, reply, err_msg) callback into a SyncResult and resolves the
@@ -358,13 +424,7 @@ private:
     static void onPubsubMessage(const PubsubMessageEvent* evt, void* ud);
     static void onNotResponding(int ret, const char* msg, size_t len, void* ud);
 
-    using EmitEventFn = std::function<void(const std::string& eventName, const std::string& data)>;
-
-    // Lock-guarded snapshot of `emitEvent`, taken on the caller thread before any worker can emit, so worker threads never read the public field unsynchronized.
-    mutable std::shared_mutex m_emitEventLock;
-    EmitEventFn m_emitEventSnapshot;
     void publishEmitEvent();
-    void emitEventSafe(const std::string& name, const std::string& data) const;
 
     // Wraps the new-promise / invoke / await / clean-up dance shared by every
     // sync-over-async libp2p op. `invoke(SyncPromise*)` calls the cbinding and
@@ -380,17 +440,19 @@ private:
     template <class Invoke, class Transform>
     StdLogosResult callSyncWith(const char* errPrefix, Invoke&& invoke, Transform&& transform,
                                 int awaitMs = kDefaultOpTimeoutMs) {
+        LibP2PCtx* ctx = nullptr;
+        ListenerGate* gate = beginSubmit(ctx);
+        if (!gate) return {false, {}, "No libp2p context"};
+
         SyncPromise* p = nullptr;
         std::future<SyncResult> f;
         int ret = 0;
         {
-            // The check and the submit are one section: a destroy between them frees the context the binding is handed.
-            std::shared_lock<std::shared_mutex> lock(m_ctxLock);
-            if (!ctx) return {false, {}, "No libp2p context"};
-
+            SubmitScope scope{gate};
             p = new SyncPromise();
             f = p->get_future();
-            ret = invoke(p);
+            flushReleases(gate, ctx);
+            ret = invoke(ctx, p);
         }
 
         return awaitReply(errPrefix, p, f, ret, std::forward<Transform>(transform), awaitMs);
@@ -418,25 +480,22 @@ private:
         if (!r.ok) return {false, {}, std::string(errPrefix) + ": " + r.message};
         return transform(r);
     }
-
-    // Submits without awaiting, for a caller that must not block its thread.
-    template <class Invoke>
-    void callAsync(Invoke&& invoke) {
-        std::shared_lock<std::shared_mutex> lock(m_ctxLock);
-        if (!ctx) return;
-
-        auto* p = new SyncPromise();
-        auto f = p->get_future();
-        if (invoke(p) != 0 && f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-            delete p;
-        }
-    }
 };
 
-// Listener user_data. It outlives the module whenever the context teardown fails, because the Nim event thread may still fire: a late callback then reads a null owner instead of a freed module.
+// Listener user_data. It outlives the module whenever the context teardown fails or is abandoned, because the Nim event thread may still fire: a late callback then reads a null owner instead of a freed module.
 struct ListenerGate {
     std::shared_mutex lock;
     Libp2pModuleImpl* owner = nullptr;
+
+    // Submits in flight on this gate's context. The gate outlives an abandoned context, so a late endSubmit stays safe.
+    std::atomic<int> submits{0};
+    std::mutex drainLock;
+    std::condition_variable drained;
+
+    // A submit from the Nim event thread blocks it on a wedged FFI thread, so the next call on this context releases these.
+    std::mutex releaseLock;
+    std::vector<uint64_t> pendingReleases;
+    std::atomic<bool> hasPendingReleases{false};
 };
 
 inline StdLogosResult setLogLevel(const std::string& level) {

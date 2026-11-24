@@ -6,6 +6,8 @@
 #include <atomic>
 #include <string>
 #include <thread>
+#include <utility>
+#include <vector>
 
 namespace {
 const size_t kFixed = OutboxEvent{}.bytes();
@@ -209,4 +211,95 @@ LOGOS_TEST(event_outbox_clear_starts_a_new_generation) {
 
     outbox.clear();
     LOGOS_ASSERT_TRUE(out.generation != outbox.generation());
+}
+
+LOGOS_TEST(event_outbox_drop_topic_removes_only_that_topic) {
+    EventOutbox outbox;
+    outbox.push(pubsub("a", 1));
+    outbox.push(pubsub("b", 2));
+    outbox.push(pubsub("a", 3));
+
+    outbox.dropTopic("a");
+
+    OutboxEvent out;
+    LOGOS_ASSERT_TRUE(outbox.pop(out));
+    LOGOS_ASSERT_TRUE(out.name == "b");
+    LOGOS_ASSERT_TRUE(!outbox.stale(out));
+    LOGOS_ASSERT_TRUE(outbox.metrics()[0].value == 0);
+}
+
+LOGOS_TEST(event_outbox_drop_topic_marks_a_popped_event_stale) {
+    EventOutbox outbox;
+    outbox.push(pubsub("a", 1));
+    outbox.push(pubsub("b", 1));
+    OutboxEvent popped;
+    LOGOS_ASSERT_TRUE(outbox.pop(popped));
+    LOGOS_ASSERT_TRUE(!outbox.stale(popped));
+
+    outbox.dropTopic("a");
+
+    LOGOS_ASSERT_TRUE(outbox.stale(popped));
+}
+
+LOGOS_TEST(event_outbox_events_pushed_after_drop_topic_are_fresh) {
+    EventOutbox outbox;
+    outbox.dropTopic("a");
+    outbox.push(pubsub("a", 1));
+
+    OutboxEvent out;
+    LOGOS_ASSERT_TRUE(outbox.pop(out));
+    LOGOS_ASSERT_TRUE(!outbox.stale(out));
+}
+
+LOGOS_TEST(event_outbox_drop_topic_keeps_stream_events) {
+    EventOutbox outbox;
+    OutboxEvent stream;
+    stream.kind = OutboxEvent::Kind::Stream;
+    stream.name = "a";
+    outbox.push(stream);
+
+    outbox.dropTopic("a");
+
+    OutboxEvent out;
+    LOGOS_ASSERT_TRUE(outbox.pop(out));
+    LOGOS_ASSERT_TRUE(!outbox.stale(out));
+}
+
+LOGOS_TEST(event_outbox_clear_after_drop_topic_keeps_old_events_stale) {
+    EventOutbox outbox;
+    outbox.push(pubsub("a", 1));
+    OutboxEvent popped;
+    LOGOS_ASSERT_TRUE(outbox.pop(popped));
+
+    outbox.dropTopic("a");
+    outbox.clear();
+
+    LOGOS_ASSERT_TRUE(outbox.stale(popped));
+}
+
+LOGOS_TEST(event_outbox_drop_topic_prunes_unreferenced_topics) {
+    EventOutbox outbox;
+    outbox.push(pubsub("popped", 1));
+    outbox.push(pubsub("queued", 1));
+    OutboxEvent popped;
+    LOGOS_ASSERT_TRUE(outbox.pop(popped));
+    outbox.dropTopic("popped");
+    outbox.dropTopic("queued");
+    outbox.push(pubsub("queued", 2));
+
+    for (int i = 0; i < 3000; ++i) outbox.dropTopic("t" + std::to_string(i));
+
+    LOGOS_ASSERT_TRUE(outbox.trackedTopics() < 1100);
+    LOGOS_ASSERT_TRUE(outbox.stale(popped));
+    OutboxEvent out;
+    LOGOS_ASSERT_TRUE(outbox.pop(out));
+    LOGOS_ASSERT_TRUE(out.name == "queued");
+    LOGOS_ASSERT_TRUE(!outbox.stale(out));
+}
+
+LOGOS_TEST(event_outbox_carries_a_dropped_count) {
+    EventOutbox outbox;
+    outbox.addDropped(3);
+    LOGOS_ASSERT_TRUE(outbox.dropped() == 3);
+    LOGOS_ASSERT_TRUE(dropped(outbox) == 3);
 }

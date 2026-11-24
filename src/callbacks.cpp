@@ -165,20 +165,26 @@ void Libp2pModuleImpl::onIncomingStream(const IncomingStreamEvent* evt, void* ud
     auto* self = gate->owner;
     if (!self) return;
     try {
-        OutboxEvent e;
-        e.kind = OutboxEvent::Kind::Stream;
-        e.name = nfStr(evt->proto);
-        e.peerId = nfStr(evt->peerId);
-        e.streamId = evt->streamId;
-        if (!self->m_inboundStreams.push(e.name, InboundStream{e.streamId, e.peerId})) {
-            self->releaseStreamNoWait(e.streamId);
-            return;
+        if (self->queueIncomingStream(evt)) return;
+        {
+            std::lock_guard<std::mutex> lock(gate->releaseLock);
+            gate->pendingReleases.push_back(evt->streamId);
+            gate->hasPendingReleases = true;
         }
-        if (!self->m_outbox.push(e)) {
-            self->m_inboundStreams.remove(e.streamId);
-            self->releaseStreamNoWait(e.streamId);
-        }
+        self->m_releaseWorker->notify();
     } catch (...) {}
+}
+
+bool Libp2pModuleImpl::queueIncomingStream(const IncomingStreamEvent* evt) {
+    OutboxEvent e;
+    e.kind = OutboxEvent::Kind::Stream;
+    e.name = nfStr(evt->proto);
+    e.peerId = nfStr(evt->peerId);
+    e.streamId = evt->streamId;
+    if (!m_inboundStreams.push(e.name, InboundStream{e.streamId, e.peerId})) return false;
+    // A dropped notification leaves the stream in the accept queue for protocolAcceptStream.
+    pipe()->outbox.push(e);
+    return true;
 }
 
 void Libp2pModuleImpl::onPubsubMessage(const PubsubMessageEvent* evt, void* ud) {
@@ -191,9 +197,10 @@ void Libp2pModuleImpl::onPubsubMessage(const PubsubMessageEvent* evt, void* ud) 
         OutboxEvent e;
         e.name = nfStr(evt->topic);
         e.data = nfBytes(evt->data);
-        if (!self->m_outbox.push(e)) {
-            self->m_topicQueues.push(e.name, std::string(e.data.begin(), e.data.end()));
-        }
+        auto pipe = self->pipe();
+        // The poll queue takes every message in arrival order; the outbox only carries the notification.
+        pipe->topics.push(e.name, std::string(e.data.begin(), e.data.end()));
+        pipe->outbox.push(e);
     } catch (...) {}
 }
 
@@ -206,33 +213,64 @@ void Libp2pModuleImpl::onNotResponding(int, const char*, size_t, void* ud) {
     fprintf(stderr, "libp2p_module: libp2p not responding\n");
 }
 
-void Libp2pModuleImpl::runEventWorker() {
+void EventPipe::run() {
+    workerId = std::this_thread::get_id();
     OutboxEvent e;
-    while (m_outbox.pop(e)) {
-        std::lock_guard<std::mutex> delivering(m_deliverLock);
-        if (e.generation != m_outbox.generation()) continue;
+    while (outbox.pop(e)) {
+        std::lock_guard<std::timed_mutex> delivering(deliverLock);
+        if (outbox.stale(e)) continue;
         try {
-            deliverEvent(e);
+            deliver(e);
         } catch (const std::exception& ex) {
-            fprintf(stderr, "libp2p_module: event delivery failed: %s\n", ex.what());
+            reportFailure(e, ex.what());
         } catch (...) {
-            fprintf(stderr, "libp2p_module: event delivery failed\n");
+            reportFailure(e, "unknown exception");
         }
+    }
+    std::lock_guard<std::mutex> lock(exitLock);
+    exited = true;
+    exitCond.notify_all();
+}
+
+bool EventPipe::waitExit(int timeoutMs) {
+    std::unique_lock<std::mutex> lock(exitLock);
+    return exitCond.wait_for(lock, std::chrono::milliseconds(timeoutMs), [&] { return exited; });
+}
+
+void EventPipe::emitSafe(const std::string& name, const std::string& data) {
+    std::function<void(const std::string&, const std::string&)> fn;
+    {
+        std::shared_lock<std::shared_mutex> lock(emitLock);
+        fn = emitFn;
+    }
+    if (fn) fn(name, data);
+}
+
+void EventPipe::reportFailure(const OutboxEvent& e, const char* what) {
+    ++deliveryFailures;
+    try {
+        json j;
+        j["event"] = e.kind == OutboxEvent::Kind::Stream ? "protocolStream" : "gossipsubMessage";
+        j["name"] = e.name;
+        if (e.kind == OutboxEvent::Kind::Stream) j["streamId"] = e.streamId;
+        j["error"] = what;
+        emitSafe("eventDeliveryFailed", j.dump(-1, ' ', false, json::error_handler_t::replace));
+    } catch (...) {
+        fprintf(stderr, "libp2p_module: event delivery failed: %s\n", what);
     }
 }
 
-void Libp2pModuleImpl::deliverEvent(const OutboxEvent& e) {
+void EventPipe::deliver(const OutboxEvent& e) {
     json j;
     if (e.kind == OutboxEvent::Kind::Stream) {
         j["streamId"] = e.streamId;
         j["proto"] = e.name;
         j["peerId"] = e.peerId;
-        emitEventSafe("protocolStream", j.dump());
+        emitSafe("protocolStream", j.dump(-1, ' ', false, json::error_handler_t::replace));
         return;
     }
 
-    m_topicQueues.push(e.name, std::string(e.data.begin(), e.data.end()));
     j["topic"] = e.name;
     j["data"] = logos::bytesToJson(e.data);
-    emitEventSafe("gossipsubMessage", j.dump());
+    emitSafe("gossipsubMessage", j.dump(-1, ' ', false, json::error_handler_t::replace));
 }
