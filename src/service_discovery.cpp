@@ -90,11 +90,12 @@ StdLogosResult Libp2pModuleImpl::discoLookup(const std::string& serviceId) {
     return discoLookup(serviceId, "");
 }
 
-/// Like discoLookup, but entries without a signed record are skipped.
+/// Returns an array of `{peerId, seqNo, addrs, services}` objects. Random-walk
+/// records are unsigned, so they cannot be passed to discoStartAdvertising.
 StdLogosResult Libp2pModuleImpl::discoRandomLookup() {
     return callSyncWith("Failed to random lookup",
         [&](SyncPromise* p) {
-            return libp2p_ctx_service_disco_random_lookup(ctx, &Libp2pModuleImpl::cbAdvertisements, p);
+            return libp2p_ctx_service_disco_random_lookup(ctx, &Libp2pModuleImpl::cbRecords, p);
         },
         [](const SyncResult& r) { return jsonResult(r, json::array()); });
 }

@@ -244,7 +244,7 @@ service. It may take a moment for the advertisement to propagate.
 
 ## Step 7: Random lookup
 
-`discoRandomLookup()` returns advertisements from a random DHT walk.
+`discoRandomLookup()` returns unsigned peer records from a random DHT walk.
 ```cpp
     printf("\nRandom lookup by advertiser...\n");
     StdLogosResult randomRes = advertiser.discoRandomLookup();
@@ -253,7 +253,7 @@ service. It may take a moment for the advertisement to propagate.
                 randomRes.error.c_str());
         return 1;
     }
-    printf("Found %zu random advertisement(s)\n", randomRes.value.size());
+    printf("Found %zu random record(s)\n", randomRes.value.size());
 
 ```
 
@@ -329,7 +329,7 @@ or a protobuf and nothing is mangled on the way in.
   - `discoStartAdvertising()` / `discoStopAdvertising()` manage ads
   - `discoRegisterInterest()` / `discoUnregisterInterest()` manage subscriptions
   - `discoLookup()` returns the encoded advertisements for a service
-  - `discoRandomLookup()` returns encoded advertisements from a random walk
+  - `discoRandomLookup()` returns unsigned peer records from a random walk
   - `createXpr()` / `decodeXpr()` work with signed peer records
 
 ## Run tutorial

@@ -223,7 +223,7 @@ int main()
 
 /// ## Step 7: Random lookup
 ///
-/// `discoRandomLookup()` returns advertisements from a random DHT walk.
+/// `discoRandomLookup()` returns unsigned peer records from a random DHT walk.
     printf("\nRandom lookup by advertiser...\n");
     StdLogosResult randomRes = advertiser.discoRandomLookup();
     if (!randomRes.success) {
@@ -231,7 +231,7 @@ int main()
                 randomRes.error.c_str());
         return 1;
     }
-    printf("Found %zu random advertisement(s)\n", randomRes.value.size());
+    printf("Found %zu random record(s)\n", randomRes.value.size());
 
 /// ## Step 8: Creating and decoding Extended Peer Records (XPR)
 ///
@@ -299,7 +299,7 @@ int main()
 ///   - `discoStartAdvertising()` / `discoStopAdvertising()` manage ads
 ///   - `discoRegisterInterest()` / `discoUnregisterInterest()` manage subscriptions
 ///   - `discoLookup()` returns the encoded advertisements for a service
-///   - `discoRandomLookup()` returns encoded advertisements from a random walk
+///   - `discoRandomLookup()` returns unsigned peer records from a random walk
 ///   - `createXpr()` / `decodeXpr()` work with signed peer records
 
 /// ## Run tutorial

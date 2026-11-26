@@ -111,7 +111,7 @@ void Libp2pModuleImpl::cbRecords(int ec, const ExtendedRecordsResponse* reply, c
     finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
 }
 
-// Random-walk entries carry no signed record, so they are not Advertisements.
+// Only discoLookup entries carry a signed record.
 void Libp2pModuleImpl::cbAdvertisements(int ec, const ExtendedRecordsResponse* reply, const char* em, void* ud) {
     auto r = replyBase(ec, em);
     if (r.ok && reply && reply->records.data) {
