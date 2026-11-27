@@ -128,7 +128,13 @@ LOGOS_TEST(kad_random_records) {
     LOGOS_ASSERT_TRUE(nodeB.kadWaitBootstrap(5000).success);
     auto [peerIdB, addrsB] = getPeerInfoPair(nodeB);
 
-    // nodeB stores its record on nodeA a few ms after start(), so poll for it.
+    // Own XPR publishing is disabled, so nodeB publishes only caller-supplied XPRs.
+    auto xpr = nodeB.createXpr(addrsB, {{"random-service", {}}}, 0);
+    LOGOS_ASSERT_TRUE(xpr.success);
+    LOGOS_ASSERT_TRUE(
+        nodeB.discoStartAdvertising("random-service", "", xpr.value.get<std::string>()).success);
+
+    // nodeB stores the advertised record on nodeA shortly after advertising, so poll for it.
     auto res = nodeA.kadGetRandomRecords();
     LOGOS_ASSERT_TRUE(res.success);
     auto records = res.value;
