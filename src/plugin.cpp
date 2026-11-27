@@ -105,9 +105,8 @@ void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
     m_libp2pConfig.gossipsub.disconnectPeerAboveRateLimit =
         options.gossipsubDisconnectPeerAboveRateLimit;
     m_libp2pConfig.mountKad = options.mountKad;
-    m_libp2pConfig.mountServiceDiscovery = options.mountServiceDiscovery;
-    // Publish only XPRs passed to discoStartAdvertising, not the node's own record.
-    m_libp2pConfig.serviceDiscoveryDisableXprPublishing = options.mountServiceDiscovery;
+    m_libp2pConfig.serviceDiscovery.mount = options.mountServiceDiscovery;
+    m_libp2pConfig.serviceDiscovery.disableXprPublishing = options.mountServiceDiscovery;
 
     m_libp2pConfig.muxer = MUXER_TYPE_MPLEX;
     m_libp2pConfig.transport = options.transport;

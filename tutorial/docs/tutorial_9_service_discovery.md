@@ -219,10 +219,20 @@ service. It may take a moment for the advertisement to propagate.
     auto records = lookupRes.value;
 
     printf("Discoverer found %zu provider(s):\n", records.size());
-    for (const auto& rec : records) {
+    for (const auto& ad : records) {
+        if (!ad.is_string()) {
+            fprintf(stderr, "Lookup returned a non-string advertisement\n");
+            return 1;
+        }
+        StdLogosResult rec = discoverer.decodeXpr(ad.get<std::string>());
+        if (!rec.success) {
+            fprintf(stderr, "Failed to decode advertisement: %s\n",
+                    rec.error.c_str());
+            return 1;
+        }
         printf("  Peer: %s\n",
-               rec["peerId"].get<std::string>().c_str());
-        for (const auto& s : rec["services"]) {
+               rec.value["peerId"].get<std::string>().c_str());
+        for (const auto& s : rec.value["services"]) {
             std::string decodedData = base64Decode(s["data"].get<std::string>());
             printf("    Service: %s (data: %s)\n",
                    s["id"].get<std::string>().c_str(),
@@ -234,8 +244,7 @@ service. It may take a moment for the advertisement to propagate.
 
 ## Step 7: Random lookup
 
-You can also discover random peers via `discoRandomLookup()`,
-which is useful for network exploration.
+`discoRandomLookup()` returns unsigned peer records from a random DHT walk.
 ```cpp
     printf("\nRandom lookup by advertiser...\n");
     StdLogosResult randomRes = advertiser.discoRandomLookup();
@@ -244,11 +253,7 @@ which is useful for network exploration.
                 randomRes.error.c_str());
         return 1;
     }
-    printf("Found %zu random peer(s):\n", randomRes.value.size());
-    for (const auto& rec : randomRes.value) {
-        printf("  Peer: %s\n",
-               rec["peerId"].get<std::string>().c_str());
-    }
+    printf("Found %zu random record(s)\n", randomRes.value.size());
 
 ```
 
@@ -323,8 +328,8 @@ or a protobuf and nothing is mangled on the way in.
   - `discoStart()` / `discoStop()` control the discovery service
   - `discoStartAdvertising()` / `discoStopAdvertising()` manage ads
   - `discoRegisterInterest()` / `discoUnregisterInterest()` manage subscriptions
-  - `discoLookup()` finds peers offering a service
-  - `discoRandomLookup()` discovers random peers
+  - `discoLookup()` returns the encoded advertisements for a service
+  - `discoRandomLookup()` returns unsigned peer records from a random walk
   - `createXpr()` / `decodeXpr()` work with signed peer records
 
 ## Run tutorial

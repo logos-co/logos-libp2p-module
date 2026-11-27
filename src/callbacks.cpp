@@ -5,15 +5,7 @@
 using json = nlohmann::json;
 
 namespace {
-// {peerId, seqNo, addrs, services:[{id, data}]}. Service `data` is arbitrary
-// bytes, so it is base64-encoded to keep the JSON valid UTF-8.
-//
-// This is deliberately NOT keyed by id to mirror the `{tstr: bstr}` map
-// createXpr takes: the same shape is returned by discoLookup and
-// discoRandomLookup, whose records come from remote peers and may legitimately
-// repeat a service id — an object would drop all but the last. A caller
-// round-tripping a decoded record back into createXpr rebuilds the map itself,
-// base64-decoding each `data` as it goes.
+// `services` is a list, not an object, because a remote record may repeat an id.
 json recordEntryToJson(const ExtendedPeerRecordEntry& rec) {
     json out;
     out["peerId"] = nfStr(rec.peerId);
@@ -115,6 +107,23 @@ void Libp2pModuleImpl::cbRecords(int ec, const ExtendedRecordsResponse* reply, c
         }
         r.data = std::move(arr);
     }
+
+    finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
+}
+
+// Only discoLookup entries carry a signed record.
+void Libp2pModuleImpl::cbAdvertisements(int ec, const ExtendedRecordsResponse* reply, const char* em, void* ud) {
+    auto r = replyBase(ec, em);
+    if (r.ok && reply && reply->records.data) {
+        json arr = json::array();
+        for (size_t i = 0; i < reply->records.len; ++i) {
+            const auto& signedRecord = reply->records.data[i].signedRecord;
+            if (signedRecord.len == 0) continue;
+            arr.push_back(base64Encode(nfBytes(signedRecord)));
+        }
+        r.data = std::move(arr);
+    }
+
     finishPromise(static_cast<SyncPromise*>(ud), std::move(r));
 }
 

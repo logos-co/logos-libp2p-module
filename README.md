@@ -149,6 +149,12 @@ the background, so a `start` success does not mean that discovery is ready. Call
 and leaves the bootstrap running. Lookups still work against a partial routing
 table. A `timeoutMs` of 0 or less uses the default 10 s call budget.
 
+`discoLookup` returns a JSON array of base64 signed XPRs (Advertisements), the same
+form `discoStartAdvertising` takes. Pass an element to `decodeXpr` to read `peerId`,
+`seqNo`, `addrs` and `services`. This is a breaking change: the elements used to be
+`{peerId, seqNo, addrs, services}` objects.
+`discoRandomLookup` still returns those objects, because random-walk records are unsigned.
+
 `logoscore` only relays a generic "call failed" to the CLI; the specific reason
 (`createNode: invalid config: …`, `libp2p_new failed: …`) is written to the
 daemon's stderr, so check the daemon output (or its redirected log) when a call
