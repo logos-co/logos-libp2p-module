@@ -17,6 +17,8 @@
 class TopicQueues {
 public:
     void setBounds(size_t maxMessages, size_t maxBytes);
+    size_t maxMessages() const;
+    size_t maxBytes() const;
 
     /// Either bound at 0 disables the backlog. A payload larger than the byte
     /// bound never fits, so keep the bound above `gossipsubMaxMessageSize`.

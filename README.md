@@ -155,6 +155,8 @@ form `discoStartAdvertising` takes. Pass an element to `decodeXpr` to read `peer
 `{peerId, seqNo, addrs, services}` objects.
 `discoRandomLookup` still returns those objects, because random-walk records are unsigned.
 
+If the Nim worker stalls, `ok` returns `false` and `status` reports `libp2p not responding`. Call `rebuild` to destroy the node and create a fresh one from the current config, then `start` it again. Subscriptions and mounted protocols do not survive a rebuild. When an `emitEvent` handler is stuck in the stalled node, `rebuild` retires that event thread and starts a new one, and the backlog and `gossipsubNextMessage` queues start empty.
+
 `logoscore` only relays a generic "call failed" to the CLI; the specific reason
 (`createNode: invalid config: …`, `libp2p_new failed: …`) is written to the
 daemon's stderr, so check the daemon output (or its redirected log) when a call
@@ -209,9 +211,27 @@ Each inbound stream also fires a `protocolStream` event with the same
 never from both: the two report the same stream, and the second reader finds a
 handle another one already released.
 
+If the delivery of a `gossipsubMessage` or `protocolStream` event throws,
+including a throw from the `emitEvent` handler itself, the module fires an
+`eventDeliveryFailed` event with `{event, name, error}`, plus `streamId` for a
+stream, and counts it in `libp2p_module_event_delivery_failed_total`. A stream
+whose event failed stays in its queue, so `protocolAcceptStream` still hands it
+out. A `protocolStream` event the full event outbox drops leaves the stream in
+its queue too.
+
+Every gossipsub message enters the `gossipsubNextMessage` queue in arrival
+order, whether or not the outbox accepts its `gossipsubMessage` event.
+`gossipsubUnsubscribe` discards the events of that topic still waiting for
+delivery.
+
+The destructor waits up to 2 s for a running `emitEvent` handler. After that
+it returns, and that one handler call can finish after the module is gone, so
+the handler must not use the module once its destructor returned.
+
 The queue holds 1024 streams per protocol. Past that the newest inbound stream
-is released, and the drop is counted, so a consumer that stops polling loses
-streams instead of pinning them:
+is dropped and counted, so a consumer that stops polling loses streams instead
+of pinning them. A module thread releases the dropped streams, independent of
+host calls.
 
 | Metric | Type | Labels |
 | --- | --- | --- |

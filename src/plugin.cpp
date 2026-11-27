@@ -59,27 +59,133 @@ constexpr char kModuleVersion[] = "2.0.0";
 std::atomic<int64_t> g_requestedLogLevel{LOG_LEVEL_DEBUG};
 }
 
-void Libp2pModuleImpl::publishEmitEvent() {
-    std::unique_lock<std::shared_mutex> lock(m_emitEventLock);
-    m_emitEventSnapshot = emitEvent;
+// Decrements under the lock: once it is released the waiter may delete the gate.
+void endSubmit(ListenerGate* gate) {
+    std::lock_guard<std::mutex> lock(gate->drainLock);
+    if (gate->submits.fetch_sub(1) == 1) gate->drained.notify_all();
 }
 
-void Libp2pModuleImpl::emitEventSafe(const std::string& name, const std::string& data) const {
-    EmitEventFn fn;
-    {
-        std::shared_lock<std::shared_mutex> lock(m_emitEventLock);
-        fn = m_emitEventSnapshot;
+namespace {
+bool waitSubmits(ListenerGate* gate) {
+    std::unique_lock<std::mutex> lock(gate->drainLock);
+    return gate->drained.wait_for(lock, std::chrono::milliseconds(kSubmitDrainMs),
+                                  [&] { return gate->submits.load() == 0; });
+}
+}
+
+ListenerGate* Libp2pModuleImpl::beginSubmit(LibP2PCtx*& ctx) {
+    std::shared_lock<std::shared_mutex> lock(m_ctxLock);
+    if (!this->ctx || !m_gate) return nullptr;
+    m_gate->submits.fetch_add(1);
+    ctx = this->ctx;
+    return m_gate;
+}
+
+bool Libp2pModuleImpl::onEventWorker() const {
+    return std::this_thread::get_id() == pipe()->workerId.load();
+}
+
+// The worker skips the wait: the delivery in progress is its own.
+bool Libp2pModuleImpl::waitDelivery(bool bounded) {
+    if (onEventWorker()) return true;
+    auto current = pipe();
+    if (!bounded) {
+        std::lock_guard<std::timed_mutex> drained(current->deliverLock);
+        return true;
     }
-    if (!fn) {
+    if (current->deliverLock.try_lock_for(std::chrono::milliseconds(kSubmitDrainMs))) {
+        current->deliverLock.unlock();
+        return true;
+    }
+    fprintf(stderr, "libp2p_module: an emitEvent handler is still running; not waiting for it\n");
+    return false;
+}
+
+std::shared_ptr<EventPipe> Libp2pModuleImpl::pipe() const {
+    std::lock_guard<std::mutex> lock(m_pipeLock);
+    return m_pipe;
+}
+
+void Libp2pModuleImpl::replaceEventWorker() {
+    auto old = pipe();
+    auto fresh = std::make_shared<EventPipe>();
+    fresh->topics.setBounds(old->topics.maxMessages(), old->topics.maxBytes());
+    fresh->deliveryFailures = old->deliveryFailures.load();
+    fresh->outbox.addDropped(old->outbox.dropped());
+    {
+        std::unique_lock<std::shared_mutex> lock(old->emitLock);
+        fresh->emitFn = std::move(old->emitFn);
+        old->emitFn = {};
+    }
+    old->outbox.close();
+
+    m_eventWorker.detach();
+    {
+        std::lock_guard<std::mutex> lock(m_pipeLock);
+        m_pipe = fresh;
+    }
+    m_eventWorker = std::thread([fresh] { fresh->run(); });
+}
+
+void Libp2pModuleImpl::stopReleaseThread() {
+    std::unique_lock<std::mutex> lock(m_releaseWorker->lock);
+    m_releaseWorker->stop = true;
+    m_releaseWorker->cond.notify_all();
+    const bool exited = m_releaseWorker->cond.wait_for(
+        lock, std::chrono::milliseconds(kSubmitDrainMs), [&] { return m_releaseWorker->exited; });
+    lock.unlock();
+    if (exited) {
+        m_releaseThread.join();
         return;
     }
-    fn(name, data);
+    fprintf(stderr, "libp2p_module: a stream release is still blocked in libp2p; detaching the release thread\n");
+    m_releaseThread.detach();
+}
+
+void Libp2pModuleImpl::runReleases(std::shared_ptr<ReleaseWorker> worker) {
+    std::unique_lock<std::mutex> lock(worker->lock);
+    while (true) {
+        worker->cond.wait(lock, [&] { return worker->wake || worker->stop; });
+        if (worker->stop) break;
+        worker->wake = false;
+
+        LibP2PCtx* ctx = nullptr;
+        ListenerGate* gate = beginSubmit(ctx);
+        lock.unlock();
+        if (gate) {
+            SubmitScope scope{gate};
+            try {
+                flushReleases(gate, ctx);
+            } catch (const std::exception& ex) {
+                fprintf(stderr, "libp2p_module: stream release failed: %s\n", ex.what());
+            } catch (...) {
+                fprintf(stderr, "libp2p_module: stream release failed\n");
+            }
+        }
+        lock.lock();
+    }
+    worker->exited = true;
+    worker->cond.notify_all();
+}
+
+std::unique_lock<std::mutex> Libp2pModuleImpl::lockCreate() {
+    if (onEventWorker()) return std::unique_lock<std::mutex>(m_createLock, std::try_to_lock);
+    return std::unique_lock<std::mutex>(m_createLock);
+}
+
+void Libp2pModuleImpl::publishEmitEvent() {
+    auto current = pipe();
+    std::unique_lock<std::shared_mutex> lock(current->emitLock);
+    if (m_closing) return;
+    current->emitFn = emitEvent;
 }
 
 Libp2pModuleImpl::Libp2pModuleImpl(const Libp2pModuleOptions& options)
     : ctx(nullptr)
 {
     applyOptions(options);
+    m_eventWorker = std::thread([pipe = m_pipe] { pipe->run(); });
+    m_releaseThread = std::thread([this, worker = m_releaseWorker] { runReleases(worker); });
 }
 
 void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
@@ -93,7 +199,7 @@ void Libp2pModuleImpl::applyOptions(const Libp2pModuleOptions& options) {
 
     m_privKey.assign(options.privKey.begin(), options.privKey.end());
 
-    m_topicQueues.setBounds(options.gossipsubQueueMaxMessages,
+    pipe()->topics.setBounds(options.gossipsubQueueMaxMessages,
                             options.gossipsubQueueMaxBytes);
 
     m_libp2pConfig.gossipsub.mount = options.mountGossipsub;
@@ -176,11 +282,8 @@ SyncResult Libp2pModuleImpl::spawnContext(Libp2pConfig& cfg) {
 
     int ret = libp2p_ctx_create(&cfg, &Libp2pModuleImpl::cbCreate, p);
     if (ret != 0) {
-        if (f.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-            delete p;
-        }
         SyncResult r;
-        r.message = "failed to submit (ret=" + std::to_string(ret) + ")";
+        r.message = submitFailure(p, f, ret);
         return r;
     }
 
@@ -221,6 +324,8 @@ StdLogosResult Libp2pModuleImpl::createContext() {
     // Registered before start so incoming protocol streams and pubsub messages are delivered once the node runs; destroying the context frees the listener boxes.
     libp2p_ctx_add_on_incoming_stream_listener(ctx, &Libp2pModuleImpl::onIncomingStream, m_gate);
     libp2p_ctx_add_on_pubsub_message_listener(ctx, &Libp2pModuleImpl::onPubsubMessage, m_gate);
+    // The binding has no typed wrapper for nim-ffi's liveness event.
+    libp2p_add_event_listener(ctx->ptr, "not_responding", &Libp2pModuleImpl::onNotResponding, m_gate);
 
     return {true, {}, ""};
 }
@@ -231,7 +336,10 @@ bool Libp2pModuleImpl::hasCtx() const {
 }
 
 StdLogosResult Libp2pModuleImpl::ensureContext() {
-    std::lock_guard<std::mutex> lock(m_createLock);
+    if (hasCtx()) return {true, {}, ""};
+    auto lock = lockCreate();
+    if (!lock.owns_lock()) return {false, {}, "a create or rebuild is in progress"};
+    if (m_closing) return {false, {}, "module is shutting down"};
     if (hasCtx()) return {true, {}, ""};
     return createContext();
 }
@@ -245,13 +353,23 @@ StdLogosResult Libp2pModuleImpl::createNode(const std::string& config) {
         fprintf(stderr, "libp2p_module: %s\n", msg.c_str());
         return {false, {}, msg};
     }
-    std::lock_guard<std::mutex> lock(m_createLock);
+    auto lock = lockCreate();
+    if (!lock.owns_lock()) return {false, {}, "createNode: a create or rebuild is in progress"};
+    if (m_closing) return {false, {}, "createNode: module is shutting down"};
     if (hasCtx()) {
         std::string msg = "createNode: node already created";
         fprintf(stderr, "libp2p_module: %s\n", msg.c_str());
         return {false, {}, msg};
     }
     applyOptions(options);
+    return createContext();
+}
+
+StdLogosResult Libp2pModuleImpl::rebuild() {
+    auto lock = lockCreate();
+    if (!lock.owns_lock()) return {false, {}, "rebuild: a create or rebuild is in progress"};
+    if (m_closing) return {false, {}, "rebuild: module is shutting down"};
+    if (!destroyContext()) replaceEventWorker();
     return createContext();
 }
 
@@ -265,45 +383,73 @@ StdLogosResult Libp2pModuleImpl::setLogLevel(const std::string& level) {
     return {true, {}, ""};
 }
 
-// Waits out a listener that is already running, and stops any later one before it touches the module. The wait has no timeout: a running listener holds a bare pointer to the module, and no deadline makes that pointer safe to free.
-void Libp2pModuleImpl::detachListeners() {
-    if (!m_gate) {
-        return;
-    }
-    std::unique_lock<std::shared_mutex> lock(m_gate->lock);
-    m_gate->owner = nullptr;
+// Waits out a listener that is already running, and stops any later one before it touches the module. A listener holds the gate lock only while it copies into the C++ queues, never across a submit, so the wait is short.
+void Libp2pModuleImpl::detachListeners(ListenerGate* gate) {
+    std::unique_lock<std::shared_mutex> lock(gate->lock);
+    gate->owner = nullptr;
 }
 
-void Libp2pModuleImpl::destroyContext() {
-    // Before the teardown, so the Nim event thread never sits in a module callback while the teardown waits to join it.
-    detachListeners();
-
+bool Libp2pModuleImpl::destroyContext() {
+    ListenerGate* gate = nullptr;
     LibP2PCtx* doomed = nullptr;
     {
         std::unique_lock<std::shared_mutex> lock(m_ctxLock);
+        gate = m_gate;
         doomed = ctx;
+        m_gate = nullptr;
         ctx = nullptr;
     }
-    if (!doomed) {
-        return;
+    if (!gate) {
+        return true;
+    }
+
+    const bool drained = waitSubmits(gate);
+
+    // Before the teardown, so the Nim event thread never sits in a module callback while the teardown waits to join it.
+    detachListeners(gate);
+    m_stuck = false;
+
+    // A submit still blocked in nim-ffi waits on this context's signals, so freeing them would be a use-after-free.
+    if (!drained) {
+        fprintf(stderr, "libp2p_module: a call is still blocked in libp2p; abandoning the context\n");
     }
 
     // Synchronous: runs the Nim destructor (dropping the node and its streams) and frees the C-side context wrapper and listener boxes.
-    const bool stopped = destroyContextChecked(doomed);
+    const bool stopped = drained && destroyContextChecked(doomed);
 
-    // A failed teardown leaves the listener boxes, and the thread that reads them, alive: the gate they point at has to stay.
+    // A failed or abandoned teardown leaves the listener boxes, and the thread that reads them, alive: the gate they point at has to stay.
     if (stopped) {
-        delete m_gate;
+        delete gate;
     }
-    m_gate = nullptr;
 
+    pipe()->outbox.clear();
+    const bool delivered = waitDelivery(true);
+    pipe()->topics.releaseAll();
     m_inboundStreams.releaseAll();
+    return delivered;
 }
 
 Libp2pModuleImpl::~Libp2pModuleImpl() {
+    m_closing = true;
+    {
+        // A handler still running reads its own copy of emitFn; clearing it here stops any later callback, including eventDeliveryFailed.
+        auto current = pipe();
+        std::unique_lock<std::shared_mutex> lock(current->emitLock);
+        current->emitFn = {};
+    }
+    stopReleaseThread();
     try {
-        destroyContext();
+        auto lock = lockCreate();
+        if (lock.owns_lock()) destroyContext();
     } catch (...) {}
+    pipe()->outbox.close();
+    // A handler that never returns, or that destroys the module itself, must not hang the destructor; the shared pipe keeps what it still touches alive.
+    if (!onEventWorker() && pipe()->waitExit(kSubmitDrainMs)) {
+        m_eventWorker.join();
+        return;
+    }
+    fprintf(stderr, "libp2p_module: an emitEvent handler is still running; detaching the event worker\n");
+    m_eventWorker.detach();
 }
 
 StdLogosResult Libp2pModuleImpl::start() {
@@ -311,28 +457,31 @@ StdLogosResult Libp2pModuleImpl::start() {
     if (!ready.success) return ready;
 
     publishEmitEvent();
-    return callSync("Failed to start libp2p", [&](SyncPromise* p) {
+    return callSync("Failed to start libp2p", [&](LibP2PCtx* ctx, SyncPromise* p) {
         return libp2p_ctx_start(ctx, &Libp2pModuleImpl::cbBool, p);
     });
 }
 
 StdLogosResult Libp2pModuleImpl::stop() {
-    auto res = callSync("Failed to stop libp2p", [&](SyncPromise* p) {
+    auto res = callSync("Failed to stop libp2p", [&](LibP2PCtx* ctx, SyncPromise* p) {
         return libp2p_ctx_stop(ctx, &Libp2pModuleImpl::cbBool, p);
     });
     // A node that failed to stop is still delivering, so it keeps its backlog.
     if (res.success) {
-        m_topicQueues.releaseAll();
+        pipe()->outbox.clear();
+        waitDelivery(false);
+        pipe()->topics.releaseAll();
         m_inboundStreams.releaseAll();
     }
     return res;
 }
 
 bool Libp2pModuleImpl::ok() {
-    return hasCtx();
+    return hasCtx() && !m_stuck;
 }
 
 StdLogosResult Libp2pModuleImpl::status() {
+    if (m_stuck) return {false, {}, "libp2p not responding; call rebuild, then start"};
     if (hasCtx()) return {true, {}, ""};
     return {false, {}, m_initError.empty() ? "libp2p not initialized" : m_initError};
 }
@@ -356,7 +505,7 @@ StdLogosResult Libp2pModuleImpl::newPrivateKey(const std::string& scheme) {
 
 StdLogosResult Libp2pModuleImpl::publicKey() {
     return callSyncWith("Failed to get public key",
-        [&](SyncPromise* p) {
+        [&](LibP2PCtx* ctx, SyncPromise* p) {
             return libp2p_ctx_public_key(ctx, &Libp2pModuleImpl::cbBytes, p);
         },
         bufferToResult);
@@ -390,13 +539,13 @@ StdLogosResult Libp2pModuleImpl::connectPeer(
     req.multiaddrs = LibP2PSeq_Str{addrsFfi.data(), addrsFfi.size()};
     req.timeoutMs = timeoutMs;
 
-    return callSync("Failed to connect", [&](SyncPromise* p) {
+    return callSync("Failed to connect", [&](LibP2PCtx* ctx, SyncPromise* p) {
         return libp2p_ctx_connect(ctx, &req, &Libp2pModuleImpl::cbBool, p);
     }, awaitTimeoutFor(timeoutMs));
 }
 
 StdLogosResult Libp2pModuleImpl::disconnectPeer(const std::string& peerId) {
-    return callSync("Failed to disconnect", [&](SyncPromise* p) {
+    return callSync("Failed to disconnect", [&](LibP2PCtx* ctx, SyncPromise* p) {
         return libp2p_ctx_disconnect(ctx, nimffi_str(peerId.c_str()),
                                      &Libp2pModuleImpl::cbBool, p);
     });
@@ -404,7 +553,7 @@ StdLogosResult Libp2pModuleImpl::disconnectPeer(const std::string& peerId) {
 
 StdLogosResult Libp2pModuleImpl::peerInfo() {
     return callSyncWith("Failed to get peer info",
-        [&](SyncPromise* p) {
+        [&](LibP2PCtx* ctx, SyncPromise* p) {
             return libp2p_ctx_peer_info(ctx, &Libp2pModuleImpl::cbPeerInfo, p);
         },
         [](const SyncResult& r) { return jsonResult(r, json::object()); });
@@ -448,7 +597,7 @@ StdLogosResult Libp2pModuleImpl::connectedPeers(int64_t direction) {
     }
     auto dir = static_cast<PeerDirection>(direction);
     return callSyncWith("Failed to get connected peers",
-        [&](SyncPromise* p) {
+        [&](LibP2PCtx* ctx, SyncPromise* p) {
             return libp2p_ctx_connected_peers(ctx, dir,
                                               &Libp2pModuleImpl::cbPeers, p);
         },
@@ -476,7 +625,7 @@ StdLogosResult Libp2pModuleImpl::dialWithAddrs(
     req.timeoutMs = timeoutMs;
 
     return callSyncWith("Failed to dial",
-        [&](SyncPromise* p) {
+        [&](LibP2PCtx* ctx, SyncPromise* p) {
             return libp2p_ctx_dial(ctx, &req, &Libp2pModuleImpl::cbDial, p);
         },
         [](const SyncResult& r) -> StdLogosResult {
@@ -497,7 +646,7 @@ StdLogosResult Libp2pModuleImpl::circuitRelayReserve(
     req.relayAddrs = LibP2PSeq_Str{addrsFfi.data(), addrsFfi.size()};
 
     return callSyncWith("Failed to reserve relay",
-        [&](SyncPromise* p) {
+        [&](LibP2PCtx* ctx, SyncPromise* p) {
             return libp2p_ctx_circuit_relay_reserve(ctx, &req,
                                                     &Libp2pModuleImpl::cbReservation, p);
         },
@@ -514,7 +663,7 @@ StdLogosResult Libp2pModuleImpl::dialCircuitRelay(
     req.multiaddr = nimffi_str(multiaddr.c_str());
     req.proto = nimffi_str(proto.c_str());
     return callSyncWith("Failed to dial circuit relay",
-        [&](SyncPromise* p) {
+        [&](LibP2PCtx* ctx, SyncPromise* p) {
             return libp2p_ctx_dial_circuit_relay(ctx, &req,
                                                  &Libp2pModuleImpl::cbDial, p);
         },

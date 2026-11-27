@@ -10,6 +10,16 @@ void TopicQueues::setBounds(size_t maxMessages, size_t maxBytes) {
     m_maxBytes = maxBytes;
 }
 
+size_t TopicQueues::maxMessages() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_maxMessages;
+}
+
+size_t TopicQueues::maxBytes() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_maxBytes;
+}
+
 bool TopicQueues::push(const std::string& topic, std::string payload) {
     std::lock_guard<std::mutex> lock(m_mutex);
     if (m_maxMessages == 0 || m_maxBytes == 0) {

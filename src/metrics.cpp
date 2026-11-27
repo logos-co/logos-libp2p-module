@@ -8,7 +8,7 @@ LogosMap Libp2pModuleImpl::collectMetrics() {
     // return an empty-but-well-formed metrics array.
     std::string text;
     auto res = callSyncWith("Failed to collect metrics",
-        [&](SyncPromise* p) {
+        [&](LibP2PCtx*, SyncPromise* p) {
             return libp2p_static_collect_metrics(&Libp2pModuleImpl::cbStr, p);
         },
         [](const SyncResult& r) -> StdLogosResult {
@@ -29,10 +29,16 @@ LogosMap Libp2pModuleImpl::collectMetrics() {
     }
 
     // The backlog lives on the C++ side, so nim-libp2p's registry cannot see it.
-    auto queueSeries = m_topicQueues.metrics();
+    auto current = pipe();
+    auto queueSeries = current->topics.metrics();
     series.insert(series.end(), queueSeries.begin(), queueSeries.end());
     auto streamSeries = m_inboundStreams.metrics();
     series.insert(series.end(), streamSeries.begin(), streamSeries.end());
+    auto outboxSeries = current->outbox.metrics();
+    series.insert(series.end(), outboxSeries.begin(), outboxSeries.end());
+    series.push_back(Metric{"libp2p_module_event_delivery_failed_total", "counter",
+                            "events whose emitEvent delivery threw", {},
+                            static_cast<double>(current->deliveryFailures.load())});
 
     json payload;
     payload["metrics"] = series;
